@@ -1,0 +1,55 @@
+fastapi
+uvicorn[standard]
+gunicorn
+pandas
+numpy
+scipy
+scikit-learn
+matplotlib
+seaborn
+statsmodels
+openpyxl
+xlsxwriter
+python-multipart
+pydantic
+lifelines
+networkx
+plotly
+semopy
+pingouin
+factor_analyzer
+xgboost
+shap
+reliability
+linearmodels
+mlxtend
+aiohttp
+firebase-admin
+arch
+tensorflow
+lifetimes
+pyportfolioopt
+librosa
+soundfile
+pm4py
+hdbscan
+spopt
+geopandas
+shapely
+pulp
+QuantLib
+optuna
+ortools<9.15.0
+cvxpy
+minisom
+vaderSentiment
+textblob
+pmdarima
+
+# Map Analysis
+httpx>=0.27.0
+pyvis
+
+# Investment Intelligence (추가)
+quantstats>=0.0.60           # Sharpe, Sortino, Calmar, Omega 등 성과지표
+riskfolio-lib>=7.0.0         # HERC, CVaR 포트폴리오 최적화

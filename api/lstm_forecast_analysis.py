@@ -275,6 +275,16 @@ async def run_lstm_forecast(request: LSTMForecastRequest) -> Dict[str, Any]:
             len(result['history'].history['loss']), request.epochs, len(df)
         )
 
+        test_predictions = [
+            {
+                'date': d.isoformat(),
+                'actual': _to_native_type(a),
+                'predicted': _to_native_type(p),
+                'error': _to_native_type(p - a)
+            }
+            for d, a, p in zip(test_dates, result['y_test_actual'], result['y_pred_test_actual'])
+        ]
+
         return {
             'n_observations': len(df),
             'window_size': window_size,
@@ -284,6 +294,7 @@ async def run_lstm_forecast(request: LSTMForecastRequest) -> Dict[str, Any]:
             'final_training_loss': _to_native_type(result['history'].history['loss'][-1]),
             'metrics': {'train': train_metrics, 'test': test_metrics},
             'forecast': forecast_records,
+            'test_predictions': test_predictions,
             'loss_plot': loss_plot,
             'forecast_plot': forecast_plot,
             'interpretation': interpretation

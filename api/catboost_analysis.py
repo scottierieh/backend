@@ -158,7 +158,8 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'train_history': train_history, 'eval_metric': metric_name,
         'label_encoder': le, 'train_pool': train_pool,
-        'best_iteration': int(model.get_best_iteration() or params['iterations'])
+        'best_iteration': int(model.get_best_iteration() or params['iterations']),
+        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
     }
 
 
@@ -400,6 +401,44 @@ def generate_interpretation(result: Dict, task_type: str, feature_importance: Li
     }
 
 
+def generate_prediction_examples(result: Dict, task_type: str, n_examples: int = 15, random_state: int = 42) -> List[Dict[str, Any]]:
+    """Sample prediction examples from the test set (regression: actual/predicted/error; classification: actual/predicted/correct/confidence)."""
+    try:
+        rng = np.random.RandomState(random_state)
+        if task_type == 'regression':
+            y_test = np.array(result['y_test'])
+            y_pred = np.array(result['y_pred'])
+            n = min(n_examples, len(y_test))
+            idx = rng.choice(len(y_test), size=n, replace=False)
+            examples = []
+            for i in idx:
+                actual = _to_native_type(y_test[i])
+                predicted = _to_native_type(y_pred[i])
+                error = _to_native_type(y_pred[i] - y_test[i])
+                error_pct = _to_native_type(abs(error) / abs(actual) * 100) if actual not in (0, None) else None
+                examples.append({'actual': actual, 'predicted': predicted, 'error': error, 'error_pct': error_pct})
+            return examples
+        else:
+            le = result['label_encoder']
+            y_test_enc = np.array(result['y_test_encoded'])
+            y_pred_enc = np.array(result['y_pred'])
+            y_pred_proba = np.array(result['y_pred_proba'])
+            n = min(n_examples, len(y_test_enc))
+            idx = rng.choice(len(y_test_enc), size=n, replace=False)
+            examples = []
+            for i in idx:
+                actual_label = str(le.inverse_transform([y_test_enc[i]])[0])
+                predicted_label = str(le.inverse_transform([y_pred_enc[i]])[0])
+                confidence = _to_native_type(float(y_pred_proba[i].max()))
+                examples.append({
+                    'actual': actual_label, 'predicted': predicted_label,
+                    'correct': bool(y_test_enc[i] == y_pred_enc[i]), 'confidence': confidence
+                })
+            return examples
+    except Exception:
+        return []
+
+
 @router.post("/catboost")
 async def run_catboost_analysis(request: CatBoostRequest) -> Dict[str, Any]:
     """
@@ -490,6 +529,7 @@ async def run_catboost_analysis(request: CatBoostRequest) -> Dict[str, Any]:
             regression_plot = generate_regression_plot(result['y_test'], result['y_pred'])
 
         interpretation = generate_interpretation(result, task_type, feature_importance, len(cat_cols))
+        prediction_examples = generate_prediction_examples(result, task_type)
 
         response = {
             'task_type': task_type,
@@ -507,7 +547,8 @@ async def run_catboost_analysis(request: CatBoostRequest) -> Dict[str, Any]:
             'best_iteration': result['best_iteration'],
             'importance_plot': importance_plot,
             'learning_plot': learning_plot,
-            'interpretation': interpretation
+            'interpretation': interpretation,
+            'prediction_examples': prediction_examples
         }
 
         if task_type == 'classification':

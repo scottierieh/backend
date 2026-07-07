@@ -19,6 +19,9 @@ semopy
 pingouin
 factor_analyzer
 xgboost
+lightgbm
+catboost
+umap-learn
 shap
 reliability
 linearmodels

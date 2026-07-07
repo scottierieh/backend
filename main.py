@@ -1254,6 +1254,14 @@ from api.random_forest import router as random_forest_router
 from api.svm import router as svm_router
 from api.knn import router as knn_router
 from api.naive_bayes_analysis import router as naive_bayes_router
+from api.adaboost_analysis import router as adaboost_router
+from api.lightgbm_analysis import router as lightgbm_router
+from api.catboost_analysis import router as catboost_router
+from api.ensemble_voting_stacking import router as ensemble_router
+from api.mlp_analysis import router as mlp_router
+from api.tsne_analysis import router as tsne_router
+from api.umap_analysis import router as umap_router
+from api.lstm_forecast_analysis import router as lstm_forecast_router
 from api.survival import router as survival_router
 from api.did import router as did_router
 from api.psm import router as psm_router
@@ -1532,6 +1540,14 @@ app.include_router(random_forest_router, prefix="/api/analysis", tags=["Machine 
 app.include_router(svm_router, prefix="/api/analysis", tags=["Machine Learning"])
 app.include_router(knn_router, prefix="/api/analysis", tags=["Machine Learning"])
 app.include_router(naive_bayes_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(adaboost_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(lightgbm_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(catboost_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(ensemble_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(mlp_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(tsne_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(umap_router, prefix="/api/analysis", tags=["Machine Learning"])
+app.include_router(lstm_forecast_router, prefix="/api/analysis", tags=["Machine Learning"])
 
 # Survival Analysis
 app.include_router(survival_router, prefix="/api/analysis", tags=["Survival Analysis"])
@@ -1796,6 +1812,14 @@ async def list_endpoints():
             {"path": "/api/analysis/naive-bayes", "method": "POST", "description": "Naive Bayes"},
             {"path": "/api/analysis/xgboost", "method": "POST", "description": "XGBoost"},
             {"path": "/api/analysis/gradient-boosting", "method": "POST", "description": "Gradient Boosting"},
+            {"path": "/api/analysis/adaboost", "method": "POST", "description": "AdaBoost"},
+            {"path": "/api/analysis/lightgbm", "method": "POST", "description": "LightGBM"},
+            {"path": "/api/analysis/catboost", "method": "POST", "description": "CatBoost"},
+            {"path": "/api/analysis/ensemble-voting-stacking", "method": "POST", "description": "Voting/Stacking Ensemble"},
+            {"path": "/api/analysis/mlp", "method": "POST", "description": "Artificial Neural Network (MLP)"},
+            {"path": "/api/analysis/tsne", "method": "POST", "description": "t-SNE"},
+            {"path": "/api/analysis/umap", "method": "POST", "description": "UMAP"},
+            {"path": "/api/analysis/lstm-forecast", "method": "POST", "description": "LSTM Forecasting"},
             {"path": "/api/analysis/credit-risk", "method": "POST", "description": "Credit Risk Scoring"},
             {"path": "/api/analysis/inventory", "method": "POST", "description": "Inventory Analysis"},
             {"path": "/api/analysis/diversity-inclusion", "method": "POST", "description": "Diversity & Inclusion Analysis"},

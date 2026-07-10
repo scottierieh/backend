@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 import subprocess
 import sys
 import os
@@ -77,9 +78,13 @@ def run_script(script_file: str, payload: dict) -> dict:
 
 
 def register_script_route(path: str, script_file: str):
+    # run_script() calls the blocking subprocess.run() — inside an `async def` route that
+    # would block this worker's entire event loop until the subprocess exits, serializing
+    # every other concurrent request. run_in_threadpool offloads it to a worker thread so
+    # other requests keep being served while this one's subprocess runs.
     async def _route(request: Request):
         payload = await request.json()
-        return run_script(script_file, payload)
+        return await run_in_threadpool(run_script, script_file, payload)
     app.add_api_route(path, _route, methods=["POST"], name=script_file)
 
 

@@ -102,6 +102,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/fruit-clustering",            "fruit_clustering_analysis.py",            False),
     ("/api/analysis/gbm",                         "gbm_analysis.py",                         False),
     ("/api/analysis/gradient-descent-simulation", "gradient_descent_simulation.py",          False),
+    ("/api/analysis/gmm",                         "gmm_analysis.py",                         True),
     ("/api/analysis/hca",                         "hca_analysis.py",                         True),
     ("/api/analysis/hdbscan",                     "hdbscan_analysis.py",                     True),
     ("/api/analysis/homogeneity-test",            "homogeneity_test.py",                     False),

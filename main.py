@@ -107,7 +107,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/elasticnet-regression",       "elastic_net_regression_analysis.py",      True),
     ("/api/analysis/ensemble-voting-stacking",    "ensemble_stacking_analysis.py",           True),
     ("/api/analysis/fruit-clustering",            "fruit_clustering_analysis.py",            False),
-    ("/api/analysis/gbm",                         "gbm_analysis.py",                         False),
+    ("/api/analysis/gradient-boosting",           "gbm_analysis.py",                         True),
     ("/api/analysis/gradient-descent-simulation", "gradient_descent_simulation.py",          False),
     ("/api/analysis/gmm",                         "gmm_analysis.py",                         True),
     ("/api/analysis/hca",                         "hca_analysis.py",                         True),

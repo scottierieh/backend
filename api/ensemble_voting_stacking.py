@@ -15,6 +15,7 @@ import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.svm import SVC, SVR
@@ -206,6 +207,64 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
         result.update({'metrics': metrics, 'y_test': y_test.values if hasattr(y_test, 'values') else y_test, 'y_pred': y_pred})
 
     return result
+
+
+def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
+                                    n_repeats: int = 10, random_state: int = 42) -> List[Dict[str, Any]]:
+    try:
+        perm = permutation_importance(model, X_test, y_test, n_repeats=n_repeats, random_state=random_state, n_jobs=-1)
+        result = []
+        for name, mean, std in zip(feature_names, perm.importances_mean, perm.importances_std):
+            result.append({'feature': name, 'importance_mean': _to_native_type(mean), 'importance_std': _to_native_type(std)})
+        result.sort(key=lambda x: x['importance_mean'], reverse=True)
+        for i, item in enumerate(result):
+            item['rank'] = i + 1
+        return result
+    except Exception:
+        return []
+
+
+def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type: str,
+                  max_background: int = 50, max_samples: int = 100) -> Dict:
+    """Model-agnostic SHAP (Permutation explainer) — a voting/stacking ensemble mixes
+    heterogeneous base learners, so there's no single TreeExplainer that applies."""
+    try:
+        try:
+            import shap as _shap
+        except ImportError:
+            return {'shap_importance': [], 'shap_plot': None, 'error': 'shap package not installed. Run: pip install shap'}
+
+        X_arr = np.asarray(X_test)
+        n = len(X_arr)
+        rng = np.random.RandomState(42)
+        background = X_arr[rng.choice(n, size=min(max_background, n), replace=False)]
+        X_sample = X_arr[rng.choice(n, size=min(max_samples, n), replace=False)]
+
+        predict_fn = model.predict_proba if (task_type == 'classification' and hasattr(model, 'predict_proba')) else model.predict
+        explainer = _shap.Explainer(predict_fn, _shap.maskers.Independent(background))
+        shap_values = explainer(X_sample)
+
+        sv = np.array(shap_values.values)
+        mean_shap = np.abs(sv).mean(axis=(0, 2)) if sv.ndim == 3 else np.abs(sv).mean(axis=0)
+
+        shap_importance = [
+            {'feature': name, 'mean_abs_shap': _to_native_type(val)}
+            for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
+        ]
+
+        fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
+        feats = [d['feature'] for d in shap_importance][::-1]
+        vals = [d['mean_abs_shap'] for d in shap_importance][::-1]
+        ax.barh(feats, vals, color='#f59e0b', edgecolor='none')
+        ax.set_xlabel('Mean |SHAP Value|', fontsize=11)
+        ax.set_title('SHAP Feature Importance', fontsize=13, fontweight='bold')
+        ax.grid(True, linestyle='--', alpha=0.3, axis='x')
+        fig.subplots_adjust(left=0.20)
+        shap_plot = _fig_to_base64(fig)
+
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+    except Exception as e:
+        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
 
 
 def perform_cross_validation(X, y, task_type: str, params: dict, cv_folds: int) -> Dict[str, Any]:
@@ -473,6 +532,8 @@ async def run_ensemble_analysis(request: EnsembleRequest) -> Dict[str, Any]:
         }
 
         result = train_ensemble(X_train, X_test, y_train, y_test, task_type, params, feature_cols)
+        perm_importance = compute_permutation_importance(result['model'], X_test, y_test, feature_cols)
+        shap_result = compute_shap(result['model'], X_test, feature_cols, task_type)
         cv_result = perform_cross_validation(X_array, y, task_type, params, request.cv_folds)
 
         comparison_plot = generate_comparison_plot(result['individual_scores'], result['model_label'], task_type)
@@ -500,6 +561,10 @@ async def run_ensemble_analysis(request: EnsembleRequest) -> Dict[str, Any]:
             'base_estimators': result['base_estimator_names'],
             'individual_scores': result['individual_scores'],
             'metrics': result['metrics'],
+            'perm_importance': perm_importance,
+            'shap_importance': shap_result.get('shap_importance'),
+            'shap_plot': shap_result.get('shap_plot'),
+            'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'comparison_plot': comparison_plot,
             'interpretation': interpretation,

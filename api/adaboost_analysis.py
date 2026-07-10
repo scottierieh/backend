@@ -234,6 +234,49 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return []
 
 
+def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type: str,
+                  max_background: int = 50, max_samples: int = 100) -> Dict:
+    """Model-agnostic SHAP (Permutation explainer) — AdaBoost's tree ensemble isn't
+    reliably supported by shap.TreeExplainer, so we explain predict_proba/predict directly."""
+    try:
+        try:
+            import shap as _shap
+        except ImportError:
+            return {'shap_importance': [], 'shap_plot': None, 'error': 'shap package not installed. Run: pip install shap'}
+
+        X_arr = np.asarray(X_test)
+        n = len(X_arr)
+        rng = np.random.RandomState(42)
+        background = X_arr[rng.choice(n, size=min(max_background, n), replace=False)]
+        X_sample = X_arr[rng.choice(n, size=min(max_samples, n), replace=False)]
+
+        predict_fn = model.predict_proba if (task_type == 'classification' and hasattr(model, 'predict_proba')) else model.predict
+        explainer = _shap.Explainer(predict_fn, _shap.maskers.Independent(background))
+        shap_values = explainer(X_sample)
+
+        sv = np.array(shap_values.values)
+        mean_shap = np.abs(sv).mean(axis=(0, 2)) if sv.ndim == 3 else np.abs(sv).mean(axis=0)
+
+        shap_importance = [
+            {'feature': name, 'mean_abs_shap': _to_native_type(val)}
+            for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
+        ]
+
+        fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
+        feats = [d['feature'] for d in shap_importance][::-1]
+        vals = [d['mean_abs_shap'] for d in shap_importance][::-1]
+        ax.barh(feats, vals, color='#f59e0b', edgecolor='none')
+        ax.set_xlabel('Mean |SHAP Value|', fontsize=11)
+        ax.set_title('SHAP Feature Importance', fontsize=13, fontweight='bold')
+        ax.grid(True, linestyle='--', alpha=0.3, axis='x')
+        fig.subplots_adjust(left=0.20)
+        shap_plot = _fig_to_base64(fig)
+
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+    except Exception as e:
+        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
+
+
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
     base_est_cls = DecisionTreeClassifier if task_type == 'classification' else DecisionTreeRegressor
     base_estimator = base_est_cls(max_depth=params['base_max_depth'], random_state=params['random_state'])
@@ -523,7 +566,9 @@ async def run_adaboost_analysis(request: AdaBoostRequest) -> Dict[str, Any]:
         feature_importance = get_feature_importance(model, feature_cols)
 
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else (y_test.values if hasattr(y_test, 'values') else y_test)
-        perm_importance = compute_permutation_importance(model, X_test.values if hasattr(X_test, 'values') else X_test, y_test_for_perm, feature_cols)
+        X_test_arr = X_test.values if hasattr(X_test, 'values') else X_test
+        perm_importance = compute_permutation_importance(model, X_test_arr, y_test_for_perm, feature_cols)
+        shap_result = compute_shap(model, X_test_arr, feature_cols, task_type)
 
         cv_result = perform_cross_validation(X, y, params, task_type, request.cv_folds)
 
@@ -552,6 +597,9 @@ async def run_adaboost_analysis(request: AdaBoostRequest) -> Dict[str, Any]:
             'metrics': result['metrics'],
             'feature_importance': feature_importance,
             'perm_importance': perm_importance,
+            'shap_importance': shap_result.get('shap_importance'),
+            'shap_plot': shap_result.get('shap_plot'),
+            'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'staged_train_scores': result['staged_train_scores'],
             'staged_test_scores': result['staged_test_scores'],

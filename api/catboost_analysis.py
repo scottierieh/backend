@@ -157,7 +157,7 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
         'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'train_history': train_history, 'eval_metric': metric_name,
-        'label_encoder': le, 'train_pool': train_pool,
+        'label_encoder': le, 'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations']),
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
     }
@@ -197,7 +197,7 @@ def train_catboost_regressor(X_train, X_test, y_train, y_test, params: dict, cat
         'model': model, 'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred, 'train_history': train_history, 'eval_metric': metric_name,
-        'train_pool': train_pool,
+        'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations'])
     }
 
@@ -232,6 +232,38 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return result
     except Exception:
         return []
+
+
+def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
+    """CatBoost computes exact SHAP values natively (no `shap` package needed)."""
+    try:
+        raw = model.get_feature_importance(test_pool, type='ShapValues')
+        arr = np.array(raw)
+        # Binary/regression: (n_samples, n_features+1); multiclass: (n_samples, n_classes, n_features+1).
+        # Last column is the expected-value bias term — drop it before averaging.
+        if arr.ndim == 3:
+            mean_shap = np.abs(arr[:, :, :-1]).mean(axis=(0, 1))
+        else:
+            mean_shap = np.abs(arr[:, :-1]).mean(axis=0)
+
+        shap_importance = [
+            {'feature': name, 'mean_abs_shap': _to_native_type(val)}
+            for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
+        ]
+
+        fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
+        feats = [d['feature'] for d in shap_importance][::-1]
+        vals = [d['mean_abs_shap'] for d in shap_importance][::-1]
+        ax.barh(feats, vals, color='#f59e0b', edgecolor='none')
+        ax.set_xlabel('Mean |SHAP Value|', fontsize=11)
+        ax.set_title('SHAP Feature Importance', fontsize=13, fontweight='bold')
+        ax.grid(True, linestyle='--', alpha=0.3, axis='x')
+        fig.subplots_adjust(left=0.20)
+        shap_plot = _fig_to_base64(fig)
+
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+    except Exception as e:
+        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
 
 
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, cat_features: List[int]) -> Dict[str, Any]:
@@ -513,6 +545,7 @@ async def run_catboost_analysis(request: CatBoostRequest) -> Dict[str, Any]:
 
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else y_test
         perm_importance = compute_permutation_importance(model, X_test, y_test_for_perm, feature_cols)
+        shap_result = compute_shap(model, result['test_pool'], feature_cols)
 
         cv_result = perform_cross_validation(X, y, params, task_type, request.cv_folds, cat_feature_indices)
 
@@ -543,6 +576,9 @@ async def run_catboost_analysis(request: CatBoostRequest) -> Dict[str, Any]:
             'metrics': result['metrics'],
             'feature_importance': feature_importance,
             'perm_importance': perm_importance,
+            'shap_importance': shap_result.get('shap_importance'),
+            'shap_plot': shap_result.get('shap_plot'),
+            'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'best_iteration': result['best_iteration'],
             'importance_plot': importance_plot,

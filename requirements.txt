@@ -10,6 +10,7 @@ matplotlib
 seaborn
 catboost
 lightgbm
+xgboost
 shap
 tensorflow
 umap-learn

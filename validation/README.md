@@ -32,3 +32,11 @@ python3 validate_elastic_net_regression.py  # -> "ELASTIC NET REGRESSION (Python
 | `validate_discriminant.py` | `discriminant_analysis.py` | `sklearn.discriminant_analysis.LinearDiscriminantAnalysis` | 1/1 |
 
 Reports: `validation/reports/*.md`.
+| `validate_decision_tree.py` | `decision_tree_analysis.py` | pass |
+| `validate_random_forest.py` | `random_forest_analysis.py` | pass |
+| `validate_gbm.py` | `gbm_analysis.py` | pass |
+| `validate_adaboost.py` | `adaboost_analysis.py` | pass |
+| `validate_xgboost.py` | `xgboost_analysis.py` | pass |
+| `validate_lightgbm.py` | `lightgbm_analysis.py` | pass |
+| `validate_catboost.py` | `catboost_analysis.py` | pass |
+| `validate_ensemble_stacking.py` | `ensemble_stacking_analysis.py` | pass |

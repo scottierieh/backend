@@ -18,3 +18,16 @@ def chk(name, got, exp, tol=1e-6):
     else:  FAIL[0]+=1; LOG.append(f"FAIL | {name} got={got} exp={exp}")
 def report(title):
     print("\n".join(LOG)); print(f"\n==== {title}: {PASS[0]} PASS, {FAIL[0]} FAIL ====")
+
+def find_key(d, key):
+    """Depth-first search for the first occurrence of `key` in nested dicts/lists."""
+    if isinstance(d, dict):
+        if key in d: return d[key]
+        for v in d.values():
+            r = find_key(v, key)
+            if r is not None: return r
+    elif isinstance(d, list):
+        for v in d:
+            r = find_key(v, key)
+            if r is not None: return r
+    return None

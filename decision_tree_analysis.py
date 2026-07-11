@@ -422,7 +422,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
                 'tpr': [_to_native(x) for x in tpr],
                 'auc': _to_native(auc(fpr, tpr))
             }
-        macro_auc = _compute_multiclass_auc(y_test_encoded, y_pred_proba)
+        macro_auc = _compute_multiclass_auc(y_test_enc, y_pred_proba)
         if macro_auc is not None:
             metrics['auc'] = macro_auc
 

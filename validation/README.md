@@ -16,6 +16,7 @@ pip install numpy pandas scipy scikit-learn statsmodels matplotlib seaborn
 cd validation
 python3 validate_ridge_regression.py     # -> "RIDGE REGRESSION (Python): 7 PASS, 0 FAIL"
 python3 validate_lasso_regression.py     # -> "LASSO REGRESSION (Python): 7 PASS, 0 FAIL"
+python3 validate_elastic_net_regression.py  # -> "ELASTIC NET REGRESSION (Python): 7 PASS, 0 FAIL"
 ```
 
 ## Files
@@ -24,5 +25,6 @@ python3 validate_lasso_regression.py     # -> "LASSO REGRESSION (Python): 7 PASS
 | `_pyharness.py` | — | — | shared `run_script`/`chk`/`report` |
 | `validate_ridge_regression.py` | `ridge_regression_analysis.py` | `sklearn.linear_model.Ridge` | 7/7 |
 | `validate_lasso_regression.py` | `lasso_regression_analysis.py` | `sklearn.linear_model.Lasso` | 7/7 |
+| `validate_elastic_net_regression.py` | `elastic_net_regression_analysis.py` | `sklearn.linear_model.ElasticNet` | 7/7 |
 
 Reports: `validation/reports/*.md`.

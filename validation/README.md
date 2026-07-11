@@ -40,3 +40,7 @@ Reports: `validation/reports/*.md`.
 | `validate_lightgbm.py` | `lightgbm_analysis.py` | pass |
 | `validate_catboost.py` | `catboost_analysis.py` | pass |
 | `validate_ensemble_stacking.py` | `ensemble_stacking_analysis.py` | pass |
+| `validate_mlp.py` | `mlp_analysis.py` | pass |
+| `validate_cross_validation.py` | `cross_validation_analysis.py` | pass |
+| `validate_hyperparameter_tuning.py` | `hyperparameter_tuning_analysis.py` | pass |
+| `validate_relative_importance.py` | `relative_importance_analysis.py` | pass |

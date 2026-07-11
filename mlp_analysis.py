@@ -556,7 +556,14 @@ def main():
         interpretation = generate_interpretation(result, task_type, model, params, len(X), len(feature_cols))
         prediction_examples = generate_prediction_examples(result, task_type)
 
+        try:
+            from guardrails import compute_guardrails
+            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+        except Exception:
+            guardrails = []
+
         response = {
+            'guardrails': guardrails,
             'task_type': task_type,
             'n_samples': len(X),
             'n_features': len(feature_cols),

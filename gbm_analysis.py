@@ -133,7 +133,17 @@ def main():
                     "confidence": max(proba)
                 })
 
-        results['feature_importance'] = dict(zip(feature_names, model.feature_importances_))
+        # Array of {feature, importance, importance_pct}, sorted descending -- matches
+        # every other model's contract. Was a plain {feature: value} dict before, which
+        # crashed the frontend (`results.feature_importance.slice(...)` expects an array).
+        _imp = np.asarray(model.feature_importances_, dtype=float)
+        _total = _imp.sum() or 1.0
+        feature_importance = [
+            {'feature': name, 'importance': _to_native_type(imp), 'importance_pct': _to_native_type(imp / _total * 100)}
+            for name, imp in zip(feature_names, _imp)
+        ]
+        feature_importance.sort(key=lambda x: x['importance'], reverse=True)
+        results['feature_importance'] = feature_importance
         results['prediction_examples'] = prediction_examples
 
         # --- Plotting ---
@@ -250,8 +260,16 @@ def main():
         buf.seek(0)
         plot_image = base64.b64encode(buf.read()).decode('utf-8')
         
+        try:
+            from guardrails import compute_guardrails
+            _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2_score')}
+            guardrails = compute_guardrails(X, y, features, problem_type, _norm_metrics)
+        except Exception:
+            guardrails = []
+
         response = {
             'results': results,
+            'guardrails': guardrails,
             'plot': f"data:image/png;base64,{plot_image}"
         }
 

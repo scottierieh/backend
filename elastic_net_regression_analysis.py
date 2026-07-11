@@ -197,8 +197,15 @@ def main():
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         path_plot_image = fig_to_base64(fig_path)
 
+        try:
+            from guardrails import compute_guardrails
+            guardrails = compute_guardrails(X, y, features, 'regression', {'r2': test_metrics['r2_score']})
+        except Exception:
+            guardrails = []
+
         response = {
             'results': results,
+            'guardrails': guardrails,
             'plot': plot_image,
             'path_plot': path_plot_image
         }

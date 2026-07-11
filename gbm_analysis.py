@@ -250,8 +250,16 @@ def main():
         buf.seek(0)
         plot_image = base64.b64encode(buf.read()).decode('utf-8')
         
+        try:
+            from guardrails import compute_guardrails
+            _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2_score')}
+            guardrails = compute_guardrails(X, y, features, problem_type, _norm_metrics)
+        except Exception:
+            guardrails = []
+
         response = {
             'results': results,
+            'guardrails': guardrails,
             'plot': f"data:image/png;base64,{plot_image}"
         }
 

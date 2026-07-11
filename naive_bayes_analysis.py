@@ -683,7 +683,14 @@ def main():
         interpretation = generate_interpretation(result, feature_importance, params)
 
         # ── Response ────────────────────────────────────────────────
+        try:
+            from guardrails import compute_guardrails
+            guardrails = compute_guardrails(X, y, feature_cols, 'classification', result['metrics'])
+        except Exception:
+            guardrails = []
+
         response = {
+            'guardrails': guardrails,
             'task_type':           'classification',
             'n_samples':           len(X),
             'n_features':          len(feature_cols),

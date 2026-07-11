@@ -942,7 +942,14 @@ def main():
         if method == 'lda':
             actual_solver = result.get('lda_info', {}).get('solver_used', params['solver'])
 
+        try:
+            from guardrails import compute_guardrails
+            guardrails = compute_guardrails(X, y, feature_cols, 'classification', result['metrics'])
+        except Exception:
+            guardrails = []
+
         response = {
+            'guardrails': guardrails,
             'method': method.upper(),
             'n_samples': len(X),
             'n_features': len(feature_cols),

@@ -44,3 +44,9 @@ Reports: `validation/reports/*.md`.
 | `validate_cross_validation.py` | `cross_validation_analysis.py` | pass |
 | `validate_hyperparameter_tuning.py` | `hyperparameter_tuning_analysis.py` | pass |
 | `validate_relative_importance.py` | `relative_importance_analysis.py` | pass |
+| `validate_kmeans.py` | `kmeans_analysis.py` | ARI=1 |
+| `validate_dbscan.py` | `dbscan_analysis.py` | ARI=1 |
+| `validate_gmm.py` | `gmm_analysis.py` | ARI=1 |
+| `validate_hca.py` | `hca_analysis.py` | ARI=1 |
+| `validate_hdbscan.py` | `hdbscan_analysis.py` | ARI=1 |
+| `validate_kmedoids.py` | `kmedoids_analysis.py` | deferred (numpy2/sklearn_extra) |

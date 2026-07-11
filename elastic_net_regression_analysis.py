@@ -65,7 +65,8 @@ def main():
         alpha = float(payload.get('alpha', 1.0))
         l1_ratio = float(payload.get('l1_ratio', 0.5))
         test_size = float(payload.get('test_size', 0.2))
-        auto_tune = bool(payload.get('auto_tune', False))
+        auto_tune = bool(payload.get('use_cv', payload.get('auto_tune', False)))
+        cv_folds = int(payload.get('cv_folds', 5))
 
         if not all([data, target, features]):
             raise ValueError("Missing data, target, or features")
@@ -95,7 +96,7 @@ def main():
 
         if auto_tune:
             l1_ratio_grid = [.1, .3, .5, .7, .9, .95, .99, 1]
-            cv_model = ElasticNetCV(l1_ratio=l1_ratio_grid, alphas=np.logspace(-3, 2, 50), cv=5, random_state=42, max_iter=10000)
+            cv_model = ElasticNetCV(l1_ratio=l1_ratio_grid, alphas=np.logspace(-3, 2, 50), cv=cv_folds, random_state=42, max_iter=10000)
             cv_model.fit(X_train_scaled, y_train)
             alpha = float(cv_model.alpha_)
             l1_ratio = float(cv_model.l1_ratio_)

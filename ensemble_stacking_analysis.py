@@ -231,6 +231,24 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return []
 
 
+def _perm_to_feature_importance(perm_importance):
+    """Reshape perm_importance's {feature, importance_mean, importance_std} into the
+    standard {feature, importance, importance_pct} shape used by tree/boosting models,
+    so this model also shows up in Model Lab's cross-model importance comparison table."""
+    if not perm_importance:
+        return []
+    pos = [max(p.get('importance_mean', 0.0), 0.0) for p in perm_importance]
+    total = sum(pos) or 1.0
+    return [
+        {
+            'feature': p['feature'],
+            'importance': p.get('importance_mean', 0.0),
+            'importance_pct': _to_native_type(v / total * 100),
+        }
+        for p, v in zip(perm_importance, pos)
+    ]
+
+
 def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type: str,
                   max_background: int = 50, max_samples: int = 100) -> Dict:
     """Model-agnostic SHAP (Permutation explainer) — a voting/stacking ensemble mixes
@@ -575,6 +593,7 @@ def main():
             'individual_scores': result['individual_scores'],
             'metrics': result['metrics'],
             'perm_importance': perm_importance,
+            'feature_importance': _perm_to_feature_importance(perm_importance),
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
             'shap_error': shap_result.get('error'),

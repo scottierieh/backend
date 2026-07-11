@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 pandas
-numpy
+numpy<2  # pinned: scikit-learn-extra (k-medoids) is not importable under numpy 2.x (ABI)
 scipy
 scikit-learn
 scikit-learn-extra

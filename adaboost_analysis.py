@@ -22,10 +22,23 @@ from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_curve, auc,
+    confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
+
+
+def _compute_multiclass_auc(y_true, y_pred_proba):
+    """Macro-average ROC-AUC: binary uses the positive-class column; multiclass uses One-vs-Rest macro averaging."""
+    try:
+        n_classes = y_pred_proba.shape[1]
+        if n_classes == 2:
+            return float(roc_auc_score(y_true, y_pred_proba[:, 1]))
+        else:
+            return float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='macro'))
+    except Exception:
+        return None
+
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -126,6 +139,9 @@ def train_adaboost_classifier(X_train, X_test, y_train, y_test, params: dict) ->
                 'tpr': [_to_native_type(x) for x in tpr],
                 'auc': _to_native_type(roc_auc)
             }
+        macro_auc = _compute_multiclass_auc(y_test_encoded, y_pred_proba)
+        if macro_auc is not None:
+            metrics['auc'] = macro_auc
 
     staged_train = [_to_native_type(s) for s in model.staged_score(X_train, y_train_encoded)]
     staged_test = [_to_native_type(s) for s in model.staged_score(X_test, y_test_encoded)]

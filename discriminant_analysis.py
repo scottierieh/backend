@@ -347,7 +347,8 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
     for name, imp in zip(feature_names, importance_scores):
         feature_importance.append({
             'feature': name,
-            'importance': _to_native_type(float(imp))
+            'importance': _to_native_type(float(imp)),
+            'importance_pct': _to_native_type(float(imp) * 100)
         })
     feature_importance.sort(key=lambda x: x['importance'], reverse=True)
 
@@ -507,7 +508,8 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
     for name, imp in zip(feature_names, importance_scores):
         feature_importance.append({
             'feature': name,
-            'importance': _to_native_type(float(imp))
+            'importance': _to_native_type(float(imp)),
+            'importance_pct': _to_native_type(float(imp) * 100)
         })
     feature_importance.sort(key=lambda x: x['importance'], reverse=True)
 

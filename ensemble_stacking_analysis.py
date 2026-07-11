@@ -28,10 +28,23 @@ from sklearn.ensemble import (
 )
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_curve, auc,
+    confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
+
+
+def _compute_multiclass_auc(y_true, y_pred_proba):
+    """Macro-average ROC-AUC: binary uses the positive-class column; multiclass uses One-vs-Rest macro averaging."""
+    try:
+        n_classes = y_pred_proba.shape[1]
+        if n_classes == 2:
+            return float(roc_auc_score(y_true, y_pred_proba[:, 1]))
+        else:
+            return float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='macro'))
+    except Exception:
+        return None
+
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -177,6 +190,15 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
                 roc_auc = auc(fpr, tpr)
                 roc_data['binary'] = {'fpr': _to_native_scalar_list(fpr), 'tpr': _to_native_scalar_list(tpr), 'auc': _to_native_type(roc_auc)}
                 metrics['auc'] = _to_native_type(roc_auc)
+            else:
+                for i, cls in enumerate(le.classes_):
+                    y_binary = (y_test_encoded == i).astype(int)
+                    fpr, tpr, _ = roc_curve(y_binary, y_pred_proba[:, i])
+                    roc_auc = auc(fpr, tpr)
+                    roc_data[str(cls)] = {'fpr': _to_native_scalar_list(fpr), 'tpr': _to_native_scalar_list(tpr), 'auc': _to_native_type(roc_auc)}
+                macro_auc = _compute_multiclass_auc(y_test_encoded, y_pred_proba)
+                if macro_auc is not None:
+                    metrics['auc'] = macro_auc
 
         result.update({
             'metrics': metrics, 'per_class_metrics': per_class_metrics,

@@ -20,9 +20,22 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_curve, auc
+    confusion_matrix, classification_report, roc_curve, auc, roc_auc_score
 )
 import warnings
+
+
+def _compute_multiclass_auc(y_true, y_pred_proba):
+    """Macro-average ROC-AUC: binary uses the positive-class column; multiclass uses One-vs-Rest macro averaging."""
+    try:
+        n_classes = y_pred_proba.shape[1]
+        if n_classes == 2:
+            return float(roc_auc_score(y_true, y_pred_proba[:, 1]))
+        else:
+            return float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='macro'))
+    except Exception:
+        return None
+
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -162,7 +175,10 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
                 'tpr': [_to_native_type(x) for x in tpr],
                 'auc': _to_native_type(roc_auc)
             }
-        # macro AUC summary for multiclass
+        # macro AUC summary for multiclass (sklearn's OvR macro average, consistent with other models)
+        macro_auc = _compute_multiclass_auc(y_test_encoded, y_pred_proba)
+        if macro_auc is not None:
+            metrics['auc'] = macro_auc
         metrics['auc_macro'] = _to_native_type(float(np.mean(auc_values)))
 
     # ── Class priors ────────────────────────────────────────────────
@@ -214,7 +230,8 @@ def get_feature_importance_nb(model, feature_names: List[str], nb_type: str) -> 
     for name, imp in zip(feature_names, importance):
         importance_data.append({
             'feature': name,
-            'importance': _to_native_type(imp)
+            'importance': _to_native_type(imp),
+            'importance_pct': _to_native_type(float(imp) * 100)
         })
 
     # Sort by importance

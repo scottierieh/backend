@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 import subprocess
 import sys
 import os
@@ -77,9 +78,13 @@ def run_script(script_file: str, payload: dict) -> dict:
 
 
 def register_script_route(path: str, script_file: str):
+    # run_script() calls the blocking subprocess.run() — inside an `async def` route that
+    # would block this worker's entire event loop until the subprocess exits, serializing
+    # every other concurrent request. run_in_threadpool offloads it to a worker thread so
+    # other requests keep being served while this one's subprocess runs.
     async def _route(request: Request):
         payload = await request.json()
-        return run_script(script_file, payload)
+        return await run_in_threadpool(run_script, script_file, payload)
     app.add_api_route(path, _route, methods=["POST"], name=script_file)
 
 
@@ -93,28 +98,33 @@ SCRIPT_ROUTES = [
     ("/api/analysis/ahp",                         "ahp_analysis.py",                         False),
     ("/api/analysis/catboost",                    "catboost_analysis.py",                    True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
+    ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),
     ("/api/analysis/dea-efficiency",              "dea_analysis.py",                         True),
+    ("/api/analysis/decision-tree",               "decision_tree_analysis.py",               True),
     ("/api/analysis/delphi",                      "delphi_analysis.py",                      False),
-    ("/api/analysis/discriminant",                "discriminant_analysis.py",                False),
+    ("/api/analysis/lda",                         "discriminant_analysis.py",                True),
     ("/api/analysis/elasticnet-regression",       "elastic_net_regression_analysis.py",      True),
     ("/api/analysis/ensemble-voting-stacking",    "ensemble_stacking_analysis.py",           True),
     ("/api/analysis/fruit-clustering",            "fruit_clustering_analysis.py",            False),
-    ("/api/analysis/gbm",                         "gbm_analysis.py",                         False),
+    ("/api/analysis/gradient-boosting",           "gbm_analysis.py",                         True),
     ("/api/analysis/gradient-descent-simulation", "gradient_descent_simulation.py",          False),
+    ("/api/analysis/gmm",                         "gmm_analysis.py",                         True),
     ("/api/analysis/hca",                         "hca_analysis.py",                         True),
     ("/api/analysis/hdbscan",                     "hdbscan_analysis.py",                     True),
     ("/api/analysis/homogeneity-test",            "homogeneity_test.py",                     False),
-    ("/api/analysis/hyperparameter-tuning",       "hyperparameter_tuning_analysis.py",       False),
+    ("/api/analysis/hyperparameter-tuning",       "hyperparameter_tuning_analysis.py",       True),
     ("/api/analysis/ipa",                         "ipa_analysis.py",                         False),
     ("/api/analysis/kmeans",                      "kmeans_analysis.py",                      True),
     ("/api/analysis/kmedoids",                    "kmedoids_analysis.py",                    True),
+    ("/api/analysis/knn",                         "knn_analysis.py",                         True),
     ("/api/analysis/lasso-regression",            "lasso_regression_analysis.py",            True),
     ("/api/analysis/lightgbm",                    "lightgbm_analysis.py",                    True),
     ("/api/analysis/linear-programming",          "linear_programming_analysis.py",          False),
     ("/api/analysis/lstm-forecast",               "lstm_forecasting_analysis.py",            True),
     ("/api/analysis/marketing-dashboard",         "marketing_dashboard_analysis.py",         False),
     ("/api/analysis/mlp",                         "mlp_analysis.py",                         True),
+    ("/api/analysis/naive-bayes",                 "naive_bayes_analysis.py",                 True),
     ("/api/analysis/neural-network",              "neural_network_analysis.py",              False),
     ("/api/analysis/nonlinear-regression",        "nonlinear_regression_analysis.py",        False),
     ("/api/analysis/nonparametric",               "nonparametric_analysis.py",               False),
@@ -123,18 +133,21 @@ SCRIPT_ROUTES = [
     ("/api/analysis/partial-correlation",         "partial_correlation_analysis.py",         False),
     ("/api/analysis/randomforest",                "random_forest_analysis.py",               True),
     ("/api/analysis/relative-importance",         "relative_importance_analysis.py",         False),
+    ("/api/analysis/ridge-regression",            "ridge_regression_analysis.py",             True),
     ("/api/analysis/rfm-segmentation",            "rfm_analysis.py",                         True),
     ("/api/analysis/seasonal-analysis",           "seasonal_decomposition_analysis.py",      True),
     ("/api/analysis/sentiment-analysis",          "sentiment_analyzer.py",                   True),
     ("/api/analysis/som",                         "som_analysis.py",                         True),
     ("/api/analysis/spatial-autoregressive-model","spatial_autoregressive_model_analysis.py",False),
     ("/api/analysis/spatial-error-model",         "spatial_error_model_analysis.py",         False),
+    ("/api/analysis/svm",                         "svm_analysis.py",                         True),
     ("/api/analysis/tscss",                       "tscss_analysis.py",                       False),
     ("/api/analysis/tsne",                        "tsne_analysis.py",                        True),
     ("/api/analysis/umap",                        "umap_analysis.py",                        True),
     ("/api/analysis/van-westendorp",              "van_westendorp_analysis.py",              False),
     ("/api/analysis/variability",                 "variability_analysis.py",                 False),
     ("/api/analysis/wordcloud",                   "wordcloud_analysis.py",                   False),
+    ("/api/analysis/xgboost",                     "xgboost_analysis.py",                     True),
 ]
 
 for _path, _script, _confirmed in SCRIPT_ROUTES:

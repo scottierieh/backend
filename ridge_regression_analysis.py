@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import ElasticNet, ElasticNetCV
+from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -24,8 +24,6 @@ def _to_native_type(obj):
         return float(obj)
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, np.bool_):
-        return bool(obj)
     return obj
 
 def fig_to_base64(fig):
@@ -35,26 +33,21 @@ def fig_to_base64(fig):
     buf.seek(0)
     return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
 
-def _generate_interpretation(train_r2, test_r2, l1_ratio):
+def _generate_interpretation(train_r2, test_r2):
+    interpretation = ""
     r2_diff = train_r2 - test_r2
-
+    
     if train_r2 > 0.8 and r2_diff < 0.2:
-        fit_desc = "The model shows a **Good Fit**. Both training and testing R-squared scores are high and close to each other, indicating that the model generalizes well to new data."
+        interpretation = "The model shows a **Good Fit**. Both training and testing R-squared scores are high and close to each other, indicating that the model generalizes well to new data."
     elif train_r2 > 0.7 and r2_diff > 0.3:
-        fit_desc = "**Overfitting Warning**. The model performs significantly better on the training data than on the test data. Consider increasing alpha to add more regularization."
+        interpretation = "**Overfitting Warning**. The model performs significantly better on the training data than on the test data. This suggests that the model has learned the training data's noise and may not perform well on unseen data. Consider increasing the alpha value to add more regularization."
     elif train_r2 < 0.5 and test_r2 < 0.5:
-        fit_desc = "**Underfitting Possible**. Both training and testing R-squared scores are low, suggesting the model is too simple to capture the underlying patterns, or the features lack a strong relationship with the target."
+        interpretation = "**Underfitting Possible**. Both training and testing R-squared scores are low, suggesting the model is too simple to capture the underlying patterns in the data. The model may not be complex enough."
     else:
-        fit_desc = "The model's performance is moderate. Review the R-squared values and residuals to assess if the model is sufficient for your needs."
+        interpretation = "The model's performance is moderate. Review the R-squared values and residuals to assess if the model is sufficient for your needs."
+        
+    return interpretation.strip()
 
-    if l1_ratio >= 0.9:
-        mix_desc = "With an L1 ratio close to 1, the model behaves almost like Lasso, favoring sparse solutions that can zero out weak predictors."
-    elif l1_ratio <= 0.1:
-        mix_desc = "With an L1 ratio close to 0, the model behaves almost like Ridge, shrinking coefficients smoothly without eliminating them."
-    else:
-        mix_desc = f"With an L1 ratio of {l1_ratio:.2f}, the model blends Lasso's variable selection with Ridge's coefficient shrinkage."
-
-    return f"{fit_desc.strip()} {mix_desc}"
 
 def main():
     try:
@@ -63,76 +56,67 @@ def main():
         target = payload.get('target')
         features = payload.get('features')
         alpha = float(payload.get('alpha', 1.0))
-        l1_ratio = float(payload.get('l1_ratio', 0.5))
         test_size = float(payload.get('test_size', 0.2))
-        auto_tune = bool(payload.get('use_cv', payload.get('auto_tune', False)))
-        cv_folds = int(payload.get('cv_folds', 5))
 
         if not all([data, target, features]):
             raise ValueError("Missing data, target, or features")
 
         df = pd.DataFrame(data)
-
+        
         X = df[features]
         y = df[target]
-
+        
         X = pd.get_dummies(X, drop_first=True)
         final_features = X.columns.tolist()
 
         y = pd.to_numeric(y, errors='coerce')
-
+        
         combined = pd.concat([X, y], axis=1).dropna()
         X = combined[final_features]
         y = combined[target]
-
+        
         if X.empty or y.empty:
             raise ValueError("Not enough valid data after cleaning.")
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-
+        
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
-
-        if auto_tune:
-            l1_ratio_grid = [.1, .3, .5, .7, .9, .95, .99, 1]
-            cv_model = ElasticNetCV(l1_ratio=l1_ratio_grid, alphas=np.logspace(-3, 2, 50), cv=cv_folds, random_state=42, max_iter=10000)
-            cv_model.fit(X_train_scaled, y_train)
-            alpha = float(cv_model.alpha_)
-            l1_ratio = float(cv_model.l1_ratio_)
-
-        model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=10000)
+        
+        model = Ridge(alpha=alpha, random_state=42)
         model.fit(X_train_scaled, y_train)
-
+        
         y_pred_test = model.predict(X_test_scaled)
         y_pred_train = model.predict(X_train_scaled)
-
+        
         test_metrics = {
             'r2_score': r2_score(y_test, y_pred_test),
             'rmse': np.sqrt(mean_squared_error(y_test, y_pred_test)),
             'mae': mean_absolute_error(y_test, y_pred_test)
         }
-
+        
         train_metrics = {
             'r2_score': r2_score(y_train, y_pred_train),
             'rmse': np.sqrt(mean_squared_error(y_train, y_pred_train)),
             'mae': mean_absolute_error(y_train, y_pred_train)
         }
-
-        interpretation = _generate_interpretation(train_metrics['r2_score'], test_metrics['r2_score'], l1_ratio)
-
+        
+        interpretation = _generate_interpretation(train_metrics['r2_score'], test_metrics['r2_score'])
+        
         results = {
-            'metrics': {'test': test_metrics, 'train': train_metrics},
+            'metrics': {
+                'test': test_metrics,
+                'train': train_metrics,
+            },
             'coefficients': dict(zip(final_features, model.coef_)),
             'intercept': model.intercept_,
             'alpha': alpha,
-            'l1_ratio': l1_ratio,
-            'n_nonzero_coefficients': int(np.sum(model.coef_ != 0)),
             'interpretation': interpretation,
         }
-
+        
         fig_main, axes = plt.subplots(2, 1, figsize=(8, 12))
-        fig_main.suptitle(f'Elastic Net Regression Performance (alpha={alpha:.4f}, l1_ratio={l1_ratio:.2f})', fontsize=16)
+        fig_main.suptitle(f'Ridge Regression Performance (alpha={alpha})', fontsize=16)
 
         axes[0].scatter(y_train, y_pred_train, alpha=0.5, label='(Actual, Predicted)')
         axes[0].plot([y_train.min(), y_train.max()], [y_train.min(), y_train.max()], 'r--', lw=2, label='45° Line (Perfect Fit)')
@@ -147,6 +131,7 @@ def main():
         )
         axes[0].text(0.05, 0.95, train_text, transform=axes[0].transAxes, fontsize=10,
                      verticalalignment='top', bbox=dict(boxstyle='round,pad=0.5', fc='wheat', alpha=0.5))
+
 
         axes[1].scatter(y_test, y_pred_test, alpha=0.5, label='(Actual, Predicted)')
         axes[1].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2, label='45° Line (Perfect Fit)')
@@ -165,18 +150,19 @@ def main():
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         plot_image = fig_to_base64(fig_main)
 
-        alpha_list = np.logspace(-3, 2, 100)
+        alpha_list = np.logspace(-4, 4, 200)
         coefs = []
         train_scores, test_scores = [], []
-        for a in alpha_list:
-            en_iter = ElasticNet(alpha=a, l1_ratio=l1_ratio, random_state=42, max_iter=2000)
-            en_iter.fit(X_train_scaled, y_train)
-            coefs.append(en_iter.coef_)
-            train_scores.append(en_iter.score(X_train_scaled, y_train))
-            test_scores.append(en_iter.score(X_test_scaled, y_test))
 
+        for a in alpha_list:
+            ridge_iter = Ridge(alpha=a, random_state=42)
+            ridge_iter.fit(X_train_scaled, y_train)
+            coefs.append(ridge_iter.coef_)
+            train_scores.append(ridge_iter.score(X_train_scaled, y_train))
+            test_scores.append(ridge_iter.score(X_test_scaled, y_test))
+        
         fig_path, axes_path = plt.subplots(2, 1, figsize=(8, 12))
-        fig_path.suptitle(f'Elastic Net Model Behavior vs. Alpha (l1_ratio={l1_ratio:.2f})', fontsize=16)
+        fig_path.suptitle('Ridge Model Behavior vs. Alpha', fontsize=16)
 
         axes_path[0].plot(alpha_list, train_scores, label='Train R²')
         axes_path[0].plot(alpha_list, test_scores, label='Test R²')
@@ -191,7 +177,7 @@ def main():
         axes_path[1].set_xscale('log')
         axes_path[1].set_xlabel('Alpha')
         axes_path[1].set_ylabel('Coefficients')
-        axes_path[1].set_title('Elastic Net Coefficients Path')
+        axes_path[1].set_title('Ridge Coefficients Path')
         axes_path[1].grid(True)
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -202,7 +188,7 @@ def main():
             'plot': plot_image,
             'path_plot': path_plot_image
         }
-
+        
         print(json.dumps(response, default=_to_native_type))
 
     except Exception as e:

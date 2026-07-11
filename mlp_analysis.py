@@ -21,10 +21,23 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_curve, auc,
+    confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
+
+
+def _compute_multiclass_auc(y_true, y_pred_proba):
+    """Macro-average ROC-AUC: binary uses the positive-class column; multiclass uses One-vs-Rest macro averaging."""
+    try:
+        n_classes = y_pred_proba.shape[1]
+        if n_classes == 2:
+            return float(roc_auc_score(y_true, y_pred_proba[:, 1]))
+        else:
+            return float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='macro'))
+    except Exception:
+        return None
+
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -124,6 +137,9 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
             fpr, tpr, _ = roc_curve(y_binary, y_pred_proba[:, i])
             roc_auc = auc(fpr, tpr)
             roc_data[str(cls)] = {'fpr': [_to_native_type(x) for x in fpr], 'tpr': [_to_native_type(x) for x in tpr], 'auc': _to_native_type(roc_auc)}
+        macro_auc = _compute_multiclass_auc(y_test_encoded, y_pred_proba)
+        if macro_auc is not None:
+            metrics['auc'] = macro_auc
 
     return {
         'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
@@ -165,6 +181,24 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return result
     except Exception:
         return []
+
+
+def _perm_to_feature_importance(perm_importance):
+    """Reshape perm_importance's {feature, importance_mean, importance_std} into the
+    standard {feature, importance, importance_pct} shape used by tree/boosting models,
+    so this model also shows up in Model Lab's cross-model importance comparison table."""
+    if not perm_importance:
+        return []
+    pos = [max(p.get('importance_mean', 0.0), 0.0) for p in perm_importance]
+    total = sum(pos) or 1.0
+    return [
+        {
+            'feature': p['feature'],
+            'importance': p.get('importance_mean', 0.0),
+            'importance_pct': _to_native_type(v / total * 100),
+        }
+        for p, v in zip(perm_importance, pos)
+    ]
 
 
 def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type: str,
@@ -533,6 +567,7 @@ def main():
             'final_loss': _to_native_type(model.loss_),
             'metrics': result['metrics'],
             'perm_importance': perm_importance,
+            'feature_importance': _perm_to_feature_importance(perm_importance),
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
             'shap_error': shap_result.get('error'),

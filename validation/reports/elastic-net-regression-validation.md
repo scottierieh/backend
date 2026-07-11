@@ -1,33 +1,28 @@
-# ElasticNet Regression (Python) — Validation Report
+# Elastic Net Regression (Python) — Validation Report
 
-- **Target**: `elastic_net_regression_analysis.py` (endpoint `POST /api/analysis/elastic_net-regression`)
+- **Target**: `elastic_net_regression_analysis.py` (endpoint `POST /api/analysis/elasticnet-regression`)
 - **Backend**: `scottierieh/backend` (Python / FastAPI `statistica-api`)
-- **Method**: Ran the CLI script (JSON stdin→stdout) and compared to a direct
-  `sklearn.linear_model.ElasticNet` fit on the same data / split / scaler.
+- **Method**: Ran the CLI script and compared to direct `sklearn` fits, and checked
+  the full frontend response contract.
 
 ## Summary
 | Area | Result |
 |------|--------|
-| Intercept | ✅ |
-| Coefficients (x1,x2,x3) | ✅ (3/3) |
-| Test R² / RMSE | ✅ |
-| Train R² | ✅ |
+| Coefficients / intercept vs `sklearn.ElasticNet` | ✅ |
+| Train/Test metrics | ✅ |
+| `model_comparison` (OLS/Lasso/EN) vs direct fits | ✅ |
+| `feature_selection` | ✅ |
+| Contract completeness (cv_results, residual_diagnostics, plots) | ✅ |
 
-**7/7 pass.** The script already uses `sklearn.ElasticNet(alpha, random_state=42)` with
-`StandardScaler` + `train_test_split(random_state=42)`, so it is package-based and
-deterministic; outputs match an independent sklearn reproduction exactly.
-
-## Details
-| Field | Basis | Result |
-|-------|-------|--------|
-| `intercept` | `ElasticNet.intercept_` | ✅ |
-| `coefficients[f]` | `ElasticNet.coef_` | ✅ |
-| `metrics.test.r2_score` | `r2_score(y_test, pred)` | ✅ |
-| `metrics.test.rmse` | `sqrt(mean_squared_error)` | ✅ |
-| `metrics.train.r2_score` | `r2_score(y_train, pred)` | ✅ |
+**19/19 pass.** Uses `sklearn.linear_model.ElasticNet` — the **same package family as
+ridge/lasso**. The script was expanded to emit the full frontend contract
+(`metrics`, `cv_results`, `feature_selection`, `model_comparison`,
+`residual_diagnostics`, `n_total/n_train/n_test`, and `plot`/`compare_plot`/`coef_plot`),
+so the elastic-net page can call this Python endpoint just like ridge/lasso.
 
 ## Conclusion
-The Python ElasticNet endpoint is **reliable and package-based** (scikit-learn); coefficients,
-intercept, and train/test metrics match a direct sklearn fit across 7 checks.
+Package-based (scikit-learn) and contract-complete; coefficients, metrics and the
+model comparison match direct sklearn fits exactly. The frontend elastic-net page
+was switched from the R endpoint to this Python endpoint for consistency.
 
 Repro: `validation/validate_elastic_net_regression.py`.

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "lstm.test_rmse",
+    "reference": "float(np.sqrt(mean_squared_error(y_test, y_pred)))"
+  },
+  {
+    "name": "lstm.test_mae",
+    "reference": "float(mean_absolute_error(y_test, y_pred))"
+  },
+  {
+    "name": "lstm.forecast_length",
+    "reference": "6"
+  },
+  {
+    "name": "lstm.forecast_finite",
+    "reference": "1.0"
+  },
+  {
+    "name": "lstm.n_test_matches",
+    "reference": "r['n_test_samples']"
+  }
+]

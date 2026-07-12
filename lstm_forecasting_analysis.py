@@ -215,7 +215,13 @@ def main():
             'final_training_loss': float(history.history['loss'][-1]),
             'forecast': forecast_records,
             'n_train_samples': int(len(X_train)),
-            'n_test_samples': int(len(X_test))
+            'n_test_samples': int(len(X_test)),
+            # Raw test-set actuals/predictions (inverse-scaled) so the reported
+            # RMSE/MAE can be independently recomputed by the validation harness.
+            '_validation': {
+                'y_test_actual': [float(v) for v in y_test_actual],
+                'y_pred_test': [float(v) for v in y_pred_test_actual],
+            }
         }
         results['interpretation'] = _generate_interpretation(
             train_metrics, test_metrics, len(history.history['loss']), epochs,

@@ -4,7 +4,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import accuracy_score
-from _pyharness import run_script, chk, report
+from _pyharness import run_script, chk, report, classifier_checks
 iris=load_iris(as_frame=True); df=iris.frame.copy(); feat=list(iris.feature_names); df['species']=iris.target_names[iris.target]
 payload={'data':df.to_dict('records'),'target_col':'species','feature_cols':feat,'method':'lda',
          'test_size':0.2,'solver':'svd','random_state':42}
@@ -14,5 +14,5 @@ Xtr_raw,Xte_raw,ytr,yte=train_test_split(X,y,test_size=0.2,random_state=42,strat
 sc=StandardScaler(); Xtr=sc.fit_transform(Xtr_raw); Xte=sc.transform(Xte_raw)
 le=LabelEncoder(); ytr_e=le.fit_transform(ytr); yte_e=le.transform(yte)
 mdl=LinearDiscriminantAnalysis(solver='svd').fit(Xtr,ytr_e)
-chk("lda.accuracy", m['accuracy'], accuracy_score(yte_e,mdl.predict(Xte)), tol=1e-9)
+classifier_checks("lda", r, mdl, Xtr, ytr_e, Xte, yte_e)
 report("DISCRIMINANT ANALYSIS (Python)")

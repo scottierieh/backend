@@ -4,7 +4,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 from sklearn.metrics import accuracy_score
-from _pyharness import run_script, chk, report, find_key
+from _pyharness import run_script, chk, report, find_key, classifier_checks
 iris=load_iris(as_frame=True); df=iris.frame.copy(); feat=list(iris.feature_names)
 df['y']=(iris.target==0).astype(int).map({1:'setosa',0:'other'})  # binary
 P=dict(data=df.to_dict('records'),target_col='y',feature_cols=feat,task_type='classification',test_size=0.2,
@@ -14,5 +14,5 @@ r=run_script('xgboost_analysis.py',P); acc=find_key(r,'accuracy')
 X=df[feat].values; y=df['y']; Xtr,Xte,ytr,yte=train_test_split(X,y,test_size=0.2,random_state=42,stratify=y)
 le=LabelEncoder(); m=xgb.XGBClassifier(n_estimators=50,max_depth=3,learning_rate=0.1,subsample=1.0,colsample_bytree=1.0,
    min_child_weight=1,gamma=0.0,reg_alpha=0.0,reg_lambda=1.0,random_state=42,n_jobs=-1).fit(Xtr,le.fit_transform(ytr))
-chk("xgb.accuracy", acc, accuracy_score(le.transform(yte),m.predict(Xte)), tol=1e-9)
+classifier_checks("xgb", r, m, Xtr, le.transform(ytr), Xte, le.transform(yte))
 report("XGBOOST (Python)")

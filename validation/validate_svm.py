@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
-from _pyharness import run_script, chk, report
+from _pyharness import run_script, chk, report, classifier_checks
 
 iris=load_iris(as_frame=True); df=iris.frame.copy()
 feat=list(iris.feature_names); df['species']=iris.target_names[iris.target]
@@ -21,6 +21,5 @@ Xs=StandardScaler().fit_transform(X)
 Xtr,Xte,ytr,yte=train_test_split(Xs,y,test_size=0.2,random_state=42,stratify=y)
 le=LabelEncoder(); ytr_e=le.fit_transform(ytr); yte_e=le.transform(yte)
 mdl=SVC(kernel='rbf',C=1.0,gamma='scale',degree=3,coef0=0.0,random_state=42,probability=True).fit(Xtr,ytr_e)
-chk("svm.accuracy", m['accuracy'], accuracy_score(yte_e, mdl.predict(Xte)), tol=1e-9)
-chk("svm.train_accuracy", m['train_accuracy'], accuracy_score(ytr_e, mdl.predict(Xtr)), tol=1e-9)
+classifier_checks("svm", r, mdl, Xtr, ytr_e, Xte, yte_e)
 report("SVM (Python)")

@@ -2,5 +2,17 @@
   {
     "name": "gmm.labels(ARI=1)",
     "reference": "1.0"
+  },
+  {
+    "name": "gmm.n_components",
+    "reference": "3"
+  },
+  {
+    "name": "gmm.bic",
+    "reference": "float(g.bic(Xs))"
+  },
+  {
+    "name": "gmm.aic",
+    "reference": "float(g.aic(Xs))"
   }
 ]

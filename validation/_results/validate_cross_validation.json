@@ -1,13 +1,13 @@
 {
   "title": "CROSS VALIDATION (Python)",
-  "total_checks": 1,
-  "numeric_checks": 1,
+  "total_checks": 11,
+  "numeric_checks": 11,
   "exact_checks": 0,
-  "pass": 1,
+  "pass": 11,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
-  "tolerance_max": 1e-09,
+  "tolerance_max": 1e-06,
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
@@ -19,11 +19,71 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "7fd4cbc",
+  "git_commit": "ee41307",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "cv.mean_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.std_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.min_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.max_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.median_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.n_folds",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold0_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold1_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold2_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold3_score",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold4_score",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"

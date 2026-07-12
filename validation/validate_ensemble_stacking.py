@@ -6,7 +6,7 @@ from sklearn.ensemble import VotingClassifier, RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-from _pyharness import run_script, chk, report, find_key
+from _pyharness import run_script, chk, report, find_key, classifier_checks
 iris=load_iris(as_frame=True); df=iris.frame.copy(); feat=list(iris.feature_names); df['species']=iris.target_names[iris.target]
 P=dict(data=df.to_dict('records'),target_col='species',feature_cols=feat,task_type='classification',test_size=0.2,
        ensemble_method='voting',voting_type='soft',
@@ -19,5 +19,5 @@ ests=[('logistic_regression',LogisticRegression(max_iter=1000,random_state=42)),
       ('decision_tree',DecisionTreeClassifier(max_depth=5,random_state=42)),
       ('random_forest',RandomForestClassifier(n_estimators=100,random_state=42))]
 m=VotingClassifier(estimators=ests,voting='soft').fit(Xtr,ytr)
-chk("stack.voting.accuracy", acc, accuracy_score(yte,m.predict(Xte)), tol=1e-9)
+classifier_checks("stack.voting", r, m, Xtr, ytr, Xte, yte)
 report("ENSEMBLE (VOTING) (Python)")

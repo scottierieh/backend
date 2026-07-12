@@ -1,10 +1,1 @@
-[
-  {
-    "name": "svm.accuracy",
-    "reference": "accuracy_score(yte_e, mdl.predict(Xte))"
-  },
-  {
-    "name": "svm.train_accuracy",
-    "reference": "accuracy_score(ytr_e, mdl.predict(Xtr))"
-  }
-]
+[]

@@ -1,6 +1,1 @@
-[
-  {
-    "name": "lgb.accuracy",
-    "reference": "accuracy_score(le.transform(yte),m.predict(Xte))"
-  }
-]
+[]

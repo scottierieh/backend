@@ -106,3 +106,45 @@ def find_key(d, key):
             r = find_key(v, key)
             if r is not None: return r
     return None
+
+
+def classifier_checks(prefix, result, model, X_train, y_train, X_test, y_test, tol=1e-9):
+    """Cross-check every classification metric the handler reports against
+    scikit-learn recomputed on the reproduced model's own predictions —
+    test accuracy, train accuracy, macro precision/recall/F1, and the
+    train/test split sizes. Metrics the handler does not expose are skipped
+    (guarded on find_key), so a handler that reports a subset never triggers a
+    false failure. y_train/y_test must be in the label space the model predicts."""
+    import numpy as _np
+    from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                                 f1_score, confusion_matrix)
+    g = lambda k: find_key(result, k)
+    pred = _np.asarray(model.predict(X_test)).ravel()      # ravel handles CatBoost's (n,1) output
+    chk(f"{prefix}.accuracy", g('accuracy'), accuracy_score(y_test, pred), tol=tol)
+    if g('train_accuracy') is not None:
+        pred_tr = _np.asarray(model.predict(X_train)).ravel()
+        chk(f"{prefix}.train_accuracy", g('train_accuracy'), accuracy_score(y_train, pred_tr), tol=tol)
+
+    # macro precision/recall/F1 — accept either flat keys (precision_macro) or a
+    # nested sklearn classification_report ('macro avg' -> precision/recall/f1-score)
+    cr = g('classification_report')
+    macro = cr.get('macro avg') if isinstance(cr, dict) else None
+    ref = {'precision': precision_score(y_test, pred, average='macro', zero_division=0),
+           'recall':    recall_score(y_test, pred, average='macro', zero_division=0),
+           'f1':        f1_score(y_test, pred, average='macro', zero_division=0)}
+    for short, flat in (('precision', 'precision_macro'), ('recall', 'recall_macro'), ('f1', 'f1_macro')):
+        if g(flat) is not None:
+            chk(f"{prefix}.{flat}", g(flat), ref[short], tol=tol)
+        elif isinstance(macro, dict):
+            rep_key = 'f1-score' if short == 'f1' else short
+            if macro.get(rep_key) is not None:
+                chk(f"{prefix}.{short}_macro", macro[rep_key], ref[short], tol=tol)
+
+    if g('confusion_matrix') is not None:
+        cm_ref = confusion_matrix(y_test, pred)
+        same = _np.array_equal(_np.asarray(g('confusion_matrix')), cm_ref)
+        chk(f"{prefix}.confusion_matrix", bool(same), True)
+    if g('n_train') is not None:
+        chk(f"{prefix}.n_train", g('n_train'), len(X_train))
+    if g('n_test') is not None:
+        chk(f"{prefix}.n_test", g('n_test'), len(X_test))

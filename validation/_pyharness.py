@@ -20,6 +20,18 @@ def run_script(script, payload):
         raise RuntimeError(f"{script} failed: {p.stderr[:500]}")
     return json.loads(p.stdout)
 
+def _fmt(v):
+    """Format a scalar value for the per-check detail table."""
+    if v is None: return "None"
+    if isinstance(v, bool): return str(v)
+    if isinstance(v, (int,)): return str(v)
+    try:
+        f = float(v)
+        if f == int(f) and abs(f) < 1e15: return str(int(f))
+        return f"{f:.6g}"
+    except (TypeError, ValueError):
+        return str(v)
+
 def chk(name, got, exp, tol=1e-6):
     is_num = not isinstance(exp,(str,bool))
     diff=None
@@ -32,7 +44,8 @@ def chk(name, got, exp, tol=1e-6):
         ok = got==exp
     if ok: PASS[0]+=1; LOG.append(f"PASS | {name} = {got}")
     else:  FAIL[0]+=1; LOG.append(f"FAIL | {name} got={got} exp={exp}")
-    CHECKS.append({"name":name, "tolerance":(tol if is_num else None),
+    CHECKS.append({"name":name, "got":_fmt(got), "expected":_fmt(exp),
+                   "tolerance":(tol if is_num else None),
                    "abs_difference":diff, "numeric":is_num,
                    "status":("PASS" if ok else "FAIL")})
     return ok
@@ -81,8 +94,9 @@ def report(title):
         "packages": _pkg_versions(),
         "git_commit": _git_commit(),
         "validation_date": datetime.date.today().isoformat(),
-        "checks": [{"name":c["name"],"tolerance":c["tolerance"],
-                    "abs_difference":c["abs_difference"],"status":c["status"]} for c in CHECKS],
+        "checks": [{"name":c["name"],"got":c["got"],"expected":c["expected"],
+                    "tolerance":c["tolerance"],"abs_difference":c["abs_difference"],
+                    "status":c["status"]} for c in CHECKS],
     }
     try:
         here=os.path.dirname(os.path.abspath(__file__))

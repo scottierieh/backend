@@ -1,12 +1,12 @@
 {
   "title": "LASSO REGRESSION (Python)",
-  "total_checks": 7,
-  "numeric_checks": 7,
-  "exact_checks": 0,
-  "pass": 7,
+  "total_checks": 13,
+  "numeric_checks": 11,
+  "exact_checks": 2,
+  "pass": 13,
   "fail": 0,
   "pass_rate": 100.0,
-  "tolerance_min": 1e-08,
+  "tolerance_min": 1e-12,
   "tolerance_max": 1e-08,
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
@@ -19,7 +19,7 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
+  "git_commit": "e3b8cac",
   "validation_date": "2026-07-12",
   "checks": [
     {
@@ -27,6 +27,14 @@
       "got": "-0.242114",
       "expected": "-0.242114",
       "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lasso.alpha",
+      "got": "0.1",
+      "expected": "0.1",
+      "tolerance": 1e-12,
       "abs_difference": 0.0,
       "status": "PASS"
     },
@@ -71,11 +79,51 @@
       "status": "PASS"
     },
     {
+      "name": "lasso.test.mae",
+      "got": "0.440458",
+      "expected": "0.440458",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "lasso.train.r2",
       "got": "0.952258",
       "expected": "0.952258",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lasso.train.rmse",
+      "got": "0.53919",
+      "expected": "0.53919",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lasso.train.mae",
+      "got": "0.436623",
+      "expected": "0.436623",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "has.plot",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.path_plot",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
       "status": "PASS"
     }
   ]

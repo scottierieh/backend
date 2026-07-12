@@ -1,9 +1,9 @@
 {
   "title": "CROSS VALIDATION (Python)",
-  "total_checks": 11,
-  "numeric_checks": 11,
-  "exact_checks": 0,
-  "pass": 11,
+  "total_checks": 35,
+  "numeric_checks": 32,
+  "exact_checks": 3,
+  "pass": 35,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,9 +19,33 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "62f5c72",
+  "git_commit": "e3b8cac",
   "validation_date": "2026-07-12",
   "checks": [
+    {
+      "name": "cv.task_type",
+      "got": "classification",
+      "expected": "classification",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.n_samples",
+      "got": "150",
+      "expected": "150",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.n_features",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
     {
       "name": "cv.mean_score",
       "got": "0.96",
@@ -108,6 +132,174 @@
       "expected": "0.966667",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold0.fold",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold0.train_size",
+      "got": "120",
+      "expected": "120",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold0.test_size",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold1.fold",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold1.train_size",
+      "got": "120",
+      "expected": "120",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold1.test_size",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold2.fold",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold2.train_size",
+      "got": "120",
+      "expected": "120",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold2.test_size",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold3.fold",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold3.train_size",
+      "got": "120",
+      "expected": "120",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold3.test_size",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold4.fold",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold4.train_size",
+      "got": "120",
+      "expected": "120",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold4.test_size",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.add.accuracy",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.add.precision",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.add.recall",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.add.f1",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "has.scores_plot",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.stability_plot",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
       "status": "PASS"
     }
   ]

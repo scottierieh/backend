@@ -1,9 +1,9 @@
 {
-  "title": "ELASTIC NET REGRESSION (Python, full contract)",
-  "total_checks": 19,
-  "numeric_checks": 12,
-  "exact_checks": 7,
-  "pass": 19,
+  "title": "ELASTIC NET REGRESSION (Python)",
+  "total_checks": 15,
+  "numeric_checks": 13,
+  "exact_checks": 2,
+  "pass": 15,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-12,
@@ -19,119 +19,125 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "e3b8cac",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "enet.intercept",
+      "got": "-0.137969",
+      "expected": "-0.137969",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
+      "name": "enet.alpha",
+      "got": "0.1",
+      "expected": "0.1",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.l1_ratio",
+      "got": "0.5",
+      "expected": "0.5",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.n_nonzero_coefficients",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "enet.coef.x1",
+      "got": "1.94639",
+      "expected": "1.94639",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "enet.coef.x2",
+      "got": "-1.39912",
+      "expected": "-1.39912",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "enet.coef.x3",
+      "got": "0.0424228",
+      "expected": "0.0424228",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "enet.test.r2",
+      "got": "0.970755",
+      "expected": "0.970755",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.test.rmse",
+      "got": "0.558023",
+      "expected": "0.558023",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.test.mae",
+      "got": "0.438237",
+      "expected": "0.438237",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "enet.train.r2",
+      "got": "0.954708",
+      "expected": "0.954708",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "cmp.ols.test_r2",
+      "name": "enet.train.rmse",
+      "got": "0.555756",
+      "expected": "0.555756",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "cmp.lasso.test_r2",
+      "name": "enet.train.mae",
+      "got": "0.46533",
+      "expected": "0.46533",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "cmp.enet.test_r2",
-      "tolerance": 1e-12,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "fs.n_total",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "fs.n_selected",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "has.n_total",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "has.cv_results",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "has.residual_diagnostics",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "has.l1_ratio_interpretation",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "has.alpha_source",
-      "tolerance": null,
-      "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "has.plot",
+      "got": "True",
+      "expected": "True",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
-      "name": "has.compare_plot",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "has.coef_plot",
+      "name": "has.path_plot",
+      "got": "True",
+      "expected": "True",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"

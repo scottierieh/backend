@@ -140,10 +140,17 @@ def classifier_checks(prefix, result, model, X_train, y_train, X_test, y_test, t
             if macro.get(rep_key) is not None:
                 chk(f"{prefix}.{short}_macro", macro[rep_key], ref[short], tol=tol)
 
-    if g('confusion_matrix') is not None:
+    cm = g('confusion_matrix')
+    if cm is not None:
         cm_ref = confusion_matrix(y_test, pred)
-        same = _np.array_equal(_np.asarray(g('confusion_matrix')), cm_ref)
-        chk(f"{prefix}.confusion_matrix", bool(same), True)
+        cm_got = _np.asarray(cm)
+        if cm_got.shape == cm_ref.shape:
+            # verify every cell N_ij individually (value-by-value, not just aggregate)
+            for i in range(cm_ref.shape[0]):
+                for j in range(cm_ref.shape[1]):
+                    chk(f"{prefix}.cm[{i},{j}]", int(cm_got[i, j]), int(cm_ref[i, j]))
+        else:
+            chk(f"{prefix}.confusion_matrix_shape", str(cm_got.shape), str(cm_ref.shape))
     if g('n_train') is not None:
         chk(f"{prefix}.n_train", g('n_train'), len(X_train))
     if g('n_test') is not None:

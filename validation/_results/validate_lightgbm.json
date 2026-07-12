@@ -1,9 +1,9 @@
 {
   "title": "LIGHTGBM (Python)",
-  "total_checks": 7,
-  "numeric_checks": 6,
-  "exact_checks": 1,
-  "pass": 7,
+  "total_checks": 10,
+  "numeric_checks": 10,
+  "exact_checks": 0,
+  "pass": 10,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -20,7 +20,7 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "ee41307",
+  "git_commit": "b31c3bb",
   "validation_date": "2026-07-12",
   "checks": [
     {
@@ -48,9 +48,27 @@
       "status": "PASS"
     },
     {
-      "name": "lgb.confusion_matrix",
-      "tolerance": null,
-      "abs_difference": null,
+      "name": "lgb.cm[0,0]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.cm[0,1]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.cm[1,0]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.cm[1,1]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
       "status": "PASS"
     },
     {

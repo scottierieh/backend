@@ -1,9 +1,9 @@
 {
   "title": "SVM (Python)",
-  "total_checks": 8,
-  "numeric_checks": 7,
-  "exact_checks": 1,
-  "pass": 8,
+  "total_checks": 16,
+  "numeric_checks": 16,
+  "exact_checks": 0,
+  "pass": 16,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,7 +19,7 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "ee41307",
+  "git_commit": "b31c3bb",
   "validation_date": "2026-07-12",
   "checks": [
     {
@@ -53,9 +53,57 @@
       "status": "PASS"
     },
     {
-      "name": "svm.confusion_matrix",
-      "tolerance": null,
-      "abs_difference": null,
+      "name": "svm.cm[0,0]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[0,1]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[0,2]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[1,0]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[1,1]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[1,2]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[2,0]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[2,1]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cm[2,2]",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
       "status": "PASS"
     },
     {

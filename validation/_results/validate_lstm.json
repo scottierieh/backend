@@ -1,0 +1,25 @@
+{
+  "title": "LSTM forecasting (Python)",
+  "total_checks": 0,
+  "numeric_checks": 0,
+  "exact_checks": 0,
+  "pass": 0,
+  "fail": 0,
+  "pass_rate": null,
+  "tolerance_min": null,
+  "tolerance_max": null,
+  "max_abs_difference": null,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.15",
+  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "packages": {
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0"
+  },
+  "git_commit": "c927e29",
+  "validation_date": "2026-07-12",
+  "checks": []
+}

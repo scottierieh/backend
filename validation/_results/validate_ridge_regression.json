@@ -19,47 +19,61 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "c927e29",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "ridge.intercept",
+      "got": "0.109414",
+      "expected": "0.109414",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ridge.coef.x1",
+      "got": "2.1571",
+      "expected": "2.1571",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ridge.coef.x2",
+      "got": "-1.42415",
+      "expected": "-1.42415",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ridge.coef.x3",
+      "got": "0.457917",
+      "expected": "0.457917",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ridge.test.r2",
+      "got": "0.97207",
+      "expected": "0.97207",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ridge.test.rmse",
+      "got": "0.378451",
+      "expected": "0.378451",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ridge.train.r2",
+      "got": "0.960701",
+      "expected": "0.960701",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"

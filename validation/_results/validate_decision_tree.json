@@ -19,101 +19,133 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "62f5c72",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "dt.accuracy",
+      "got": "0.933333",
+      "expected": "0.933333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.train_accuracy",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.precision_macro",
+      "got": "0.933333",
+      "expected": "0.933333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.recall_macro",
+      "got": "0.933333",
+      "expected": "0.933333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.f1_macro",
+      "got": "0.933333",
+      "expected": "0.933333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[0,0]",
+      "got": "10",
+      "expected": "10",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[0,1]",
+      "got": "0",
+      "expected": "0",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[0,2]",
+      "got": "0",
+      "expected": "0",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[1,0]",
+      "got": "0",
+      "expected": "0",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[1,1]",
+      "got": "9",
+      "expected": "9",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[1,2]",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[2,0]",
+      "got": "0",
+      "expected": "0",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[2,1]",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.cm[2,2]",
+      "got": "9",
+      "expected": "9",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.n_train",
+      "got": "120",
+      "expected": "120",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dt.n_test",
+      "got": "30",
+      "expected": "30",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

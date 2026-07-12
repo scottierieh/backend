@@ -20,65 +20,85 @@
     "sklearn": "1.9.0",
     "xgboost": "3.2.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "c927e29",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "xgb.accuracy",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.precision_macro",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.recall_macro",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.f1_macro",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.cm[0,0]",
+      "got": "20",
+      "expected": "20",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.cm[0,1]",
+      "got": "0",
+      "expected": "0",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.cm[1,0]",
+      "got": "0",
+      "expected": "0",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.cm[1,1]",
+      "got": "10",
+      "expected": "10",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.n_train",
+      "got": "120",
+      "expected": "120",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "xgb.n_test",
+      "got": "30",
+      "expected": "30",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

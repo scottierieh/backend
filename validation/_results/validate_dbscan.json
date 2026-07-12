@@ -19,17 +19,21 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "62f5c72",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "dbscan.labels(ARI=1)",
+      "got": "1",
+      "expected": "1",
       "tolerance": 1e-12,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "dbscan.n_clusters",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

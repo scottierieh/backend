@@ -8,7 +8,7 @@
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
   "tolerance_max": 0.001,
-  "max_abs_difference": 0.0,
+  "max_abs_difference": 1.862645149230957e-09,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.15",
@@ -19,41 +19,53 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "c927e29",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "perplexity_used",
+      "got": "29.6667",
+      "expected": "29.6667",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "n_samples",
+      "got": "90",
+      "expected": "90",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding.shape.rows",
+      "got": "90",
+      "expected": "90",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding.shape.cols",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "kl_divergence",
+      "got": "0.0304022",
+      "expected": "0.0304022",
       "tolerance": 0.0001,
-      "abs_difference": 0.0,
+      "abs_difference": 1.862645149230957e-09,
       "status": "PASS"
     },
     {
       "name": "embedding.maxdiff",
+      "got": "0",
+      "expected": "0",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"

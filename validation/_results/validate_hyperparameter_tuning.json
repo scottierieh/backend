@@ -19,29 +19,37 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "c927e29",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "hp.best_cv_score",
+      "got": "0.952381",
+      "expected": "0.952381",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "hp.best_n_estimators",
+      "got": "100",
+      "expected": "100",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "hp.best_max_depth",
+      "got": "5",
+      "expected": "5",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "hp.best_min_samples_split",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

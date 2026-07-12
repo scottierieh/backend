@@ -19,47 +19,61 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "c927e29",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "lasso.intercept",
+      "got": "-0.242114",
+      "expected": "-0.242114",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "lasso.coef.x1",
+      "got": "1.66775",
+      "expected": "1.66775",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "lasso.coef.x2",
+      "got": "-1.38559",
+      "expected": "-1.38559",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "lasso.coef.x3",
+      "got": "0.496119",
+      "expected": "0.496119",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "lasso.test.r2",
+      "got": "0.938845",
+      "expected": "0.938845",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "lasso.test.rmse",
+      "got": "0.571363",
+      "expected": "0.571363",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "lasso.train.r2",
+      "got": "0.952258",
+      "expected": "0.952258",
       "tolerance": 1e-08,
       "abs_difference": 0.0,
       "status": "PASS"

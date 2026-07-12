@@ -1,0 +1,22 @@
+[
+  {
+    "name": "ridge.intercept",
+    "reference": "m.intercept_"
+  },
+  {
+    "name": "f\"ridge.coef.{f}\"",
+    "reference": "m.coef_[i]"
+  },
+  {
+    "name": "ridge.test.r2",
+    "reference": "r2_score(yte,m.predict(Xte_s))"
+  },
+  {
+    "name": "ridge.test.rmse",
+    "reference": "np.sqrt(mean_squared_error(yte,m.predict(Xte_s)))"
+  },
+  {
+    "name": "ridge.train.r2",
+    "reference": "r2_score(ytr,m.predict(Xtr_s))"
+  }
+]

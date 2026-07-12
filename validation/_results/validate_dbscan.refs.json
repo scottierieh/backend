@@ -1,0 +1,10 @@
+[
+  {
+    "name": "dbscan.labels(ARI=1)",
+    "reference": "1.0"
+  },
+  {
+    "name": "dbscan.n_clusters",
+    "reference": "len(set(ref))-(1 if -1 in ref else 0)"
+  }
+]

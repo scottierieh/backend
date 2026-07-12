@@ -1,0 +1,6 @@
+[
+  {
+    "name": "lda.accuracy",
+    "reference": "accuracy_score(yte_e,mdl.predict(Xte))"
+  }
+]

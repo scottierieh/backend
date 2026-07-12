@@ -1,0 +1,6 @@
+[
+  {
+    "name": "hp.best_cv_score",
+    "reference": "gs.best_score_"
+  }
+]

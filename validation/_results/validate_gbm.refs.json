@@ -1,0 +1,6 @@
+[
+  {
+    "name": "gbm.accuracy",
+    "reference": "accuracy_score(yte,m.predict(Xte))"
+  }
+]

@@ -1,0 +1,140 @@
+{
+  "title": "ELASTIC NET REGRESSION (Python, full contract)",
+  "total_checks": 19,
+  "numeric_checks": 12,
+  "exact_checks": 7,
+  "pass": 19,
+  "fail": 0,
+  "pass_rate": 100.0,
+  "tolerance_min": 1e-12,
+  "tolerance_max": 1e-06,
+  "max_abs_difference": 0.0,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.15",
+  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "packages": {
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0"
+  },
+  "git_commit": "7fd4cbc",
+  "validation_date": "2026-07-12",
+  "checks": [
+    {
+      "name": "enet.intercept",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.coef.x1",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.coef.x2",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.coef.x3",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.test.r2",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "enet.train.r2",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cmp.ols.test_r2",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cmp.lasso.test_r2",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cmp.enet.test_r2",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "fs.n_total",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "fs.n_selected",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "has.n_total",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "has.cv_results",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.residual_diagnostics",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.l1_ratio_interpretation",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.alpha_source",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.plot",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.compare_plot",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "has.coef_plot",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    }
+  ]
+}

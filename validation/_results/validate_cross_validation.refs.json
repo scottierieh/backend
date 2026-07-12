@@ -1,0 +1,6 @@
+[
+  {
+    "name": "cv.mean_score",
+    "reference": "sc.mean()"
+  }
+]

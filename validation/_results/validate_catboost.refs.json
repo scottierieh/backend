@@ -1,0 +1,6 @@
+[
+  {
+    "name": "cat.accuracy",
+    "reference": "accuracy_score(le.transform(yte),m.predict(Xte).ravel())"
+  }
+]

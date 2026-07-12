@@ -98,6 +98,38 @@ def _grid_dist(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
 
+def _generate_interpretation(grid_x, grid_y, n_effective_clusters, q_error, silhouette, profiles, n_samples):
+    """Plain-language summary of the fitted SOM.
+
+    Called from main() with the fitted metrics; previously referenced but never
+    defined, which crashed every SOM request at the results-assembly step.
+    """
+    n_nodes = grid_x * grid_y
+    parts = [
+        f"A {grid_x}x{grid_y} self-organizing map ({n_nodes} nodes) was trained on "
+        f"{n_samples} observations; {n_effective_clusters} node(s) became active best-matching units."
+    ]
+    parts.append(
+        f"Quantization error (mean distance from each observation to its best-matching node) is {q_error:.4f} "
+        "— lower means the map represents the data more tightly."
+    )
+    if silhouette is not None:
+        try:
+            s = float(silhouette)
+            if s >= 0.5:
+                quality = "strong, well-separated cluster structure"
+            elif s >= 0.25:
+                quality = "moderate cluster structure"
+            elif s > 0:
+                quality = "weak cluster structure"
+            else:
+                quality = "little to no separable cluster structure"
+            parts.append(f"The silhouette score of {s:.3f} indicates {quality} across the activated nodes.")
+        except (TypeError, ValueError):
+            pass
+    return " ".join(parts)
+
+
 def main():
     try:
         payload = json.load(sys.stdin)

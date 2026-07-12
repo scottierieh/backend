@@ -20,41 +20,53 @@
     "sklearn": "1.9.0",
     "statsmodels": "0.14.6"
   },
-  "git_commit": "b31c3bb",
+  "git_commit": "c927e29",
   "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "ri.x1.semi_partial_r2",
+      "got": "0.664791",
+      "expected": "0.664791",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ri.x1.relative_weight",
+      "got": "84.3876",
+      "expected": "84.3876",
       "tolerance": 0.0001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ri.x2.semi_partial_r2",
+      "got": "0.117922",
+      "expected": "0.117922",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ri.x2.relative_weight",
+      "got": "14.9688",
+      "expected": "14.9688",
       "tolerance": 0.0001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ri.x3.semi_partial_r2",
+      "got": "0.00507043",
+      "expected": "0.00507043",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "ri.x3.relative_weight",
+      "got": "0.643632",
+      "expected": "0.643632",
       "tolerance": 0.0001,
       "abs_difference": 0.0,
       "status": "PASS"

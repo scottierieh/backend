@@ -1,0 +1,22 @@
+[
+  {
+    "name": "lasso.intercept",
+    "reference": "m.intercept_"
+  },
+  {
+    "name": "f\"lasso.coef.{f}\"",
+    "reference": "m.coef_[i]"
+  },
+  {
+    "name": "lasso.test.r2",
+    "reference": "r2_score(yte,m.predict(Xte_s))"
+  },
+  {
+    "name": "lasso.test.rmse",
+    "reference": "np.sqrt(mean_squared_error(yte,m.predict(Xte_s)))"
+  },
+  {
+    "name": "lasso.train.r2",
+    "reference": "r2_score(ytr,m.predict(Xtr_s))"
+  }
+]

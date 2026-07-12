@@ -1,0 +1,10 @@
+[
+  {
+    "name": "km.inertia",
+    "reference": "km.inertia_"
+  },
+  {
+    "name": "km.labels(ARI=1)",
+    "reference": "1.0"
+  }
+]

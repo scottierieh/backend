@@ -1,0 +1,38 @@
+{
+  "title": "HDBSCAN (Python)",
+  "total_checks": 2,
+  "numeric_checks": 2,
+  "exact_checks": 0,
+  "pass": 2,
+  "fail": 0,
+  "pass_rate": 100.0,
+  "tolerance_min": 1e-12,
+  "tolerance_max": 1e-06,
+  "max_abs_difference": 0.0,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.15",
+  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "packages": {
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0"
+  },
+  "git_commit": "b31c3bb",
+  "validation_date": "2026-07-12",
+  "checks": [
+    {
+      "name": "hdbscan.labels(ARI=1)",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.n_clusters",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    }
+  ]
+}

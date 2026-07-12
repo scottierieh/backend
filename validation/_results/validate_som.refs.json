@@ -1,0 +1,26 @@
+[
+  {
+    "name": "som.silhouette",
+    "reference": "silhouette_score(Xs, assign)"
+  },
+  {
+    "name": "som.n_nodes_activated",
+    "reference": "len(np.unique(assign))"
+  },
+  {
+    "name": "som.assignments_count",
+    "reference": "Xs.shape[0]"
+  },
+  {
+    "name": "som.nodes_within_grid",
+    "reference": "1.0"
+  },
+  {
+    "name": "som.qerror_finite_nonneg",
+    "reference": "1.0"
+  },
+  {
+    "name": "som.quantization_error(minisom)",
+    "reference": "float(som.quantization_error(Xs))"
+  }
+]

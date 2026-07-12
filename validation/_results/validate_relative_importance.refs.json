@@ -1,0 +1,10 @@
+[
+  {
+    "name": "f\"ri.{p}.semi_partial_r2\"",
+    "reference": "sp[p]"
+  },
+  {
+    "name": "f\"ri.{p}.relative_weight\"",
+    "reference": "sp[p]/tot*100"
+  }
+]

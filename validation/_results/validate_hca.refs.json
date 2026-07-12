@@ -1,0 +1,10 @@
+[
+  {
+    "name": "hca.labels(ARI=1)",
+    "reference": "1.0"
+  },
+  {
+    "name": "hca.n_clusters",
+    "reference": "3"
+  }
+]

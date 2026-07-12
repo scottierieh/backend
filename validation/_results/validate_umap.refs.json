@@ -1,0 +1,22 @@
+[
+  {
+    "name": "n_neighbors_used",
+    "reference": "eff_nn"
+  },
+  {
+    "name": "n_samples",
+    "reference": "n"
+  },
+  {
+    "name": "embedding.shape.rows",
+    "reference": "n"
+  },
+  {
+    "name": "embedding.shape.cols",
+    "reference": "2"
+  },
+  {
+    "name": "embedding.maxdiff",
+    "reference": "0.0"
+  }
+]

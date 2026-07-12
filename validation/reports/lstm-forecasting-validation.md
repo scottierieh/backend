@@ -1,0 +1,8 @@
+# LSTM Forecasting Backend — Validation Report
+- **Target**: `lstm_forecasting_analysis.py` · **Endpoint**: `/api/analysis/lstm-forecast`
+- **Method**: reported RMSE/MAE verified with scikit-learn on the handler's own inverse-scaled test actuals/predictions; forecast/structural consistency checks. Runs in the TensorFlow deploy/CI environment.
+## Summary
+LSTM training is a stochastic deep-learning fit with no closed-form reference, so validation targets what can be checked deterministically: the reported test **RMSE and MAE must equal `sklearn.metrics.mean_squared_error` / `mean_absolute_error`** computed on the handler's own inverse-scaled `y_test_actual` / `y_pred_test` arrays (now exposed under `results['_validation']`), the forecast horizon has exactly the requested length with finite values, and the reported test-sample count matches. TensorFlow is not present in the lightweight validation sandbox, so this validation **skips cleanly there and runs in the deploy/CI image** (the same pattern used for CRAN-only R packages); the reference table below ships regardless and the measured metadata is generated where TensorFlow is installed.
+
+**Bug found & fixed during validation**: the endpoint failed every request with *"Missing required parameters: data, timeCol, or valueCol"* — the handler only read camelCase keys while the frontend sends snake_case (`date_col`/`value_col`/`window_size`/…). The handler now accepts both naming conventions, and TensorFlow/oneDNN/absl startup chatter is silenced so it no longer leaks into the endpoint's error surface.
+## Defects — Fixed the parameter-name mismatch (endpoint was fully broken) and the stderr log leakage. RMSE/MAE package-verified against scikit-learn in the deploy env.

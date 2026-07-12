@@ -13,12 +13,22 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import os
+# Quiet TensorFlow/oneDNN/absl startup chatter on stderr (must be set before the
+# tensorflow import). Otherwise "oneDNN custom operations are on ..." and
+# "absl::InitializeLog ..." leak into the endpoint's error surface.
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '3')
+os.environ.setdefault('TF_ENABLE_ONEDNN_OPTS', '0')
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
+try:
+    tf.get_logger().setLevel('ERROR')
+    from absl import logging as _absl_logging
+    _absl_logging.set_verbosity(_absl_logging.ERROR)
+except Exception:
+    pass
 
 tf.random.set_seed(42)
 
@@ -92,18 +102,31 @@ def _make_sequences(series, window):
 def main():
     try:
         payload = json.load(sys.stdin)
-        data = payload.get('data')
-        time_col = payload.get('timeCol')
-        value_col = payload.get('valueCol')
-        window_size = int(payload.get('windowSize', 12))
-        forecast_periods = int(payload.get('forecastPeriods', 12))
-        lstm_units = int(payload.get('lstmUnits', 50))
-        epochs = int(payload.get('epochs', 100))
-        batch_size = int(payload.get('batchSize', 16))
-        test_size = float(payload.get('testSize', 0.2))
+
+        # Accept both camelCase and snake_case keys. The statistica frontend
+        # sends snake_case (date_col/value_col/window_size/...), while earlier
+        # callers used camelCase (timeCol/valueCol/windowSize/...). Supporting
+        # both keeps every caller working and fixes the "Missing required
+        # parameters" failure without a lock-step frontend/backend deploy.
+        def _p(*keys, default=None):
+            for k in keys:
+                v = payload.get(k)
+                if v is not None:
+                    return v
+            return default
+
+        data = _p('data')
+        time_col = _p('timeCol', 'time_col', 'date_col', 'dateCol')
+        value_col = _p('valueCol', 'value_col')
+        window_size = int(_p('windowSize', 'window_size', default=12))
+        forecast_periods = int(_p('forecastPeriods', 'forecast_periods', default=12))
+        lstm_units = int(_p('lstmUnits', 'lstm_units', default=50))
+        epochs = int(_p('epochs', default=100))
+        batch_size = int(_p('batchSize', 'batch_size', default=16))
+        test_size = float(_p('testSize', 'test_size', default=0.2))
 
         if not all([data, time_col, value_col]):
-            raise ValueError("Missing required parameters: data, timeCol, or valueCol")
+            raise ValueError("Missing required parameters: data, timeCol/date_col, or valueCol/value_col")
 
         df = pd.DataFrame(data)
         df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
@@ -192,7 +215,13 @@ def main():
             'final_training_loss': float(history.history['loss'][-1]),
             'forecast': forecast_records,
             'n_train_samples': int(len(X_train)),
-            'n_test_samples': int(len(X_test))
+            'n_test_samples': int(len(X_test)),
+            # Raw test-set actuals/predictions (inverse-scaled) so the reported
+            # RMSE/MAE can be independently recomputed by the validation harness.
+            '_validation': {
+                'y_test_actual': [float(v) for v in y_test_actual],
+                'y_pred_test': [float(v) for v in y_pred_test_actual],
+            }
         }
         results['interpretation'] = _generate_interpretation(
             train_metrics, test_metrics, len(history.history['loss']), epochs,

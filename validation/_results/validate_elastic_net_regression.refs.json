@@ -1,0 +1,50 @@
+[
+  {
+    "name": "enet.intercept",
+    "reference": "m.intercept_"
+  },
+  {
+    "name": "f\"enet.coef.{f}\"",
+    "reference": "m.coef_[i]"
+  },
+  {
+    "name": "enet.test.r2",
+    "reference": "r2_score(yte,m.predict(Xte_s))"
+  },
+  {
+    "name": "enet.train.r2",
+    "reference": "r2_score(ytr,m.predict(Xtr_s))"
+  },
+  {
+    "name": "cmp.ols.test_r2",
+    "reference": "r2_score(yte,ols.predict(Xte_s))"
+  },
+  {
+    "name": "cmp.lasso.test_r2",
+    "reference": "r2_score(yte,la.predict(Xte_s))"
+  },
+  {
+    "name": "cmp.enet.test_r2",
+    "reference": "r['metrics']['test']['r2_score']"
+  },
+  {
+    "name": "fs.n_total",
+    "reference": "3"
+  },
+  {
+    "name": "fs.n_selected",
+    "reference": "int(np.sum(m.coef_!=0))"
+  },
+  {
+    "name": "has.n_total",
+    "reference": "n-0"
+  },
+  {
+    "name": "f\"has.{k}\"",
+    "reference": "True"
+  },
+  {
+    "name": "f\"has.{k}\"",
+    "reference": "True"
+  }
+]

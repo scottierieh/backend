@@ -1,0 +1,26 @@
+[
+  {
+    "name": "perplexity_used",
+    "reference": "eff_perp"
+  },
+  {
+    "name": "n_samples",
+    "reference": "n"
+  },
+  {
+    "name": "embedding.shape.rows",
+    "reference": "n"
+  },
+  {
+    "name": "embedding.shape.cols",
+    "reference": "2"
+  },
+  {
+    "name": "kl_divergence",
+    "reference": "float(ref.kl_divergence_)"
+  },
+  {
+    "name": "embedding.maxdiff",
+    "reference": "0.0"
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "cv.mean_score",
+    "reference": "sc.mean()"
+  },
+  {
+    "name": "cv.std_score",
+    "reference": "sc.std()"
+  },
+  {
+    "name": "cv.min_score",
+    "reference": "sc.min()"
+  },
+  {
+    "name": "cv.max_score",
+    "reference": "sc.max()"
+  },
+  {
+    "name": "cv.median_score",
+    "reference": "float(np.median(sc))"
+  },
+  {
+    "name": "cv.n_folds",
+    "reference": "5"
+  },
+  {
+    "name": "f\"cv.fold{i}_score\"",
+    "reference": "float(exp)"
+  }
+]

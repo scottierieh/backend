@@ -25,6 +25,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 
 def _compute_multiclass_auc(y_true, y_pred_proba):
@@ -247,6 +248,10 @@ def train_knn_classifier(X_train, X_test, y_train, y_test, params: dict,
         'y_test_encoded': y_test_encoded,
         'y_pred': y_pred,
         'y_pred_proba': y_pred_proba,
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba, list(X_test.columns) if hasattr(X_test,'columns') else None, X_test),
     }
 
 
@@ -300,7 +305,8 @@ def train_knn_regressor(X_train, X_test, y_train, y_test, params: dict,
         'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred,
-        'feature_importance': feature_importance
+        'feature_importance': feature_importance,
+        'bootstrap_ci': bootstrap_ci(y_test, y_pred, 'regression'),
     }
 
 
@@ -888,6 +894,7 @@ def main():
                 'scaled': scale_features
             },
             'metrics': result['metrics'],
+            'bootstrap_ci': result.get('bootstrap_ci'),
             'feature_importance': result['feature_importance'],
             'cv_results': cv_result,
             'k_search_result': k_search_result,
@@ -903,6 +910,9 @@ def main():
             response['class_labels'] = result['class_labels']
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
+            response['calibration'] = result.get('calibration')
+            response['pr_curve'] = result.get('pr_curve')
+            response['error_examples'] = result.get('error_examples')
             response['decision_plot'] = decision_plot
         else:
             response['regression_plot'] = regression_plot

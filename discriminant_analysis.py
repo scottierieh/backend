@@ -30,6 +30,7 @@ from sklearn.metrics import (
 )
 from scipy import stats
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -390,6 +391,10 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'roc_data': roc_data,
         'label_encoder': le,
         'feature_importance': feature_importance,
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba, list(X_test.columns) if hasattr(X_test,'columns') else None, X_test),
         'lda_info': lda_info,
         'lda_statistics': lda_statistics,
         'lda_transform': lda_transform
@@ -523,6 +528,10 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'roc_data': roc_data,
         'label_encoder': le,
         'feature_importance': feature_importance,
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba, list(X_test.columns) if hasattr(X_test,'columns') else None, X_test),
         'qda_info': qda_info
     }
 
@@ -960,11 +969,15 @@ def main():
                 'cv_folds': cv_folds,
             },
             'metrics': result['metrics'],
+            'bootstrap_ci': result.get('bootstrap_ci'),
             'feature_importance': result['feature_importance'],
             'cv_results': cv_result,
             'importance_plot': importance_plot,
             'cm_plot': cm_plot,
             'roc_plot': roc_plot,
+            'calibration': result.get('calibration'),
+            'pr_curve': result.get('pr_curve'),
+            'error_examples': result.get('error_examples'),
             'lda_projection_plot': lda_projection_plot,
             'class_separation_plot': class_separation_plot,
             'per_class_metrics': result['per_class_metrics'],

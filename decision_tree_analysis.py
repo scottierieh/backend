@@ -18,6 +18,7 @@ import seaborn as sns
 import io
 import base64
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 from sklearn.model_selection import train_test_split, cross_val_score
 from cv_strategy import run_cv
@@ -433,6 +434,10 @@ def train_classifier(X_train, X_test, y_train, y_test,
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
+        'bootstrap_ci': bootstrap_ci(y_test_enc, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_enc, y_pred_proba),
+        'pr_curve': pr_curve(y_test_enc, y_pred_proba),
+        'error_examples': error_examples(le.inverse_transform(y_test_enc), le.inverse_transform(y_pred), y_pred_proba, list(X_test.columns) if hasattr(X_test,'columns') else None, X_test),
         'tree_info': {
             'n_nodes':          int(model.tree_.node_count),
             'max_depth_actual': int(model.get_depth()),
@@ -474,6 +479,7 @@ def train_regressor(X_train, X_test, y_train, y_test,
         },
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred,
+        'bootstrap_ci': bootstrap_ci(y_test, y_pred, 'regression'),
         'tree_info': {
             'n_nodes':          int(model.tree_.node_count),
             'max_depth_actual': int(model.get_depth()),
@@ -760,6 +766,7 @@ def main():
             'n_test':             len(X_test),
             'parameters':         {k: _to_native(v) for k, v in params.items()},
             'metrics':            result['metrics'],
+            'bootstrap_ci':       result.get('bootstrap_ci'),
             'feature_importance': feature_importance,
             'cv_results':         cv_result,
             'tree_info':          tree_info,
@@ -784,6 +791,9 @@ def main():
             response['class_labels']      = result['class_labels']
             response['cm_plot']           = cm_plot
             response['roc_plot']          = roc_plot
+            response['calibration']       = result.get('calibration')
+            response['pr_curve']          = result.get('pr_curve')
+            response['error_examples']    = result.get('error_examples')
         else:
             response['regression_plot'] = regression_plot
 

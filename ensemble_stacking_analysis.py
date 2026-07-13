@@ -17,6 +17,7 @@ import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold
 from cv_strategy import run_cv
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression, Ridge
@@ -233,6 +234,16 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
             'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_], 'roc_data': roc_data,
             'label_encoder': le, 'y_test_encoded': y_test_encoded, 'y_pred': y_pred_encoded, 'y_pred_proba': y_pred_proba
         })
+        try:
+            _Xr = X_test.reset_index(drop=True) if hasattr(X_test, 'reset_index') else X_test
+            result['bootstrap_ci'] = bootstrap_ci(y_test_encoded, y_pred_encoded, 'classification')
+            result['calibration'] = calibration_curve(y_test_encoded, y_pred_proba) if y_pred_proba is not None else []
+            result['pr_curve'] = pr_curve(y_test_encoded, y_pred_proba) if y_pred_proba is not None else []
+            result['error_examples'] = error_examples(
+                le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred_encoded),
+                y_pred_proba, feature_names, _Xr)
+        except Exception:
+            result['bootstrap_ci'], result['calibration'], result['pr_curve'], result['error_examples'] = {}, [], [], []
     else:
         mse = mean_squared_error(y_test, y_pred)
         metrics = {
@@ -240,6 +251,13 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
             'mae': _to_native_type(mean_absolute_error(y_test, y_pred)), 'r2': _to_native_type(r2_score(y_test, y_pred)),
         }
         result.update({'metrics': metrics, 'y_test': y_test.values if hasattr(y_test, 'values') else y_test, 'y_pred': y_pred})
+        try:
+            result['bootstrap_ci'] = bootstrap_ci(
+                np.asarray(y_test.values if hasattr(y_test, 'values') else y_test),
+                np.asarray(y_pred), 'regression')
+        except Exception:
+            result['bootstrap_ci'] = {}
+        result['calibration'], result['pr_curve'], result['error_examples'] = [], [], []
 
     return result
 
@@ -630,7 +648,11 @@ def main():
             'cv_results': cv_result,
             'comparison_plot': comparison_plot,
             'interpretation': interpretation,
-            'prediction_examples': prediction_examples
+            'prediction_examples': prediction_examples,
+            'bootstrap_ci': result.get('bootstrap_ci'),
+            'calibration': result.get('calibration'),
+            'pr_curve': result.get('pr_curve'),
+            'error_examples': result.get('error_examples'),
         }
 
         if task_type == 'classification':

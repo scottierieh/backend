@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 import io
 import base64
 import warnings
@@ -313,10 +314,32 @@ def main():
         except Exception:
             guardrails = []
 
+        # Tier-B diagnostics (shared model_diagnostics module)
+        _diag = {'bootstrap_ci': {}, 'calibration': [], 'pr_curve': [], 'error_examples': []}
+        try:
+            if problem_type == 'regression':
+                _diag['bootstrap_ci'] = bootstrap_ci(np.asarray(y_test), np.asarray(y_pred), 'regression')
+            else:
+                _cls = list(getattr(model, 'classes_', []))
+                _cidx = {c: i for i, c in enumerate(_cls)}
+                _yt_enc = np.array([_cidx.get(v, -1) for v in y_test])
+                _proba = model.predict_proba(X_test)
+                _Xr = X_test.reset_index(drop=True)
+                _diag['bootstrap_ci'] = bootstrap_ci(np.asarray(y_test), np.asarray(y_pred), 'classification')
+                _diag['calibration'] = calibration_curve(_yt_enc, _proba)
+                _diag['pr_curve'] = pr_curve(_yt_enc, _proba)
+                _diag['error_examples'] = error_examples(np.asarray(y_test), np.asarray(y_pred), _proba, feature_names, _Xr)
+        except Exception:
+            pass
+
         response = {
             'results': results,
             'guardrails': guardrails,
-            'plot': f"data:image/png;base64,{plot_image}"
+            'plot': f"data:image/png;base64,{plot_image}",
+            'bootstrap_ci': _diag['bootstrap_ci'],
+            'calibration': _diag['calibration'],
+            'pr_curve': _diag['pr_curve'],
+            'error_examples': _diag['error_examples'],
         }
 
         print(json.dumps(response, default=_to_native_type))

@@ -114,6 +114,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/hdbscan",                     "hdbscan_analysis.py",                     True),
     ("/api/analysis/homogeneity-test",            "homogeneity_test.py",                     False),
     ("/api/analysis/hyperparameter-tuning",       "hyperparameter_tuning_analysis.py",       True),
+    ("/api/analysis/tune",                        "tune_analysis.py",                        True),
     ("/api/analysis/ipa",                         "ipa_analysis.py",                         False),
     ("/api/analysis/kmeans",                      "kmeans_analysis.py",                      True),
     ("/api/analysis/kmedoids",                    "kmedoids_analysis.py",                    True),

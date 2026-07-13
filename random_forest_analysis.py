@@ -28,6 +28,7 @@ from sklearn.metrics import (
 )
 from sklearn.tree import export_text
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 
 def _compute_multiclass_auc(y_true, y_pred_proba):
@@ -171,7 +172,14 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
-        'label_encoder': le
+        'label_encoder': le,
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(
+            le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba,
+            list(X_test.columns) if hasattr(X_test, 'columns') else None, X_test,
+        ),
     }
 
 
@@ -214,7 +222,8 @@ def train_rf_regressor(X_train, X_test, y_train, y_test, params: dict) -> Dict[s
         'model': model,
         'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
-        'y_pred': y_pred
+        'y_pred': y_pred,
+        'bootstrap_ci': bootstrap_ci(y_test, y_pred, 'regression'),
     }
 
 
@@ -790,6 +799,7 @@ def main():
                 'test_size': test_size
             },
             'metrics': result['metrics'],
+            'bootstrap_ci': result.get('bootstrap_ci'),
             'feature_importance': feature_importance,
             'perm_importance': perm_importance,
             'cv_results': cv_result,
@@ -809,6 +819,9 @@ def main():
             response['class_labels'] = result['class_labels']
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
+            response['calibration'] = result.get('calibration')
+            response['pr_curve'] = result.get('pr_curve')
+            response['error_examples'] = result.get('error_examples')
         else:
             response['actual_vs_predicted_plot'] = actual_vs_predicted_plot
             response['residual_plot'] = residual_plot

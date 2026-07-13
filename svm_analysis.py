@@ -17,6 +17,7 @@ import seaborn as sns
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.svm import SVC, SVR
 from sklearn.metrics import (
@@ -294,9 +295,7 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             degree=params['degree'],
             random_state=params['random_state']
         )
-        # StratifiedKFold — preserves class distribution across folds
-        cv_strategy = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        scores = cross_val_score(model, X, y_encoded, cv=cv_strategy, scoring='accuracy')
+        cv_target, cv_task = y_encoded, 'classification'
     else:
         model = SVR(
             kernel=params['kernel'],
@@ -305,15 +304,11 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             degree=params['degree'],
             epsilon=params['epsilon']
         )
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        cv_target, cv_task = y, 'regression'
 
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds,
-        'cv_metric': 'accuracy' if task_type == 'classification' else 'r2'
-    }
+    cv = run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    cv['cv_metric'] = cv['cv_scoring']  # preserve svm's original field name
+    return cv
 
 
 def generate_prediction_examples(

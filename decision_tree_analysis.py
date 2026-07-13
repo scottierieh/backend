@@ -20,6 +20,7 @@ import base64
 import warnings
 
 from sklearn.model_selection import train_test_split, cross_val_score
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import (
     DecisionTreeClassifier, DecisionTreeRegressor,
@@ -499,7 +500,7 @@ def perform_cv(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, A
             max_leaf_nodes=params['max_leaf_nodes'],
             random_state=params['random_state']
         )
-        scores = cross_val_score(model, X, y_enc, cv=cv_folds, scoring='accuracy')
+        cv_target, cv_task = y_enc, 'classification'
     else:
         model = DecisionTreeRegressor(
             max_depth=params['max_depth'],
@@ -511,14 +512,9 @@ def perform_cv(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, A
             max_leaf_nodes=params['max_leaf_nodes'],
             random_state=params['random_state']
         )
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        cv_target, cv_task = y, 'regression'
 
-    return {
-        'cv_scores': [_to_native(s) for s in scores],
-        'cv_mean':   _to_native(float(np.mean(scores))),
-        'cv_std':    _to_native(float(np.std(scores))),
-        'cv_folds':  cv_folds
-    }
+    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 # ─────────────────────────────────────────────

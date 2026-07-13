@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold
+from cv_strategy import make_cv_splitter
 from sklearn.preprocessing import LabelEncoder
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
@@ -272,7 +273,7 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, 
     if task_type == 'classification':
         le = LabelEncoder()
         y_encoded = le.fit_transform(y)
-        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
+        cv_splitter = make_cv_splitter('classification', cv_folds, params['random_state'])
         scores = []
         for train_idx, test_idx in cv_splitter.split(X, y_encoded):
             X_tr, X_te = X.iloc[train_idx], X.iloc[test_idx]
@@ -282,7 +283,7 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, 
             scores.append(accuracy_score(y_te, m.predict(Pool(X_te, cat_features=cat_features)).ravel().astype(int)))
     else:
         scores = []
-        kf = KFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
+        kf = make_cv_splitter('regression', cv_folds, params['random_state'])
         for train_idx, test_idx in kf.split(X):
             X_tr, X_te = X.iloc[train_idx], X.iloc[test_idx]
             y_tr, y_te = y.iloc[train_idx], y.iloc[test_idx]

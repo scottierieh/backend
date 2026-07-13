@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
@@ -288,19 +289,13 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
         y_encoded = le.fit_transform(y)
         model = AdaBoostClassifier(estimator=base_estimator, n_estimators=params['n_estimators'],
                                     learning_rate=params['learning_rate'], random_state=params['random_state'])
-        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
-        scores = cross_val_score(model, X, y_encoded, cv=cv_splitter, scoring='accuracy')
+        cv_target, cv_task = y_encoded, 'classification'
     else:
         model = AdaBoostRegressor(estimator=base_estimator, n_estimators=params['n_estimators'],
                                    learning_rate=params['learning_rate'], random_state=params['random_state'])
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        cv_target, cv_task = y, 'regression'
 
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds
-    }
+    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:

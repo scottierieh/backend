@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder
 from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.metrics import (
@@ -429,8 +430,7 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
         )
         min_class_count = int(np.min(np.bincount(y_encoded)))
         cv_folds = max(2, min(cv_folds, min_class_count))
-        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
-        scores = cross_val_score(model, X, y_encoded, cv=cv_splitter, scoring='accuracy')
+        cv_target, cv_task = y_encoded, 'classification'
     else:
         model = xgb.XGBRegressor(
             n_estimators=params['n_estimators'], max_depth=params['max_depth'],
@@ -438,14 +438,9 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             colsample_bytree=params['colsample_bytree'], objective='reg:squarederror',
             random_state=params['random_state'], n_jobs=-1
         )
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        cv_target, cv_task = y, 'regression'
 
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds
-    }
+    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:

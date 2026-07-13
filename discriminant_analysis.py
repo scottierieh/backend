@@ -20,6 +20,7 @@ sns.set_theme(style="darkgrid")
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
@@ -678,14 +679,7 @@ def perform_cross_validation(X_raw, y, params: dict, method: str, cv_folds: int)
     min_class_count = int(np.min(np.bincount(y_encoded)))
     cv_folds = max(2, min(cv_folds, min_class_count))
 
-    scores = cross_val_score(pipeline, X_raw, y_encoded, cv=cv_folds, scoring='accuracy')
-
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds
-    }
+    return run_cv(pipeline, X_raw, y_encoded, 'classification', cv_folds, 42)
 
 
 def generate_prediction_examples(

@@ -26,6 +26,7 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 
 def _compute_multiclass_auc(y_true, y_pred_proba):
@@ -177,7 +178,15 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
         'train_history': train_history,
-        'label_encoder': le
+        'label_encoder': le,
+        # Tier-B diagnostics (model_diagnostics.py)
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(
+            le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba,
+            list(X_test.columns) if hasattr(X_test, 'columns') else None, X_test,
+        ),
     }
 
 
@@ -226,7 +235,8 @@ def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> D
         'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred,
-        'train_history': train_history
+        'train_history': train_history,
+        'bootstrap_ci': bootstrap_ci(y_test, y_pred, 'regression'),
     }
 
 
@@ -815,6 +825,7 @@ def main():
             'pdp_plot': pdp_plot,
             'tree_rules': tree_rules,
             'interpretation': interpretation,
+            'bootstrap_ci': result.get('bootstrap_ci'),
         }
 
         if task_type == 'classification':
@@ -823,6 +834,9 @@ def main():
             response['class_labels'] = result['class_labels']
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
+            response['calibration'] = result.get('calibration')
+            response['pr_curve'] = result.get('pr_curve')
+            response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plot'] = regression_plot
 

@@ -26,6 +26,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 
 def _compute_multiclass_auc(y_true, y_pred_proba):
@@ -146,7 +147,11 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
         'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'label_encoder': le,
-        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
+        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba, list(X_test.columns) if hasattr(X_test,'columns') else None, X_test),
     }
 
 
@@ -166,7 +171,7 @@ def train_mlp_regressor(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         'train_r2': _to_native_type(r2_score(y_train, y_train_pred)),
     }
 
-    return {'model': model, 'metrics': metrics, 'y_test': y_test.values if hasattr(y_test, 'values') else y_test, 'y_pred': y_pred}
+    return {'model': model, 'metrics': metrics, 'y_test': y_test.values if hasattr(y_test, 'values') else y_test, 'y_pred': y_pred, 'bootstrap_ci': bootstrap_ci(y_test, y_pred, 'regression')}
 
 
 def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
@@ -567,6 +572,7 @@ def main():
             'n_iterations': int(model.n_iter_),
             'final_loss': _to_native_type(model.loss_),
             'metrics': result['metrics'],
+            'bootstrap_ci': result.get('bootstrap_ci'),
             'perm_importance': perm_importance,
             'feature_importance': _perm_to_feature_importance(perm_importance),
             'shap_importance': shap_result.get('shap_importance'),
@@ -585,6 +591,9 @@ def main():
             response['class_labels'] = result['class_labels']
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
+            response['calibration'] = result.get('calibration')
+            response['pr_curve'] = result.get('pr_curve')
+            response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plot'] = regression_plot
 

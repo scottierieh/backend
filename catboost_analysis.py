@@ -27,6 +27,7 @@ from sklearn.metrics import (
 )
 from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 import warnings
+from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 
 
 def _compute_multiclass_auc(y_true, y_pred_proba):
@@ -161,7 +162,11 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
         'roc_data': roc_data, 'train_history': train_history, 'eval_metric': metric_name,
         'label_encoder': le, 'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations']),
-        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
+        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
+        'bootstrap_ci': bootstrap_ci(y_test_encoded, y_pred, 'classification'),
+        'calibration': calibration_curve(y_test_encoded, y_pred_proba),
+        'pr_curve': pr_curve(y_test_encoded, y_pred_proba),
+        'error_examples': error_examples(le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred), y_pred_proba, list(X_test.columns) if hasattr(X_test,'columns') else None, X_test),
     }
 
 
@@ -200,7 +205,8 @@ def train_catboost_regressor(X_train, X_test, y_train, y_test, params: dict, cat
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred, 'train_history': train_history, 'eval_metric': metric_name,
         'train_pool': train_pool, 'test_pool': test_pool,
-        'best_iteration': int(model.get_best_iteration() or params['iterations'])
+        'best_iteration': int(model.get_best_iteration() or params['iterations']),
+        'bootstrap_ci': bootstrap_ci(y_test, y_pred, 'regression'),
     }
 
 
@@ -589,6 +595,7 @@ def main():
             'categorical_features': cat_cols,
             'parameters': params,
             'metrics': result['metrics'],
+            'bootstrap_ci': result.get('bootstrap_ci'),
             'feature_importance': feature_importance,
             'perm_importance': perm_importance,
             'shap_importance': shap_result.get('shap_importance'),
@@ -608,6 +615,9 @@ def main():
             response['class_labels'] = result['class_labels']
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
+            response['calibration'] = result.get('calibration')
+            response['pr_curve'] = result.get('pr_curve')
+            response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plot'] = regression_plot
 

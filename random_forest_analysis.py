@@ -17,6 +17,7 @@ import seaborn as sns
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.inspection import permutation_importance, partial_dependence
@@ -423,8 +424,8 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             max_features=max_features, bootstrap=params['bootstrap'],
             random_state=params['random_state'], n_jobs=-1
         )
-        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
-        scores = cross_val_score(model, X, y_encoded, cv=cv_splitter, scoring='accuracy')
+        cv_target = y_encoded
+        cv_task = 'classification'
     else:
         model = RandomForestRegressor(
             n_estimators=params['n_estimators'], max_depth=params['max_depth'],
@@ -432,14 +433,12 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             max_features=max_features, bootstrap=params['bootstrap'],
             random_state=params['random_state'], n_jobs=-1
         )
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        cv_target = y
+        cv_task = 'regression'
 
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds
-    }
+    # Shared CV (cv_strategy.py) — same StratifiedKFold(clf)/KFold(reg) behavior as
+    # before, now centralized so time/group splits can be added in one place.
+    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:

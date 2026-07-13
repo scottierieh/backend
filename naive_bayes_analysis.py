@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
 from sklearn.metrics import (
@@ -264,16 +265,9 @@ def perform_cross_validation(X, y, params: dict, cv_folds: int) -> Dict[str, Any
     else:
         model = GaussianNB(var_smoothing=params['var_smoothing'])
 
-    cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-    scores = cross_val_score(model, X, y_encoded, cv=cv, scoring='accuracy')
-
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean':   _to_native_type(np.mean(scores)),
-        'cv_std':    _to_native_type(np.std(scores)),
-        'cv_folds':  cv_folds,
-        'cv_metric': 'accuracy'
-    }
+    cv = run_cv(model, X, y_encoded, 'classification', cv_folds, 42)
+    cv['cv_metric'] = 'accuracy'  # preserve naive_bayes's original field name
+    return cv
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:

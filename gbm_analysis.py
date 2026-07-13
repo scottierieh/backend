@@ -15,6 +15,46 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+
+def compute_shap(model, X_test_values, feature_names):
+    """SHAP for the tree-based GBM (TreeExplainer). Mirrors the other tree/boosting
+    scripts' shape ({shap_importance:[{feature, mean_abs_shap}], shap_plot, shap_error})
+    so gbm-page.tsx's existing SHAP tab — which had no backend data until now — lights up."""
+    try:
+        try:
+            import shap as _shap
+        except ImportError:
+            return {'shap_importance': [], 'shap_plot': None, 'shap_error': 'shap package not installed'}
+        explainer = _shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_test_values)
+        sv = np.array(shap_values)
+        if sv.ndim == 3:
+            mean_shap = np.abs(sv).mean(axis=(0, 2))
+        elif sv.ndim == 2:
+            mean_shap = np.abs(sv).mean(axis=0)
+        else:
+            mean_shap = np.mean([np.abs(s).mean(axis=0) for s in shap_values], axis=0)
+        shap_importance = [
+            {'feature': name, 'mean_abs_shap': _to_native_type(val)}
+            for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
+        ]
+        fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
+        feats = [d['feature'] for d in shap_importance][::-1]
+        vals = [d['mean_abs_shap'] for d in shap_importance][::-1]
+        ax.barh(feats, vals, color='#f59e0b', edgecolor='none')
+        ax.set_xlabel('Mean |SHAP Value|')
+        ax.set_title('SHAP Feature Importance', fontweight='bold')
+        ax.grid(True, linestyle='--', alpha=0.3, axis='x')
+        fig.subplots_adjust(left=0.20)
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png')
+        plt.close(fig)
+        buf.seek(0)
+        shap_plot = base64.b64encode(buf.read()).decode('utf-8')
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_error': None}
+    except Exception as e:
+        return {'shap_importance': [], 'shap_plot': None, 'shap_error': str(e)}
+
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
         return int(obj)
@@ -145,6 +185,12 @@ def main():
         feature_importance.sort(key=lambda x: x['importance'], reverse=True)
         results['feature_importance'] = feature_importance
         results['prediction_examples'] = prediction_examples
+
+        # SHAP — populates gbm-page.tsx's SHAP tab (was empty: page rendered it, backend never sent it).
+        _shap_res = compute_shap(model, X_test.values, feature_names)
+        results['shap_importance'] = _shap_res['shap_importance']
+        results['shap_plot'] = _shap_res['shap_plot']
+        results['shap_error'] = _shap_res['shap_error']
 
         # --- Plotting ---
         plot_image = None

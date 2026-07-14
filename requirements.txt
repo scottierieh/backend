@@ -18,3 +18,5 @@ pingouin
 linearmodels
 plotly
 pillow
+joblib
+google-cloud-storage

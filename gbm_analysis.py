@@ -11,6 +11,7 @@ import seaborn as sns
 from scipy import stats
 from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
 from cv_strategy import run_cv
+from model_store import save_model_bundle
 import io
 import base64
 import warnings
@@ -91,6 +92,7 @@ def main():
         # --- Data Preparation ---
         X = df[features]
         y = df[target]
+        num_cols = [c for c in features if pd.api.types.is_numeric_dtype(X[c])]
 
         # One-hot encode categorical features
         X = pd.get_dummies(X, drop_first=True)
@@ -344,6 +346,17 @@ def main():
         except Exception:
             pass
 
+        # Persist the fitted model so Predict/What-if can reuse it — defensive: a storage
+        # hiccup should never fail the analysis the user is actually waiting on.
+        model_id = None
+        try:
+            model_id = save_model_bundle(
+                model, features, target, problem_type, 'GBM',
+                num_cols=num_cols, dummy_columns=feature_names,
+            )
+        except Exception:
+            pass
+
         response = {
             'results': results,
             'guardrails': guardrails,
@@ -352,6 +365,7 @@ def main():
             'calibration': _diag['calibration'],
             'pr_curve': _diag['pr_curve'],
             'error_examples': _diag['error_examples'],
+            'model_id': model_id,
         }
 
         print(json.dumps(response, default=_to_native_type))

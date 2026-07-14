@@ -155,6 +155,80 @@ for _path, _script, _confirmed in SCRIPT_ROUTES:
     register_script_route(_path, _script)
 
 
+# ---------------------------------------------------------------------------
+# Predict / What-if — load a model persisted by model_store.save_model_bundle
+# (currently only gbm_analysis.py calls it; other scripts still train-and-discard,
+# so predict-schema/predict 404 for models other than GBM until they're wired the
+# same way) and either report its input contract or run it on new rows.
+# ---------------------------------------------------------------------------
+from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
+from model_store import load_model_bundle, align_features
+
+
+class PredictSchemaRequest(BaseModel):
+    model_id: str
+
+
+class PredictRequest(BaseModel):
+    model_id: str
+    rows: List[Dict[str, Any]]
+
+
+def _load_bundle_or_404(model_id: str) -> dict:
+    try:
+        return load_model_bundle(model_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Model not found")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+
+
+@app.post("/api/analysis/predict-schema")
+def predict_schema(req: PredictSchemaRequest):
+    bundle = _load_bundle_or_404(req.model_id)
+    return {
+        "feature_cols": bundle["feature_cols"],
+        "num_cols": bundle["num_cols"],
+        "cat_cols": bundle["cat_cols"],
+        "target_col": bundle["target_col"],
+        "task_type": bundle["task_type"],
+        "classes": bundle["classes"],
+        "analysis_type": bundle["analysis_type"],
+    }
+
+
+@app.post("/api/analysis/predict")
+def predict(req: PredictRequest):
+    import pandas as pd
+    import numpy as np
+
+    bundle = _load_bundle_or_404(req.model_id)
+    if not req.rows:
+        raise HTTPException(status_code=400, detail="No rows provided")
+
+    try:
+        df = pd.DataFrame(req.rows)
+        missing = [c for c in bundle["feature_cols"] if c not in df.columns]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(missing)}")
+        X = align_features(df, bundle["feature_cols"], bundle["dummy_columns"])
+        model = bundle["model"]
+        preds = model.predict(X)
+        predictions = [p.item() if hasattr(p, "item") else p for p in preds]
+        response: Dict[str, Any] = {"predictions": predictions, "target_col": bundle["target_col"]}
+        if hasattr(model, "predict_proba"):
+            proba = model.predict_proba(X)
+            response["probabilities"] = [float(np.max(row)) for row in proba]
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

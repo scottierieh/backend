@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 from model_diagnostics import bootstrap_ci, calibration_curve, pr_curve, error_examples
+from cv_strategy import run_cv
 import io
 import base64
 import warnings
@@ -127,6 +128,13 @@ def main():
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
 
+        # Cross-validation — every other Model Lab script reports this (shared cv_strategy
+        # module); GBM never did, so its CV Score column always showed "—" on the leaderboard.
+        try:
+            cv_result = run_cv(model, X, y, problem_type, cv_folds=5, random_state=42)
+        except Exception:
+            cv_result = {}
+
         # --- Evaluation ---
         results = {}
         prediction_examples = []
@@ -134,7 +142,9 @@ def main():
             results['metrics'] = {
                 'r2_score': r2_score(y_test, y_pred),
                 'mse': mean_squared_error(y_test, y_pred),
-                'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                'rmse': np.sqrt(mean_squared_error(y_test, y_pred)),
+                'cv_mean': cv_result.get('cv_mean'),
+                'cv_std': cv_result.get('cv_std'),
             }
             residuals = y_test - y_pred
             errors = np.abs(residuals)
@@ -158,7 +168,9 @@ def main():
             results['metrics'] = {
                 'accuracy': accuracy_score(y_test, y_pred),
                 'classification_report': classification_report(y_test, y_pred, output_dict=True, zero_division=0),
-                'confusion_matrix': confusion_matrix(y_test, y_pred).tolist()
+                'confusion_matrix': confusion_matrix(y_test, y_pred).tolist(),
+                'cv_mean': cv_result.get('cv_mean'),
+                'cv_std': cv_result.get('cv_std'),
             }
             n_examples = min(10, len(y_test))
             example_indices = np.random.choice(y_test.index, n_examples, replace=False)

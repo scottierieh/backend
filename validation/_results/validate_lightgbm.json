@@ -1,9 +1,9 @@
 {
   "title": "LIGHTGBM (Python)",
-  "total_checks": 10,
-  "numeric_checks": 10,
-  "exact_checks": 0,
-  "pass": 10,
+  "total_checks": 43,
+  "numeric_checks": 39,
+  "exact_checks": 4,
+  "pass": 43,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -20,8 +20,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "lgb.accuracy",
@@ -99,6 +99,270 @@
       "name": "lgb.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.best_iteration",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[sepal width (cm)].importance",
+      "got": "70",
+      "expected": "70",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[sepal width (cm)].importance_pct",
+      "got": "33.1754",
+      "expected": "33.1754",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[sepal width (cm)].normalized_importance",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[petal length (cm)].importance",
+      "got": "69",
+      "expected": "69",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[petal length (cm)].importance_pct",
+      "got": "32.7014",
+      "expected": "32.7014",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[petal length (cm)].normalized_importance",
+      "got": "0.985714",
+      "expected": "0.985714",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[petal width (cm)].importance",
+      "got": "43",
+      "expected": "43",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[petal width (cm)].importance_pct",
+      "got": "20.3791",
+      "expected": "20.3791",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[petal width (cm)].normalized_importance",
+      "got": "0.614286",
+      "expected": "0.614286",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[sepal length (cm)].importance",
+      "got": "29",
+      "expected": "29",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[sepal length (cm)].importance_pct",
+      "got": "13.7441",
+      "expected": "13.7441",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi[sepal length (cm)].normalized_importance",
+      "got": "0.414286",
+      "expected": "0.414286",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.rank[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.order[0]",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.rank[1]",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.order[1]",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.rank[2]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.order[2]",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.rank[3]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.fi.order[3]",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[other].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[other].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[other].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[other].support",
+      "got": "20",
+      "expected": "20",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[setosa].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[setosa].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[setosa].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.per_class[setosa].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.metrics.auc",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.cv_mean",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.cv_std",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lgb.cv_folds",
+      "got": "5",
+      "expected": "5",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

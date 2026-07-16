@@ -1,9 +1,9 @@
 {
   "title": "HCA (Python)",
-  "total_checks": 2,
-  "numeric_checks": 2,
-  "exact_checks": 0,
-  "pass": 2,
+  "total_checks": 62,
+  "numeric_checks": 60,
+  "exact_checks": 2,
+  "pass": 62,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-12,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-15",
   "checks": [
     {
       "name": "hca.labels(ARI=1)",
@@ -31,10 +31,490 @@
       "status": "PASS"
     },
     {
+      "name": "hca.labels_exact",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "hca.n_clusters",
       "got": "3",
       "expected": "3",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.linkage_method",
+      "got": "ward",
+      "expected": "ward",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.distance_metric",
+      "got": "euclidean",
+      "expected": "euclidean",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.silhouette",
+      "got": "0.446689",
+      "expected": "0.446689",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.calinski_harabasz",
+      "got": "222.719",
+      "expected": "222.719",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.davies_bouldin",
+      "got": "0.803467",
+      "expected": "0.803467",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.size[1]",
+      "got": "49",
+      "expected": "49",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.pct[1]",
+      "got": "32.6667",
+      "expected": "32.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[1][sepal length (cm)]",
+      "got": "5.01633",
+      "expected": "5.01633",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[1][sepal length (cm)]",
+      "got": "0.348417",
+      "expected": "0.348417",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[1][sepal length (cm)]",
+      "got": "4.3",
+      "expected": "4.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[1][sepal length (cm)]",
+      "got": "5.8",
+      "expected": "5.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[1][sepal width (cm)]",
+      "got": "3.45102",
+      "expected": "3.45102",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[1][sepal width (cm)]",
+      "got": "0.345882",
+      "expected": "0.345882",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[1][sepal width (cm)]",
+      "got": "2.9",
+      "expected": "2.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[1][sepal width (cm)]",
+      "got": "4.4",
+      "expected": "4.4",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[1][petal length (cm)]",
+      "got": "1.46531",
+      "expected": "1.46531",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[1][petal length (cm)]",
+      "got": "0.173867",
+      "expected": "0.173867",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[1][petal length (cm)]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[1][petal length (cm)]",
+      "got": "1.9",
+      "expected": "1.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[1][petal width (cm)]",
+      "got": "0.244898",
+      "expected": "0.244898",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[1][petal width (cm)]",
+      "got": "0.106186",
+      "expected": "0.106186",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[1][petal width (cm)]",
+      "got": "0.1",
+      "expected": "0.1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[1][petal width (cm)]",
+      "got": "0.6",
+      "expected": "0.6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.size[2]",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.pct[2]",
+      "got": "20",
+      "expected": "20",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[2][sepal length (cm)]",
+      "got": "5.53",
+      "expected": "5.53",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[2][sepal length (cm)]",
+      "got": "0.398402",
+      "expected": "0.398402",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[2][sepal length (cm)]",
+      "got": "4.5",
+      "expected": "4.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[2][sepal length (cm)]",
+      "got": "6.3",
+      "expected": "6.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[2][sepal width (cm)]",
+      "got": "2.56667",
+      "expected": "2.56667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[2][sepal width (cm)]",
+      "got": "0.279573",
+      "expected": "0.279573",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[2][sepal width (cm)]",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[2][sepal width (cm)]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[2][petal length (cm)]",
+      "got": "3.93",
+      "expected": "3.93",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[2][petal length (cm)]",
+      "got": "0.660799",
+      "expected": "0.660799",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[2][petal length (cm)]",
+      "got": "1.3",
+      "expected": "1.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[2][petal length (cm)]",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[2][petal width (cm)]",
+      "got": "1.20667",
+      "expected": "1.20667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[2][petal width (cm)]",
+      "got": "0.253164",
+      "expected": "0.253164",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[2][petal width (cm)]",
+      "got": "0.3",
+      "expected": "0.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[2][petal width (cm)]",
+      "got": "1.7",
+      "expected": "1.7",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.size[3]",
+      "got": "71",
+      "expected": "71",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.pct[3]",
+      "got": "47.3333",
+      "expected": "47.3333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[3][sepal length (cm)]",
+      "got": "6.54648",
+      "expected": "6.54648",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[3][sepal length (cm)]",
+      "got": "0.536877",
+      "expected": "0.536877",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[3][sepal length (cm)]",
+      "got": "5.6",
+      "expected": "5.6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[3][sepal length (cm)]",
+      "got": "7.9",
+      "expected": "7.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[3][sepal width (cm)]",
+      "got": "2.99296",
+      "expected": "2.99296",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[3][sepal width (cm)]",
+      "got": "0.272199",
+      "expected": "0.272199",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[3][sepal width (cm)]",
+      "got": "2.5",
+      "expected": "2.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[3][sepal width (cm)]",
+      "got": "3.8",
+      "expected": "3.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[3][petal length (cm)]",
+      "got": "5.26761",
+      "expected": "5.26761",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[3][petal length (cm)]",
+      "got": "0.654168",
+      "expected": "0.654168",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[3][petal length (cm)]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[3][petal length (cm)]",
+      "got": "6.9",
+      "expected": "6.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.centroid[3][petal width (cm)]",
+      "got": "1.85493",
+      "expected": "1.85493",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.std[3][petal width (cm)]",
+      "got": "0.358883",
+      "expected": "0.358883",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.min[3][petal width (cm)]",
+      "got": "1.2",
+      "expected": "1.2",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hca.max[3][petal width (cm)]",
+      "got": "2.5",
+      "expected": "2.5",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

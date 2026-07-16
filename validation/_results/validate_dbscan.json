@@ -1,9 +1,9 @@
 {
   "title": "DBSCAN (Python)",
-  "total_checks": 2,
-  "numeric_checks": 2,
+  "total_checks": 25,
+  "numeric_checks": 25,
   "exact_checks": 0,
-  "pass": 2,
+  "pass": 25,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-12,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "62f5c72",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-15",
   "checks": [
     {
       "name": "dbscan.labels(ARI=1)",
@@ -31,10 +31,194 @@
       "status": "PASS"
     },
     {
+      "name": "dbscan.labels_exact",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "dbscan.n_clusters",
       "got": "2",
       "expected": "2",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.n_noise",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.n_samples",
+      "got": "150",
+      "expected": "150",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.eps",
+      "got": "0.8",
+      "expected": "0.8",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.min_samples",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.size[Noise]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.pct[Noise]",
+      "got": "2.66667",
+      "expected": "2.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Noise][sepal length (cm)]",
+      "got": "6.825",
+      "expected": "6.825",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Noise][sepal width (cm)]",
+      "got": "3.375",
+      "expected": "3.375",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Noise][petal length (cm)]",
+      "got": "5.125",
+      "expected": "5.125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Noise][petal width (cm)]",
+      "got": "1.75",
+      "expected": "1.75",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.size[Cluster 0]",
+      "got": "49",
+      "expected": "49",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.pct[Cluster 0]",
+      "got": "32.6667",
+      "expected": "32.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 0][sepal length (cm)]",
+      "got": "5.01633",
+      "expected": "5.01633",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 0][sepal width (cm)]",
+      "got": "3.45102",
+      "expected": "3.45102",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 0][petal length (cm)]",
+      "got": "1.46531",
+      "expected": "1.46531",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 0][petal width (cm)]",
+      "got": "0.244898",
+      "expected": "0.244898",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.size[Cluster 1]",
+      "got": "97",
+      "expected": "97",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.pct[Cluster 1]",
+      "got": "64.6667",
+      "expected": "64.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 1][sepal length (cm)]",
+      "got": "6.22062",
+      "expected": "6.22062",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 1][sepal width (cm)]",
+      "got": "2.84536",
+      "expected": "2.84536",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 1][petal length (cm)]",
+      "got": "4.85979",
+      "expected": "4.85979",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dbscan.centroid[Cluster 1][petal width (cm)]",
+      "got": "1.65876",
+      "expected": "1.65876",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

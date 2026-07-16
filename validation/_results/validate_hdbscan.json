@@ -1,9 +1,9 @@
 {
   "title": "HDBSCAN (Python)",
-  "total_checks": 2,
-  "numeric_checks": 2,
+  "total_checks": 26,
+  "numeric_checks": 26,
   "exact_checks": 0,
-  "pass": 2,
+  "pass": 26,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-12,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-15",
   "checks": [
     {
       "name": "hdbscan.labels(ARI=1)",
@@ -31,10 +31,202 @@
       "status": "PASS"
     },
     {
+      "name": "hdbscan.labels_exact",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "hdbscan.n_clusters",
       "got": "2",
       "expected": "2",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.n_noise",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.n_samples",
+      "got": "150",
+      "expected": "150",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.min_cluster_size",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.prob_len",
+      "got": "150",
+      "expected": "150",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.prob_maxdiff",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.size[Noise]",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.pct[Noise]",
+      "got": "1.33333",
+      "expected": "1.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Noise][sepal length (cm)]",
+      "got": "7.8",
+      "expected": "7.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Noise][sepal width (cm)]",
+      "got": "3.8",
+      "expected": "3.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Noise][petal length (cm)]",
+      "got": "6.55",
+      "expected": "6.55",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Noise][petal width (cm)]",
+      "got": "2.1",
+      "expected": "2.1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.size[Cluster 0]",
+      "got": "99",
+      "expected": "99",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.pct[Cluster 0]",
+      "got": "66",
+      "expected": "66",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 0][sepal length (cm)]",
+      "got": "6.21313",
+      "expected": "6.21313",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 0][sepal width (cm)]",
+      "got": "2.84747",
+      "expected": "2.84747",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 0][petal length (cm)]",
+      "got": "4.83636",
+      "expected": "4.83636",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 0][petal width (cm)]",
+      "got": "1.65354",
+      "expected": "1.65354",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.size[Cluster 1]",
+      "got": "49",
+      "expected": "49",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.pct[Cluster 1]",
+      "got": "32.6667",
+      "expected": "32.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 1][sepal length (cm)]",
+      "got": "5.01633",
+      "expected": "5.01633",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 1][sepal width (cm)]",
+      "got": "3.45102",
+      "expected": "3.45102",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 1][petal length (cm)]",
+      "got": "1.46531",
+      "expected": "1.46531",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hdbscan.centroid[Cluster 1][petal width (cm)]",
+      "got": "0.244898",
+      "expected": "0.244898",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

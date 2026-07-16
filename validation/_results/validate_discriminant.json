@@ -1,14 +1,14 @@
 {
   "title": "DISCRIMINANT ANALYSIS (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
+  "total_checks": 64,
+  "numeric_checks": 64,
   "exact_checks": 0,
-  "pass": 16,
+  "pass": 64,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
-  "tolerance_max": 1e-06,
-  "max_abs_difference": 0.0,
+  "tolerance_max": 0.0001,
+  "max_abs_difference": 5.684341886080801e-13,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.15",
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "62f5c72",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "lda.accuracy",
@@ -146,6 +146,390 @@
       "name": "lda.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.priors[0]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.priors[1]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.priors[2]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.explained_variance_ratio[0]",
+      "got": "0.990386",
+      "expected": "0.990386",
+      "tolerance": 1e-06,
+      "abs_difference": 1.1102230246251565e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.explained_variance_ratio[1]",
+      "got": "0.00961412",
+      "expected": "0.00961412",
+      "tolerance": 1e-06,
+      "abs_difference": 5.551115123125783e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[0,0]",
+      "got": "-1.02299",
+      "expected": "-1.02299",
+      "tolerance": 1e-06,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[0,1]",
+      "got": "0.820924",
+      "expected": "0.820924",
+      "tolerance": 1e-06,
+      "abs_difference": 2.55351295663786e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[0,2]",
+      "got": "-1.30172",
+      "expected": "-1.30172",
+      "tolerance": 1e-06,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[0,3]",
+      "got": "-1.25086",
+      "expected": "-1.25086",
+      "tolerance": 1e-06,
+      "abs_difference": 1.7763568394002505e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[1,0]",
+      "got": "0.105483",
+      "expected": "0.105483",
+      "tolerance": 1e-06,
+      "abs_difference": 1.096345236817342e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[1,1]",
+      "got": "-0.667934",
+      "expected": "-0.667934",
+      "tolerance": 1e-06,
+      "abs_difference": 2.886579864025407e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[1,2]",
+      "got": "0.273971",
+      "expected": "0.273971",
+      "tolerance": 1e-06,
+      "abs_difference": 2.7755575615628914e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[1,3]",
+      "got": "0.15142",
+      "expected": "0.15142",
+      "tolerance": 1e-06,
+      "abs_difference": 1.5543122344752192e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[2,0]",
+      "got": "0.917506",
+      "expected": "0.917506",
+      "tolerance": 1e-06,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[2,1]",
+      "got": "-0.15299",
+      "expected": "-0.15299",
+      "tolerance": 1e-06,
+      "abs_difference": 3.1363800445660672e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[2,2]",
+      "got": "1.02775",
+      "expected": "1.02775",
+      "tolerance": 1e-06,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_info.class_means[2,3]",
+      "got": "1.09944",
+      "expected": "1.09944",
+      "tolerance": 1e-06,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.eigenvalue[LD1]",
+      "got": "32.4314",
+      "expected": "32.4314",
+      "tolerance": 1e-06,
+      "abs_difference": 2.1316282072803006e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.canonical_correlation[LD1]",
+      "got": "0.98493",
+      "expected": "0.98493",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.eigenvalue[LD2]",
+      "got": "0.314827",
+      "expected": "0.314827",
+      "tolerance": 1e-06,
+      "abs_difference": 2.3314683517128287e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.canonical_correlation[LD2]",
+      "got": "0.48933",
+      "expected": "0.48933",
+      "tolerance": 1e-06,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.variance_explained_pct[LD1]",
+      "got": "99.0386",
+      "expected": "99.0386",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.variance_explained_pct[LD2]",
+      "got": "0.961412",
+      "expected": "0.961412",
+      "tolerance": 1e-06,
+      "abs_difference": 6.5503158452884236e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.wilks_lambda.lambda",
+      "got": "0.0227497",
+      "expected": "0.0227497",
+      "tolerance": 1e-06,
+      "abs_difference": 5.898059818321144e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.wilks_lambda.chi2",
+      "got": "436.96",
+      "expected": "436.96",
+      "tolerance": 0.0001,
+      "abs_difference": 3.410605131648481e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.wilks_lambda.df",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[sepal length (cm)].LD1",
+      "got": "-0.801159",
+      "expected": "-0.801159",
+      "tolerance": 1e-06,
+      "abs_difference": 1.1102230246251565e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[sepal length (cm)].LD2",
+      "got": "-0.209354",
+      "expected": "-0.209354",
+      "tolerance": 1e-06,
+      "abs_difference": 2.192690473634684e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[sepal width (cm)].LD1",
+      "got": "0.499729",
+      "expected": "0.499729",
+      "tolerance": 1e-06,
+      "abs_difference": 5.551115123125783e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[sepal width (cm)].LD2",
+      "got": "-0.761622",
+      "expected": "-0.761622",
+      "tolerance": 1e-06,
+      "abs_difference": 7.771561172376096e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[petal length (cm)].LD1",
+      "got": "-0.985141",
+      "expected": "-0.985141",
+      "tolerance": 1e-06,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[petal length (cm)].LD2",
+      "got": "-0.0436706",
+      "expected": "-0.0436706",
+      "tolerance": 1e-06,
+      "abs_difference": 1.1102230246251565e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[petal width (cm)].LD1",
+      "got": "-0.974106",
+      "expected": "-0.974106",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.structure_matrix[petal width (cm)].LD2",
+      "got": "-0.220223",
+      "expected": "-0.220223",
+      "tolerance": 1e-06,
+      "abs_difference": 3.608224830031759e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.group_centroids[setosa].LD1",
+      "got": "7.5958",
+      "expected": "7.5958",
+      "tolerance": 1e-06,
+      "abs_difference": 7.105427357601002e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.group_centroids[setosa].LD2",
+      "got": "-0.232011",
+      "expected": "-0.232011",
+      "tolerance": 1e-06,
+      "abs_difference": 6.38378239159465e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.group_centroids[versicolor].LD1",
+      "got": "-1.75857",
+      "expected": "-1.75857",
+      "tolerance": 1e-06,
+      "abs_difference": 7.549516567451064e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.group_centroids[versicolor].LD2",
+      "got": "0.764128",
+      "expected": "0.764128",
+      "tolerance": 1e-06,
+      "abs_difference": 1.1102230246251565e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.group_centroids[virginica].LD1",
+      "got": "-5.83723",
+      "expected": "-5.83723",
+      "tolerance": 1e-06,
+      "abs_difference": 7.105427357601002e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.group_centroids[virginica].LD2",
+      "got": "-0.532116",
+      "expected": "-0.532116",
+      "tolerance": 1e-06,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[sepal length (cm)].f_statistic",
+      "got": "100.966",
+      "expected": "100.966",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[sepal length (cm)].p_value",
+      "got": "3.33078e-26",
+      "expected": "3.33078e-26",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[sepal width (cm)].f_statistic",
+      "got": "36.0306",
+      "expected": "36.0306",
+      "tolerance": 1e-06,
+      "abs_difference": 7.105427357601002e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[sepal width (cm)].p_value",
+      "got": "6.42152e-13",
+      "expected": "6.42152e-13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[petal length (cm)].f_statistic",
+      "got": "948.89",
+      "expected": "948.89",
+      "tolerance": 1e-06,
+      "abs_difference": 5.684341886080801e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[petal length (cm)].p_value",
+      "got": "4.91526e-73",
+      "expected": "4.91526e-73",
+      "tolerance": 1e-06,
+      "abs_difference": 1.7217172601492187e-86,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[petal width (cm)].f_statistic",
+      "got": "803.214",
+      "expected": "803.214",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lda_statistics.anova_f[petal width (cm)].p_value",
+      "got": "4.56953e-69",
+      "expected": "4.56953e-69",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

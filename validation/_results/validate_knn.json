@@ -1,9 +1,9 @@
 {
   "title": "KNN (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
+  "total_checks": 61,
+  "numeric_checks": 61,
   "exact_checks": 0,
-  "pass": 16,
+  "pass": 61,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "knn.accuracy",
@@ -146,6 +146,366 @@
       "name": "knn.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_mean",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_std",
+      "got": "0.0365148",
+      "expected": "0.0365148",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_scores[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_scores[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_scores[2]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_scores[3]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.cv_scores[4]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[setosa].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[setosa].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[setosa].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[setosa].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[versicolor].precision",
+      "got": "0.833333",
+      "expected": "0.833333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[versicolor].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[versicolor].f1_score",
+      "got": "0.909091",
+      "expected": "0.909091",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[versicolor].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[virginica].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[virginica].recall",
+      "got": "0.8",
+      "expected": "0.8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[virginica].f1_score",
+      "got": "0.888889",
+      "expected": "0.888889",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.per_class[virginica].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[sepal length (cm)].importance",
+      "got": "0.02",
+      "expected": "0.02",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[sepal length (cm)].std",
+      "got": "0.0266667",
+      "expected": "0.0266667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[sepal width (cm)].importance",
+      "got": "-0.00333333",
+      "expected": "-0.00333333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[sepal width (cm)].std",
+      "got": "0.0433333",
+      "expected": "0.0433333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[petal length (cm)].importance",
+      "got": "0.203333",
+      "expected": "0.203333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[petal length (cm)].std",
+      "got": "0.0752034",
+      "expected": "0.0752034",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[petal width (cm)].importance",
+      "got": "0.233333",
+      "expected": "0.233333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.feature_importance[petal width (cm)].std",
+      "got": "0.0730297",
+      "expected": "0.0730297",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.optimal_k",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.optimal_score",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[1].mean",
+      "got": "0.941667",
+      "expected": "0.941667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[1].std",
+      "got": "0.0204124",
+      "expected": "0.0204124",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[3].mean",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[3].std",
+      "got": "0.0166667",
+      "expected": "0.0166667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[5].mean",
+      "got": "0.95",
+      "expected": "0.95",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[5].std",
+      "got": "0.0311805",
+      "expected": "0.0311805",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[7].mean",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[7].std",
+      "got": "0.0204124",
+      "expected": "0.0204124",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[9].mean",
+      "got": "0.95",
+      "expected": "0.95",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[9].std",
+      "got": "0.0311805",
+      "expected": "0.0311805",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[11].mean",
+      "got": "0.95",
+      "expected": "0.95",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[11].std",
+      "got": "0.0408248",
+      "expected": "0.0408248",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[13].mean",
+      "got": "0.95",
+      "expected": "0.95",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[13].std",
+      "got": "0.0311805",
+      "expected": "0.0311805",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[15].mean",
+      "got": "0.925",
+      "expected": "0.925",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "knn.k_scores[15].std",
+      "got": "0.0166667",
+      "expected": "0.0166667",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

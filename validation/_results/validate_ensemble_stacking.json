@@ -1,9 +1,9 @@
 {
   "title": "ENSEMBLE (VOTING) (Python)",
-  "total_checks": 15,
-  "numeric_checks": 15,
-  "exact_checks": 0,
-  "pass": 15,
+  "total_checks": 52,
+  "numeric_checks": 51,
+  "exact_checks": 1,
+  "pass": 52,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "stack.voting.accuracy",
@@ -138,6 +138,302 @@
       "name": "stack.voting.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.individual_scores.logistic_regression",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.individual_scores.decision_tree",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.individual_scores.random_forest",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.individual_scores.ensemble",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.base_estimators",
+      "got": "logistic_regression,decision_tree,random_forest",
+      "expected": "logistic_regression,decision_tree,random_forest",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_folds",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_scores[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_scores[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_scores[2]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_scores[3]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_scores[4]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_mean",
+      "got": "0.953333",
+      "expected": "0.953333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.cv_std",
+      "got": "0.0339935",
+      "expected": "0.0339935",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[setosa].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[setosa].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[setosa].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[setosa].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[versicolor].precision",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[versicolor].recall",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[versicolor].f1_score",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[versicolor].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[virginica].precision",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[virginica].recall",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[virginica].f1_score",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.per_class[virginica].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[sepal length (cm)].mean",
+      "got": "-0.01",
+      "expected": "-0.01",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[sepal length (cm)].std",
+      "got": "0.0152753",
+      "expected": "0.0152753",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[sepal width (cm)].mean",
+      "got": "0.0133333",
+      "expected": "0.0133333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[sepal width (cm)].std",
+      "got": "0.0163299",
+      "expected": "0.0163299",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[petal length (cm)].mean",
+      "got": "0.496667",
+      "expected": "0.496667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[petal length (cm)].std",
+      "got": "0.0766667",
+      "expected": "0.0766667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[petal width (cm)].mean",
+      "got": "0.11",
+      "expected": "0.11",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.perm_importance[petal width (cm)].std",
+      "got": "0.0472582",
+      "expected": "0.0472582",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.feature_importance[sepal length (cm)].pct",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.feature_importance[sepal width (cm)].pct",
+      "got": "2.15054",
+      "expected": "2.15054",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.feature_importance[petal length (cm)].pct",
+      "got": "80.1075",
+      "expected": "80.1075",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "stack.feature_importance[petal width (cm)].pct",
+      "got": "17.7419",
+      "expected": "17.7419",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

@@ -1,9 +1,9 @@
 {
   "title": "ADABOOST (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
-  "exact_checks": 0,
-  "pass": 16,
+  "total_checks": 257,
+  "numeric_checks": 254,
+  "exact_checks": 3,
+  "pass": 257,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "62f5c72",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "ada.accuracy",
@@ -147,6 +147,1934 @@
       "got": "30",
       "expected": "30",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.n_estimator_weights",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[0]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[1]",
+      "got": "2.18707",
+      "expected": "2.18707",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[2]",
+      "got": "2.85114",
+      "expected": "2.85114",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[3]",
+      "got": "1.8189",
+      "expected": "1.8189",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[4]",
+      "got": "2.508",
+      "expected": "2.508",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[5]",
+      "got": "2.69947",
+      "expected": "2.69947",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[6]",
+      "got": "1.71615",
+      "expected": "1.71615",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[7]",
+      "got": "2.4887",
+      "expected": "2.4887",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[8]",
+      "got": "2.06505",
+      "expected": "2.06505",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[9]",
+      "got": "1.64465",
+      "expected": "1.64465",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[10]",
+      "got": "1.95685",
+      "expected": "1.95685",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[11]",
+      "got": "1.98491",
+      "expected": "1.98491",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[12]",
+      "got": "1.62137",
+      "expected": "1.62137",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[13]",
+      "got": "1.71924",
+      "expected": "1.71924",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[14]",
+      "got": "1.9083",
+      "expected": "1.9083",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[15]",
+      "got": "1.50683",
+      "expected": "1.50683",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[16]",
+      "got": "1.6367",
+      "expected": "1.6367",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[17]",
+      "got": "1.83945",
+      "expected": "1.83945",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[18]",
+      "got": "1.8987",
+      "expected": "1.8987",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[19]",
+      "got": "1.52369",
+      "expected": "1.52369",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[20]",
+      "got": "2.02357",
+      "expected": "2.02357",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[21]",
+      "got": "1.93029",
+      "expected": "1.93029",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[22]",
+      "got": "1.95463",
+      "expected": "1.95463",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[23]",
+      "got": "1.49273",
+      "expected": "1.49273",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[24]",
+      "got": "1.71176",
+      "expected": "1.71176",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[25]",
+      "got": "1.9877",
+      "expected": "1.9877",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[26]",
+      "got": "1.51995",
+      "expected": "1.51995",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[27]",
+      "got": "2.11008",
+      "expected": "2.11008",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[28]",
+      "got": "1.81036",
+      "expected": "1.81036",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[29]",
+      "got": "1.65806",
+      "expected": "1.65806",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[30]",
+      "got": "1.37994",
+      "expected": "1.37994",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[31]",
+      "got": "2.052",
+      "expected": "2.052",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[32]",
+      "got": "1.76052",
+      "expected": "1.76052",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[33]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[34]",
+      "got": "1.67092",
+      "expected": "1.67092",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[35]",
+      "got": "1.27168",
+      "expected": "1.27168",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[36]",
+      "got": "1.81695",
+      "expected": "1.81695",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[37]",
+      "got": "1.66523",
+      "expected": "1.66523",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[38]",
+      "got": "1.46512",
+      "expected": "1.46512",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[39]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[40]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[41]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[42]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[43]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[44]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[45]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[46]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[47]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[48]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_weight[49]",
+      "got": "1.38629",
+      "expected": "1.38629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.n_estimator_errors",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[0]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[1]",
+      "got": "0.183333",
+      "expected": "0.183333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[2]",
+      "got": "0.103587",
+      "expected": "0.103587",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[3]",
+      "got": "0.244946",
+      "expected": "0.244946",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[4]",
+      "got": "0.140053",
+      "expected": "0.140053",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[5]",
+      "got": "0.118541",
+      "expected": "0.118541",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[6]",
+      "got": "0.264442",
+      "expected": "0.264442",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[7]",
+      "got": "0.142393",
+      "expected": "0.142393",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[8]",
+      "got": "0.202312",
+      "expected": "0.202312",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[9]",
+      "got": "0.278583",
+      "expected": "0.278583",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[10]",
+      "got": "0.220336",
+      "expected": "0.220336",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[11]",
+      "got": "0.215554",
+      "expected": "0.215554",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[12]",
+      "got": "0.283286",
+      "expected": "0.283286",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[13]",
+      "got": "0.263843",
+      "expected": "0.263843",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[14]",
+      "got": "0.228791",
+      "expected": "0.228791",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[15]",
+      "got": "0.307107",
+      "expected": "0.307107",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[16]",
+      "got": "0.280184",
+      "expected": "0.280184",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[17]",
+      "got": "0.241166",
+      "expected": "0.241166",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[18]",
+      "got": "0.230489",
+      "expected": "0.230489",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[19]",
+      "got": "0.303529",
+      "expected": "0.303529",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[20]",
+      "got": "0.20909",
+      "expected": "0.20909",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[21]",
+      "got": "0.224934",
+      "expected": "0.224934",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[22]",
+      "got": "0.220718",
+      "expected": "0.220718",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[23]",
+      "got": "0.310116",
+      "expected": "0.310116",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[24]",
+      "got": "0.265297",
+      "expected": "0.265297",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[25]",
+      "got": "0.215082",
+      "expected": "0.215082",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[26]",
+      "got": "0.304322",
+      "expected": "0.304322",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[27]",
+      "got": "0.195144",
+      "expected": "0.195144",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[28]",
+      "got": "0.246528",
+      "expected": "0.246528",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[29]",
+      "got": "0.275895",
+      "expected": "0.275895",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[30]",
+      "got": "0.334747",
+      "expected": "0.334747",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[31]",
+      "got": "0.204427",
+      "expected": "0.204427",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[32]",
+      "got": "0.255903",
+      "expected": "0.255903",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[33]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[34]",
+      "got": "0.273334",
+      "expected": "0.273334",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[35]",
+      "got": "0.359271",
+      "expected": "0.359271",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[36]",
+      "got": "0.245307",
+      "expected": "0.245307",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[37]",
+      "got": "0.274466",
+      "expected": "0.274466",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[38]",
+      "got": "0.316054",
+      "expected": "0.316054",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[39]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[40]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[41]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[42]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[43]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[44]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[45]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[46]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[47]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[48]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.estimator_error[49]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.n_staged_train",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.n_staged_test",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[0]",
+      "got": "0.666667",
+      "expected": "0.666667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[1]",
+      "got": "0.658333",
+      "expected": "0.658333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[2]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[3]",
+      "got": "0.958333",
+      "expected": "0.958333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[4]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[5]",
+      "got": "0.975",
+      "expected": "0.975",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[6]",
+      "got": "0.941667",
+      "expected": "0.941667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[7]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[8]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[9]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[10]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[11]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[12]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[13]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[14]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[15]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[16]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[17]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[18]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[19]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[20]",
+      "got": "0.983333",
+      "expected": "0.983333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[21]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[22]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[23]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[24]",
+      "got": "0.991667",
+      "expected": "0.991667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[25]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[26]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[27]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[28]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[29]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[30]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[31]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[32]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[33]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[34]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[35]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[36]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[37]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[38]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[39]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[40]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[41]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[42]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[43]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[44]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[45]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[46]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[47]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[48]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_train[49]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[0]",
+      "got": "0.666667",
+      "expected": "0.666667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[1]",
+      "got": "0.666667",
+      "expected": "0.666667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[2]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[3]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[4]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[5]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[6]",
+      "got": "0.866667",
+      "expected": "0.866667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[7]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[8]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[9]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[10]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[11]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[12]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[13]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[14]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[15]",
+      "got": "0.866667",
+      "expected": "0.866667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[16]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[17]",
+      "got": "0.866667",
+      "expected": "0.866667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[18]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[19]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[20]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[21]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[22]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[23]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[24]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[25]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[26]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[27]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[28]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[29]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[30]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[31]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[32]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[33]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[34]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[35]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[36]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[37]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[38]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[39]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[40]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[41]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[42]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[43]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[44]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[45]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[46]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[47]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[48]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.staged_test[49]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance[petal width (cm)]",
+      "got": "0.529244",
+      "expected": "0.529244",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_pct[petal width (cm)]",
+      "got": "52.9244",
+      "expected": "52.9244",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.norm_importance[petal width (cm)]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance[petal length (cm)]",
+      "got": "0.307943",
+      "expected": "0.307943",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_pct[petal length (cm)]",
+      "got": "30.7943",
+      "expected": "30.7943",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.norm_importance[petal length (cm)]",
+      "got": "0.581854",
+      "expected": "0.581854",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_sorted_desc[petal length (cm)]",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance[sepal length (cm)]",
+      "got": "0.0982683",
+      "expected": "0.0982683",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_pct[sepal length (cm)]",
+      "got": "9.82683",
+      "expected": "9.82683",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.norm_importance[sepal length (cm)]",
+      "got": "0.185677",
+      "expected": "0.185677",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_sorted_desc[sepal length (cm)]",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance[sepal width (cm)]",
+      "got": "0.0645449",
+      "expected": "0.0645449",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_pct[sepal width (cm)]",
+      "got": "6.45449",
+      "expected": "6.45449",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.norm_importance[sepal width (cm)]",
+      "got": "0.121957",
+      "expected": "0.121957",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_sorted_desc[sepal width (cm)]",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_rank1",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.importance_rankN",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_precision[setosa]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_recall[setosa]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_f1[setosa]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_support[setosa]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_precision[versicolor]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_recall[versicolor]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_f1[versicolor]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_support[versicolor]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_precision[virginica]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_recall[virginica]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_f1[virginica]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.pc_support[virginica]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.auc",
+      "got": "0.975",
+      "expected": "0.975",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_mean",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_std",
+      "got": "0.038873",
+      "expected": "0.038873",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_score[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_score[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_score[2]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_score[3]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "ada.cv_score[4]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

@@ -1,9 +1,9 @@
 {
   "title": "CATBOOST (Python)",
-  "total_checks": 10,
-  "numeric_checks": 10,
+  "total_checks": 41,
+  "numeric_checks": 41,
   "exact_checks": 0,
-  "pass": 10,
+  "pass": 41,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -20,8 +20,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "62f5c72",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "cat.accuracy",
@@ -100,6 +100,254 @@
       "got": "30",
       "expected": "30",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.best_iteration",
+      "got": "99",
+      "expected": "99",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal length (cm)].importance",
+      "got": "5.06124",
+      "expected": "5.06124",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal length (cm)].importance_pct",
+      "got": "5.06124",
+      "expected": "5.06124",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal length (cm)].normalized_importance",
+      "got": "0.106181",
+      "expected": "0.106181",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal width (cm)].importance",
+      "got": "8.14698",
+      "expected": "8.14698",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal width (cm)].importance_pct",
+      "got": "8.14698",
+      "expected": "8.14698",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal width (cm)].normalized_importance",
+      "got": "0.170917",
+      "expected": "0.170917",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal length (cm)].importance",
+      "got": "47.6662",
+      "expected": "47.6662",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal length (cm)].importance_pct",
+      "got": "47.6662",
+      "expected": "47.6662",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal length (cm)].normalized_importance",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal width (cm)].importance",
+      "got": "39.1255",
+      "expected": "39.1255",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal width (cm)].importance_pct",
+      "got": "39.1255",
+      "expected": "39.1255",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal width (cm)].normalized_importance",
+      "got": "0.820823",
+      "expected": "0.820823",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal length (cm)].rank",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[sepal width (cm)].rank",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal length (cm)].rank",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.fi[petal width (cm)].rank",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[other].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[other].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[other].f1",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[other].support",
+      "got": "20",
+      "expected": "20",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[setosa].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[setosa].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[setosa].f1",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.per_class[setosa].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.shap[sepal length (cm)].mean_abs_shap",
+      "got": "0.510179",
+      "expected": "0.510179",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.shap[sepal width (cm)].mean_abs_shap",
+      "got": "0.375174",
+      "expected": "0.375174",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.shap[petal length (cm)].mean_abs_shap",
+      "got": "1.2705",
+      "expected": "1.2705",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.shap[petal width (cm)].mean_abs_shap",
+      "got": "1.38041",
+      "expected": "1.38041",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.cv_mean",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.cv_std",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

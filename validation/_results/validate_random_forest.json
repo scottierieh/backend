@@ -1,9 +1,9 @@
 {
   "title": "RANDOM FOREST (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
-  "exact_checks": 0,
-  "pass": 16,
+  "total_checks": 45,
+  "numeric_checks": 44,
+  "exact_checks": 1,
+  "pass": 45,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "rf.accuracy",
@@ -147,6 +147,238 @@
       "got": "30",
       "expected": "30",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.oob_score",
+      "got": "0.941667",
+      "expected": "0.941667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[sepal length (cm)].importance",
+      "got": "0.116349",
+      "expected": "0.116349",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[sepal length (cm)].importance_pct",
+      "got": "11.6349",
+      "expected": "11.6349",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[sepal length (cm)].normalized_importance",
+      "got": "0.266131",
+      "expected": "0.266131",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[sepal width (cm)].importance",
+      "got": "0.0149997",
+      "expected": "0.0149997",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[sepal width (cm)].importance_pct",
+      "got": "1.49997",
+      "expected": "1.49997",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[sepal width (cm)].normalized_importance",
+      "got": "0.0343098",
+      "expected": "0.0343098",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[petal length (cm)].importance",
+      "got": "0.431466",
+      "expected": "0.431466",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[petal length (cm)].importance_pct",
+      "got": "43.1466",
+      "expected": "43.1466",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[petal length (cm)].normalized_importance",
+      "got": "0.986919",
+      "expected": "0.986919",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[petal width (cm)].importance",
+      "got": "0.437185",
+      "expected": "0.437185",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[petal width (cm)].importance_pct",
+      "got": "43.7185",
+      "expected": "43.7185",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi[petal width (cm)].normalized_importance",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.fi.rank_order",
+      "got": "petal width (cm),petal length (cm),sepal length (cm),sepal width (cm)",
+      "expected": "petal width (cm),petal length (cm),sepal length (cm),sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_mean",
+      "got": "0.946667",
+      "expected": "0.946667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_std",
+      "got": "0.0266667",
+      "expected": "0.0266667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_scores[0]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_scores[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_scores[2]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_scores[3]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.cv_scores[4]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[sepal length (cm)].mean",
+      "got": "-0.0566667",
+      "expected": "-0.0566667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[sepal length (cm)].std",
+      "got": "0.0152753",
+      "expected": "0.0152753",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[sepal width (cm)].mean",
+      "got": "-0.0333333",
+      "expected": "-0.0333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[sepal width (cm)].std",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[petal length (cm)].mean",
+      "got": "0.166667",
+      "expected": "0.166667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[petal length (cm)].std",
+      "got": "0.0666667",
+      "expected": "0.0666667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[petal width (cm)].mean",
+      "got": "0.176667",
+      "expected": "0.176667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rf.perm[petal width (cm)].std",
+      "got": "0.0472582",
+      "expected": "0.0472582",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

@@ -1,14 +1,14 @@
 {
   "title": "KMEANS (Python)",
-  "total_checks": 2,
-  "numeric_checks": 2,
+  "total_checks": 66,
+  "numeric_checks": 66,
   "exact_checks": 0,
-  "pass": 2,
+  "pass": 66,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-12,
   "tolerance_max": 1e-06,
-  "max_abs_difference": 0.0,
+  "max_abs_difference": 1.4210854715202004e-14,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.15",
@@ -19,9 +19,33 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-15",
   "checks": [
+    {
+      "name": "km.labels(ARI=1)",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.labels_exact",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.n_clusters",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
     {
       "name": "km.inertia",
       "got": "139.82",
@@ -31,10 +55,498 @@
       "status": "PASS"
     },
     {
-      "name": "km.labels(ARI=1)",
-      "got": "1",
-      "expected": "1",
-      "tolerance": 1e-12,
+      "name": "km.centroid[0][0]",
+      "got": "-0.0502199",
+      "expected": "-0.0502199",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[0][1]",
+      "got": "-0.883376",
+      "expected": "-0.883376",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[0][2]",
+      "got": "0.347738",
+      "expected": "0.347738",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[0][3]",
+      "got": "0.281527",
+      "expected": "0.281527",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[1][0]",
+      "got": "-1.01458",
+      "expected": "-1.01458",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[1][1]",
+      "got": "0.853263",
+      "expected": "0.853263",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[1][2]",
+      "got": "-1.30499",
+      "expected": "-1.30499",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[1][3]",
+      "got": "-1.25489",
+      "expected": "-1.25489",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[2][0]",
+      "got": "1.13597",
+      "expected": "1.13597",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[2][1]",
+      "got": "0.0884217",
+      "expected": "0.0884217",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[2][2]",
+      "got": "0.996155",
+      "expected": "0.996155",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.centroid[2][3]",
+      "got": "1.01753",
+      "expected": "1.01753",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.silhouette",
+      "got": "0.459948",
+      "expected": "0.459948",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.davies_bouldin",
+      "got": "0.833595",
+      "expected": "0.833595",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.calinski_harabasz",
+      "got": "241.904",
+      "expected": "241.904",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.size[0]",
+      "got": "53",
+      "expected": "53",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.pct[0]",
+      "got": "35.3333",
+      "expected": "35.3333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[0][sepal length (cm)]",
+      "got": "5.80189",
+      "expected": "5.80189",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[0][sepal width (cm)]",
+      "got": "2.67358",
+      "expected": "2.67358",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[0][petal length (cm)]",
+      "got": "4.36981",
+      "expected": "4.36981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[0][petal width (cm)]",
+      "got": "1.41321",
+      "expected": "1.41321",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.size[1]",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.pct[1]",
+      "got": "33.3333",
+      "expected": "33.3333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[1][sepal length (cm)]",
+      "got": "5.006",
+      "expected": "5.006",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[1][sepal width (cm)]",
+      "got": "3.428",
+      "expected": "3.428",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[1][petal length (cm)]",
+      "got": "1.462",
+      "expected": "1.462",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[1][petal width (cm)]",
+      "got": "0.246",
+      "expected": "0.246",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.size[2]",
+      "got": "47",
+      "expected": "47",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.pct[2]",
+      "got": "31.3333",
+      "expected": "31.3333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[2][sepal length (cm)]",
+      "got": "6.78085",
+      "expected": "6.78085",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[2][sepal width (cm)]",
+      "got": "3.09574",
+      "expected": "3.09574",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[2][petal length (cm)]",
+      "got": "5.51064",
+      "expected": "5.51064",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.rawcentroid[2][petal width (cm)]",
+      "got": "1.97234",
+      "expected": "1.97234",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k_range_len",
+      "got": "9",
+      "expected": "9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[0]",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[0]",
+      "got": "222.362",
+      "expected": "222.362",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[0]",
+      "got": "0.58175",
+      "expected": "0.58175",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[1]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[1]",
+      "got": "139.82",
+      "expected": "139.82",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[1]",
+      "got": "0.459948",
+      "expected": "0.459948",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[2]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[2]",
+      "got": "114.093",
+      "expected": "114.093",
+      "tolerance": 1e-06,
+      "abs_difference": 1.4210854715202004e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[2]",
+      "got": "0.386941",
+      "expected": "0.386941",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[3]",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[3]",
+      "got": "90.9275",
+      "expected": "90.9275",
+      "tolerance": 1e-06,
+      "abs_difference": 1.4210854715202004e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[3]",
+      "got": "0.345901",
+      "expected": "0.345901",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[4]",
+      "got": "6",
+      "expected": "6",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[4]",
+      "got": "81.5444",
+      "expected": "81.5444",
+      "tolerance": 1e-06,
+      "abs_difference": 1.4210854715202004e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[4]",
+      "got": "0.317079",
+      "expected": "0.317079",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[5]",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[5]",
+      "got": "72.6311",
+      "expected": "72.6311",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[5]",
+      "got": "0.320197",
+      "expected": "0.320197",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[6]",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[6]",
+      "got": "62.5406",
+      "expected": "62.5406",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[6]",
+      "got": "0.338692",
+      "expected": "0.338692",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[7]",
+      "got": "9",
+      "expected": "9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[7]",
+      "got": "55.1195",
+      "expected": "55.1195",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[7]",
+      "got": "0.34236",
+      "expected": "0.34236",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.k[8]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.inertia[8]",
+      "got": "47.391",
+      "expected": "47.391",
+      "tolerance": 1e-06,
+      "abs_difference": 7.105427357601002e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.sil[8]",
+      "got": "0.351793",
+      "expected": "0.351793",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "km.optk.recommended_k",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     }

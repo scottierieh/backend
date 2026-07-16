@@ -1,14 +1,14 @@
 {
   "title": "GBM (Python)",
-  "total_checks": 13,
-  "numeric_checks": 13,
-  "exact_checks": 0,
-  "pass": 13,
+  "total_checks": 25,
+  "numeric_checks": 24,
+  "exact_checks": 1,
+  "pass": 25,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
   "tolerance_max": 1e-06,
-  "max_abs_difference": 0.0,
+  "max_abs_difference": 1.4210854715202004e-14,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.15",
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "gbm.accuracy",
@@ -122,6 +122,102 @@
       "name": "gbm.cm[2,2]",
       "got": "10",
       "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance.sorted_desc",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance.n",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance.sum",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance.pct_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-06,
+      "abs_difference": 1.4210854715202004e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[petal width (cm)].importance",
+      "got": "0.651006",
+      "expected": "0.651006",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[petal width (cm)].importance_pct",
+      "got": "65.1006",
+      "expected": "65.1006",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[petal length (cm)].importance",
+      "got": "0.329669",
+      "expected": "0.329669",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[petal length (cm)].importance_pct",
+      "got": "32.9669",
+      "expected": "32.9669",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[sepal width (cm)].importance",
+      "got": "0.015667",
+      "expected": "0.015667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[sepal width (cm)].importance_pct",
+      "got": "1.5667",
+      "expected": "1.5667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[sepal length (cm)].importance",
+      "got": "0.00365837",
+      "expected": "0.00365837",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.feature_importance[sepal length (cm)].importance_pct",
+      "got": "0.365837",
+      "expected": "0.365837",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

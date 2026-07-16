@@ -1,9 +1,9 @@
 {
   "title": "MLP (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
-  "exact_checks": 0,
-  "pass": 16,
+  "total_checks": 44,
+  "numeric_checks": 43,
+  "exact_checks": 1,
+  "pass": 44,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "mlp.accuracy",
@@ -148,6 +148,230 @@
       "expected": "30",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.n_iterations",
+      "got": "300",
+      "expected": "300",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.final_loss",
+      "got": "0.135514",
+      "expected": "0.135514",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[setosa].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[setosa].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[setosa].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[setosa].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[versicolor].precision",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[versicolor].recall",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[versicolor].f1_score",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[versicolor].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[virginica].precision",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[virginica].recall",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[virginica].f1_score",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.per_class[virginica].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.auc",
+      "got": "0.995",
+      "expected": "0.995",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_mean",
+      "got": "0.946667",
+      "expected": "0.946667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_std",
+      "got": "0.0541603",
+      "expected": "0.0541603",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_folds",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_scores[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_scores[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_scores[2]",
+      "got": "0.866667",
+      "expected": "0.866667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_scores[3]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.cv_scores[4]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.perm_importance[petal width (cm)].mean",
+      "got": "0.25",
+      "expected": "0.25",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.perm_importance[petal length (cm)].mean",
+      "got": "0.12",
+      "expected": "0.12",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.perm_importance[sepal width (cm)].mean",
+      "got": "0.103333",
+      "expected": "0.103333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.perm_importance[sepal length (cm)].mean",
+      "got": "0.04",
+      "expected": "0.04",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "mlp.perm_importance.rank_order",
+      "got": "petal width (cm) > petal length (cm) > sepal width (cm) > sepal length (cm)",
+      "expected": "petal width (cm) > petal length (cm) > sepal width (cm) > sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
       "status": "PASS"
     }
   ]

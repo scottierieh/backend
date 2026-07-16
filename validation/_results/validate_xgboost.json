@@ -1,13 +1,13 @@
 {
   "title": "XGBOOST (Python)",
-  "total_checks": 10,
-  "numeric_checks": 10,
+  "total_checks": 45,
+  "numeric_checks": 45,
   "exact_checks": 0,
-  "pass": 10,
+  "pass": 45,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
-  "tolerance_max": 1e-06,
+  "tolerance_max": 0.0001,
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
@@ -20,8 +20,8 @@
     "sklearn": "1.9.0",
     "xgboost": "3.2.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "xgb.accuracy",
@@ -99,6 +99,286 @@
       "name": "xgb.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.feature_importance.len",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal length (cm)].importance",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal length (cm)].importance_pct",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 0.0001,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal length (cm)].normalized_importance",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal length (cm)].rank",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal length (cm)].importance",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal length (cm)].importance_pct",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0.0001,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal length (cm)].normalized_importance",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal length (cm)].rank",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal width (cm)].importance",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal width (cm)].importance_pct",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0.0001,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal width (cm)].normalized_importance",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[sepal width (cm)].rank",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal width (cm)].importance",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal width (cm)].importance_pct",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0.0001,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal width (cm)].normalized_importance",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.fi[petal width (cm)].rank",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.metrics.auc",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[other].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[other].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[other].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[other].support",
+      "got": "20",
+      "expected": "20",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[setosa].precision",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[setosa].recall",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[setosa].f1_score",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.pcm[setosa].support",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_folds",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_mean",
+      "got": "0.993333",
+      "expected": "0.993333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_std",
+      "got": "0.0133333",
+      "expected": "0.0133333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_scores[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_scores[1]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_scores[2]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_scores[3]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.cv_results.cv_scores[4]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "xgb.tree_rules.n_leaves",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

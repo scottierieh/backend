@@ -1,9 +1,9 @@
 {
   "title": "SVM (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
-  "exact_checks": 0,
-  "pass": 16,
+  "total_checks": 39,
+  "numeric_checks": 35,
+  "exact_checks": 4,
+  "pass": 39,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "svm.accuracy",
@@ -148,6 +148,190 @@
       "expected": "30",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.n_support_vectors",
+      "got": "47",
+      "expected": "47",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.support_per_class[0].class",
+      "got": "setosa",
+      "expected": "setosa",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.support_per_class[0].n_sv",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.support_per_class[1].class",
+      "got": "versicolor",
+      "expected": "versicolor",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.support_per_class[1].n_sv",
+      "got": "18",
+      "expected": "18",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.support_per_class[2].class",
+      "got": "virginica",
+      "expected": "virginica",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.support_per_class[2].n_sv",
+      "got": "19",
+      "expected": "19",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_mean",
+      "got": "0.953333",
+      "expected": "0.953333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_std",
+      "got": "0.0452155",
+      "expected": "0.0452155",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_scores[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_scores[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_scores[2]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_scores[3]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.cv_scores[4]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[petal width (cm)].importance",
+      "got": "0.293333",
+      "expected": "0.293333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[petal width (cm)].std",
+      "got": "0.0742369",
+      "expected": "0.0742369",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[petal length (cm)].importance",
+      "got": "0.243333",
+      "expected": "0.243333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[petal length (cm)].std",
+      "got": "0.0495536",
+      "expected": "0.0495536",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[sepal width (cm)].importance",
+      "got": "0.0633333",
+      "expected": "0.0633333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[sepal width (cm)].std",
+      "got": "0.0276887",
+      "expected": "0.0276887",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[sepal length (cm)].importance",
+      "got": "0.00333333",
+      "expected": "0.00333333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi[sepal length (cm)].std",
+      "got": "0.01",
+      "expected": "0.01",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "svm.fi_sorted_desc",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
       "status": "PASS"
     }
   ]

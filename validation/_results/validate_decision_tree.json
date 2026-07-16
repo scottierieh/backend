@@ -1,9 +1,9 @@
 {
   "title": "DECISION TREE (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
-  "exact_checks": 0,
-  "pass": 16,
+  "total_checks": 48,
+  "numeric_checks": 44,
+  "exact_checks": 4,
+  "pass": 48,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "62f5c72",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "dt.accuracy",
@@ -146,6 +146,262 @@
       "name": "dt.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.tree_info.n_nodes",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.tree_info.max_depth_actual",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.tree_info.n_leaves",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal length (cm)].importance",
+      "got": "0.558568",
+      "expected": "0.558568",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal length (cm)].normalized_importance",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal length (cm)].importance_pct",
+      "got": "55.8568",
+      "expected": "55.8568",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[rank1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal length (cm)].rank",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal width (cm)].importance",
+      "got": "0.406015",
+      "expected": "0.406015",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal width (cm)].normalized_importance",
+      "got": "0.726885",
+      "expected": "0.726885",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal width (cm)].importance_pct",
+      "got": "40.6015",
+      "expected": "40.6015",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[rank2].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[petal width (cm)].rank",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal width (cm)].importance",
+      "got": "0.0291667",
+      "expected": "0.0291667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal width (cm)].normalized_importance",
+      "got": "0.0522168",
+      "expected": "0.0522168",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal width (cm)].importance_pct",
+      "got": "2.91667",
+      "expected": "2.91667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[rank3].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal width (cm)].rank",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal length (cm)].importance",
+      "got": "0.00625",
+      "expected": "0.00625",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal length (cm)].normalized_importance",
+      "got": "0.0111893",
+      "expected": "0.0111893",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal length (cm)].importance_pct",
+      "got": "0.625",
+      "expected": "0.625",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[rank4].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.feature_importance[sepal length (cm)].rank",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_folds",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_mean",
+      "got": "0.953333",
+      "expected": "0.953333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_std",
+      "got": "0.0339935",
+      "expected": "0.0339935",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_scores[0]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_scores[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_scores[2]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_scores[3]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.cv_results.cv_scores[4]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "dt.tree_rules.n_leaves",
+      "got": "8",
+      "expected": "8",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

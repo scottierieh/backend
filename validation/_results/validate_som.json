@@ -1,9 +1,9 @@
 {
   "title": "SOM (Python)",
-  "total_checks": 5,
-  "numeric_checks": 5,
-  "exact_checks": 0,
-  "pass": 5,
+  "total_checks": 372,
+  "numeric_checks": 341,
+  "exact_checks": 31,
+  "pass": 372,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,14 +19,78 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-15",
   "checks": [
     {
-      "name": "som.silhouette",
-      "got": "0.328409",
-      "expected": "0.328409",
-      "tolerance": 1e-09,
+      "name": "som.grid_size[0]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.grid_size[1]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.features.len",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.features[0]",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.features[1]",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.features[2]",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.features[3]",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assignments_count",
+      "got": "150",
+      "expected": "150",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.bmu_count",
+      "got": "150",
+      "expected": "150",
+      "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
@@ -34,14 +98,6 @@
       "name": "som.n_nodes_activated",
       "got": "13",
       "expected": "13",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.assignments_count",
-      "got": "150",
-      "expected": "150",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -55,10 +111,2890 @@
       "status": "PASS"
     },
     {
+      "name": "som.assign_from_bmu[0]",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[1]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[2]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[3]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[4]",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[5]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[6]",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[7]",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[8]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[9]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[10]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[11]",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[12]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[13]",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[14]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[15]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[16]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[17]",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[18]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.assign_from_bmu[19]",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.silhouette",
+      "got": "0.328409",
+      "expected": "0.328409",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "som.qerror_finite_nonneg",
       "got": "1",
       "expected": "1",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.topographic_error_in[0,1]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.explained_variance<=1",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.trustworthiness_in[0,1]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.continuity_in[0,1]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.neighbor_preservation_in[0,1]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.size",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.percentage",
+      "got": "5.33333",
+      "expected": "5.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid[sepal length (cm)]",
+      "got": "6.2",
+      "expected": "6.2",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid[sepal width (cm)]",
+      "got": "2.4125",
+      "expected": "2.4125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid[petal length (cm)]",
+      "got": "5.025",
+      "expected": "5.025",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid[petal width (cm)]",
+      "got": "1.6125",
+      "expected": "1.6125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid_zscore[sepal length (cm)]",
+      "got": "0.432165",
+      "expected": "0.432165",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid_zscore[sepal width (cm)]",
+      "got": "-1.48439",
+      "expected": "-1.48439",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid_zscore[petal length (cm)]",
+      "got": "0.72013",
+      "expected": "0.72013",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.centroid_zscore[petal width (cm)]",
+      "got": "0.54386",
+      "expected": "0.54386",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.size",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.percentage",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid[sepal length (cm)]",
+      "got": "6.08667",
+      "expected": "6.08667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid[sepal width (cm)]",
+      "got": "2.81333",
+      "expected": "2.81333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid[petal length (cm)]",
+      "got": "5.13333",
+      "expected": "5.13333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid[petal width (cm)]",
+      "got": "1.88667",
+      "expected": "1.88667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid_zscore[sepal length (cm)]",
+      "got": "0.294842",
+      "expected": "0.294842",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid_zscore[sepal width (cm)]",
+      "got": "-0.56168",
+      "expected": "-0.56168",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid_zscore[petal length (cm)]",
+      "got": "0.781704",
+      "expected": "0.781704",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.centroid_zscore[petal width (cm)]",
+      "got": "0.904752",
+      "expected": "0.904752",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.size",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.percentage",
+      "got": "5.33333",
+      "expected": "5.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid[sepal length (cm)]",
+      "got": "7.4625",
+      "expected": "7.4625",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid[sepal width (cm)]",
+      "got": "2.8875",
+      "expected": "2.8875",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid[petal length (cm)]",
+      "got": "6.3",
+      "expected": "6.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid[petal width (cm)]",
+      "got": "2.0125",
+      "expected": "2.0125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid_zscore[sepal length (cm)]",
+      "got": "1.96191",
+      "expected": "1.96191",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid_zscore[sepal width (cm)]",
+      "got": "-0.390951",
+      "expected": "-0.390951",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid_zscore[petal length (cm)]",
+      "got": "1.44481",
+      "expected": "1.44481",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.centroid_zscore[petal width (cm)]",
+      "got": "1.07039",
+      "expected": "1.07039",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.size",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.percentage",
+      "got": "2.66667",
+      "expected": "2.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid[sepal length (cm)]",
+      "got": "7.5",
+      "expected": "7.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid[sepal width (cm)]",
+      "got": "3.6",
+      "expected": "3.6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid[petal length (cm)]",
+      "got": "6.3",
+      "expected": "6.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid[petal width (cm)]",
+      "got": "2.125",
+      "expected": "2.125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid_zscore[sepal length (cm)]",
+      "got": "2.00735",
+      "expected": "2.00735",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid_zscore[sepal width (cm)]",
+      "got": "1.2492",
+      "expected": "1.2492",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid_zscore[petal length (cm)]",
+      "got": "1.44481",
+      "expected": "1.44481",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.centroid_zscore[petal width (cm)]",
+      "got": "1.21848",
+      "expected": "1.21848",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.size",
+      "got": "9",
+      "expected": "9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.percentage",
+      "got": "6",
+      "expected": "6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid[sepal length (cm)]",
+      "got": "5.78889",
+      "expected": "5.78889",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid[sepal width (cm)]",
+      "got": "2.72222",
+      "expected": "2.72222",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid[petal length (cm)]",
+      "got": "4.21111",
+      "expected": "4.21111",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid[petal width (cm)]",
+      "got": "1.22222",
+      "expected": "1.22222",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid_zscore[sepal length (cm)]",
+      "got": "-0.0659692",
+      "expected": "-0.0659692",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid_zscore[sepal width (cm)]",
+      "got": "-0.771415",
+      "expected": "-0.771415",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid_zscore[petal length (cm)]",
+      "got": "0.257537",
+      "expected": "0.257537",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.centroid_zscore[petal width (cm)]",
+      "got": "0.0301291",
+      "expected": "0.0301291",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.size",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.percentage",
+      "got": "8.66667",
+      "expected": "8.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid[sepal length (cm)]",
+      "got": "5.83077",
+      "expected": "5.83077",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid[sepal width (cm)]",
+      "got": "3.00769",
+      "expected": "3.00769",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid[petal length (cm)]",
+      "got": "4.36154",
+      "expected": "4.36154",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid[petal width (cm)]",
+      "got": "1.43077",
+      "expected": "1.43077",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid_zscore[sepal length (cm)]",
+      "got": "-0.0152237",
+      "expected": "-0.0152237",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid_zscore[sepal width (cm)]",
+      "got": "-0.114272",
+      "expected": "-0.114272",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid_zscore[petal length (cm)]",
+      "got": "0.343036",
+      "expected": "0.343036",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.centroid_zscore[petal width (cm)]",
+      "got": "0.304644",
+      "expected": "0.304644",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.size",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.percentage",
+      "got": "9.33333",
+      "expected": "9.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid[sepal length (cm)]",
+      "got": "6.60714",
+      "expected": "6.60714",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid[sepal width (cm)]",
+      "got": "3.03571",
+      "expected": "3.03571",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid[petal length (cm)]",
+      "got": "4.75714",
+      "expected": "4.75714",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid[petal width (cm)]",
+      "got": "1.50714",
+      "expected": "1.50714",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[sepal length (cm)]",
+      "got": "0.925492",
+      "expected": "0.925492",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[sepal width (cm)]",
+      "got": "-0.0497663",
+      "expected": "-0.0497663",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[petal length (cm)]",
+      "got": "0.567887",
+      "expected": "0.567887",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[petal width (cm)]",
+      "got": "0.405176",
+      "expected": "0.405176",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.size",
+      "got": "16",
+      "expected": "16",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.percentage",
+      "got": "10.6667",
+      "expected": "10.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[sepal length (cm)]",
+      "got": "6.6125",
+      "expected": "6.6125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[sepal width (cm)]",
+      "got": "3.175",
+      "expected": "3.175",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[petal length (cm)]",
+      "got": "5.5125",
+      "expected": "5.5125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[petal width (cm)]",
+      "got": "2.25625",
+      "expected": "2.25625",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[sepal length (cm)]",
+      "got": "0.931983",
+      "expected": "0.931983",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[sepal width (cm)]",
+      "got": "0.270865",
+      "expected": "0.270865",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[petal length (cm)]",
+      "got": "0.997213",
+      "expected": "0.997213",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[petal width (cm)]",
+      "got": "1.39124",
+      "expected": "1.39124",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.size",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.percentage",
+      "got": "8.66667",
+      "expected": "8.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[sepal length (cm)]",
+      "got": "5.33846",
+      "expected": "5.33846",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[sepal width (cm)]",
+      "got": "2.40769",
+      "expected": "2.40769",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[petal length (cm)]",
+      "got": "3.72308",
+      "expected": "3.72308",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[petal width (cm)]",
+      "got": "1.15385",
+      "expected": "1.15385",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[sepal length (cm)]",
+      "got": "-0.611742",
+      "expected": "-0.611742",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[sepal width (cm)]",
+      "got": "-1.49545",
+      "expected": "-1.49545",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[petal length (cm)]",
+      "got": "-0.0198494",
+      "expected": "-0.0198494",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[petal width (cm)]",
+      "got": "-0.0598758",
+      "expected": "-0.0598758",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.size",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.percentage",
+      "got": "0.666667",
+      "expected": "0.666667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[sepal length (cm)]",
+      "got": "4.5",
+      "expected": "4.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[sepal width (cm)]",
+      "got": "2.3",
+      "expected": "2.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[petal length (cm)]",
+      "got": "1.3",
+      "expected": "1.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[petal width (cm)]",
+      "got": "0.3",
+      "expected": "0.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid_zscore[sepal length (cm)]",
+      "got": "-1.62769",
+      "expected": "-1.62769",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid_zscore[sepal width (cm)]",
+      "got": "-1.74336",
+      "expected": "-1.74336",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid_zscore[petal length (cm)]",
+      "got": "-1.39706",
+      "expected": "-1.39706",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid_zscore[petal width (cm)]",
+      "got": "-1.18381",
+      "expected": "-1.18381",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.size",
+      "got": "16",
+      "expected": "16",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.percentage",
+      "got": "10.6667",
+      "expected": "10.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[sepal length (cm)]",
+      "got": "4.7",
+      "expected": "4.7",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[sepal width (cm)]",
+      "got": "3.08125",
+      "expected": "3.08125",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[petal length (cm)]",
+      "got": "1.40625",
+      "expected": "1.40625",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[petal width (cm)]",
+      "got": "0.1875",
+      "expected": "0.1875",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[sepal length (cm)]",
+      "got": "-1.38535",
+      "expected": "-1.38535",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[sepal width (cm)]",
+      "got": "0.0550554",
+      "expected": "0.0550554",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[petal length (cm)]",
+      "got": "-1.33667",
+      "expected": "-1.33667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[petal width (cm)]",
+      "got": "-1.3319",
+      "expected": "-1.3319",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.size",
+      "got": "20",
+      "expected": "20",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.percentage",
+      "got": "13.3333",
+      "expected": "13.3333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[sepal length (cm)]",
+      "got": "5.04",
+      "expected": "5.04",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[sepal width (cm)]",
+      "got": "3.45",
+      "expected": "3.45",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[petal length (cm)]",
+      "got": "1.475",
+      "expected": "1.475",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[petal width (cm)]",
+      "got": "0.265",
+      "expected": "0.265",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[sepal length (cm)]",
+      "got": "-0.973382",
+      "expected": "-0.973382",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[sepal width (cm)]",
+      "got": "0.903906",
+      "expected": "0.903906",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[petal length (cm)]",
+      "got": "-1.2976",
+      "expected": "-1.2976",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[petal width (cm)]",
+      "got": "-1.22988",
+      "expected": "-1.22988",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.size",
+      "got": "13",
+      "expected": "13",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.percentage",
+      "got": "8.66667",
+      "expected": "8.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[sepal length (cm)]",
+      "got": "5.36923",
+      "expected": "5.36923",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[sepal width (cm)]",
+      "got": "3.90769",
+      "expected": "3.90769",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[petal length (cm)]",
+      "got": "1.52308",
+      "expected": "1.52308",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[petal width (cm)]",
+      "got": "0.284615",
+      "expected": "0.284615",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid_zscore[sepal length (cm)]",
+      "got": "-0.57446",
+      "expected": "-0.57446",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid_zscore[sepal width (cm)]",
+      "got": "1.9575",
+      "expected": "1.9575",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid_zscore[petal length (cm)]",
+      "got": "-1.27027",
+      "expected": "-1.27027",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid_zscore[petal width (cm)]",
+      "got": "-1.20406",
+      "expected": "-1.20406",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.auto.top[0].z_score",
+      "got": "-1.48439",
+      "expected": "-1.48439",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.auto.top[1].z_score",
+      "got": "0.72013",
+      "expected": "0.72013",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.auto.top[0].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.auto.top[0].z_score",
+      "got": "0.904752",
+      "expected": "0.904752",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.auto.top[1].z_score",
+      "got": "0.781704",
+      "expected": "0.781704",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.auto.top[0].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.auto.top[0].z_score",
+      "got": "1.96191",
+      "expected": "1.96191",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.auto.top[1].z_score",
+      "got": "1.44481",
+      "expected": "1.44481",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.auto.top[0].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.auto.top[0].z_score",
+      "got": "2.00735",
+      "expected": "2.00735",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.auto.top[1].z_score",
+      "got": "1.44481",
+      "expected": "1.44481",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.auto.top[0].z_score",
+      "got": "-0.771415",
+      "expected": "-0.771415",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.auto.top[1].z_score",
+      "got": "0.257537",
+      "expected": "0.257537",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.auto.top[0].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.auto.top[0].z_score",
+      "got": "0.343036",
+      "expected": "0.343036",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.auto.top[1].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.auto.top[1].z_score",
+      "got": "0.304644",
+      "expected": "0.304644",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.auto.top[0].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.auto.top[0].z_score",
+      "got": "0.925492",
+      "expected": "0.925492",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.auto.top[1].z_score",
+      "got": "0.567887",
+      "expected": "0.567887",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.auto.top[0].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.auto.top[0].z_score",
+      "got": "1.39124",
+      "expected": "1.39124",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.auto.top[1].z_score",
+      "got": "0.997213",
+      "expected": "0.997213",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.auto.top[0].z_score",
+      "got": "-1.49545",
+      "expected": "-1.49545",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.auto.top[1].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.auto.top[1].z_score",
+      "got": "-0.611742",
+      "expected": "-0.611742",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.auto.top[0].z_score",
+      "got": "-1.74336",
+      "expected": "-1.74336",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.auto.top[1].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.auto.top[1].z_score",
+      "got": "-1.62769",
+      "expected": "-1.62769",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.auto.top[0].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.auto.top[0].z_score",
+      "got": "-1.38535",
+      "expected": "-1.38535",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.auto.top[1].z_score",
+      "got": "-1.33667",
+      "expected": "-1.33667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.auto.top[0].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.auto.top[0].z_score",
+      "got": "-1.2976",
+      "expected": "-1.2976",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.auto.top[1].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.auto.top[1].z_score",
+      "got": "-1.22988",
+      "expected": "-1.22988",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.auto.top[0].z_score",
+      "got": "1.9575",
+      "expected": "1.9575",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.auto.top[1].z_score",
+      "got": "-1.27027",
+      "expected": "-1.27027",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[sepal length (cm)].f_stat",
+      "got": "121.344",
+      "expected": "121.344",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[sepal length (cm)].p_value",
+      "got": "1.02529e-66",
+      "expected": "1.02529e-66",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[sepal width (cm)].f_stat",
+      "got": "101.794",
+      "expected": "101.794",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[sepal width (cm)].p_value",
+      "got": "5.18552e-62",
+      "expected": "5.18552e-62",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[petal length (cm)].f_stat",
+      "got": "429.133",
+      "expected": "429.133",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[petal length (cm)].p_value",
+      "got": "2.90762e-102",
+      "expected": "2.90762e-102",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[petal width (cm)].f_stat",
+      "got": "239.02",
+      "expected": "239.02",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.fc[petal width (cm)].p_value",
+      "got": "1.67024e-85",
+      "expected": "1.67024e-85",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm.clusters",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,0]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,1]",
+      "got": "1.00214",
+      "expected": "1.00214",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,2]",
+      "got": "2.08281",
+      "expected": "2.08281",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,3]",
+      "got": "3.30665",
+      "expected": "3.30665",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,4]",
+      "got": "1.11103",
+      "expected": "1.11103",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,5]",
+      "got": "1.5089",
+      "expected": "1.5089",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,6]",
+      "got": "1.53098",
+      "expected": "1.53098",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,7]",
+      "got": "2.03115",
+      "expected": "2.03115",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,8]",
+      "got": "1.4149",
+      "expected": "1.4149",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,9]",
+      "got": "3.43183",
+      "expected": "3.43183",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,10]",
+      "got": "3.66363",
+      "expected": "3.66363",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,11]",
+      "got": "3.85965",
+      "expected": "3.85965",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,12]",
+      "got": "4.45834",
+      "expected": "4.45834",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,0]",
+      "got": "1.00214",
+      "expected": "1.00214",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,1]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,2]",
+      "got": "1.80981",
+      "expected": "1.80981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,3]",
+      "got": "2.59809",
+      "expected": "2.59809",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,4]",
+      "got": "1.10177",
+      "expected": "1.10177",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,5]",
+      "got": "0.921343",
+      "expected": "0.921343",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,6]",
+      "got": "0.977276",
+      "expected": "0.977276",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,7]",
+      "got": "1.17567",
+      "expected": "1.17567",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,8]",
+      "got": "1.80743",
+      "expected": "1.80743",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,9]",
+      "got": "3.7685",
+      "expected": "3.7685",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,10]",
+      "got": "3.5628",
+      "expected": "3.5628",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,11]",
+      "got": "3.55479",
+      "expected": "3.55479",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,12]",
+      "got": "3.96984",
+      "expected": "3.96984",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,0]",
+      "got": "2.08281",
+      "expected": "2.08281",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,1]",
+      "got": "1.80981",
+      "expected": "1.80981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,2]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,3]",
+      "got": "1.64745",
+      "expected": "1.64745",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,4]",
+      "got": "2.59784",
+      "expected": "2.59784",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,5]",
+      "got": "2.40538",
+      "expected": "2.40538",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,6]",
+      "got": "1.54986",
+      "expected": "1.54986",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,7]",
+      "got": "1.3424",
+      "expected": "1.3424",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,8]",
+      "got": "3.35654",
+      "expected": "3.35654",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,9]",
+      "got": "5.27938",
+      "expected": "5.27938",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,10]",
+      "got": "4.99106",
+      "expected": "4.99106",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,11]",
+      "got": "4.80673",
+      "expected": "4.80673",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,12]",
+      "got": "4.94906",
+      "expected": "4.94906",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,0]",
+      "got": "3.30665",
+      "expected": "3.30665",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,1]",
+      "got": "2.59809",
+      "expected": "2.59809",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,2]",
+      "got": "1.64745",
+      "expected": "1.64745",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,3]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,4]",
+      "got": "3.34713",
+      "expected": "3.34713",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,5]",
+      "got": "2.82822",
+      "expected": "2.82822",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,6]",
+      "got": "2.07079",
+      "expected": "2.07079",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,7]",
+      "got": "1.53093",
+      "expected": "1.53093",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,8]",
+      "got": "4.26288",
+      "expected": "4.26288",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,9]",
+      "got": "6.00134",
+      "expected": "6.00134",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,10]",
+      "got": "5.2132",
+      "expected": "5.2132",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,11]",
+      "got": "4.74544",
+      "expected": "4.74544",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,12]",
+      "got": "4.5175",
+      "expected": "4.5175",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,0]",
+      "got": "1.11103",
+      "expected": "1.11103",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,1]",
+      "got": "1.10177",
+      "expected": "1.10177",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,2]",
+      "got": "2.59784",
+      "expected": "2.59784",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,3]",
+      "got": "3.34713",
+      "expected": "3.34713",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,4]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,5]",
+      "got": "0.719083",
+      "expected": "0.719083",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,6]",
+      "got": "1.31937",
+      "expected": "1.31937",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,7]",
+      "got": "2.11707",
+      "expected": "2.11707",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,8]",
+      "got": "0.952441",
+      "expected": "0.952441",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,9]",
+      "got": "2.7559",
+      "expected": "2.7559",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,10]",
+      "got": "2.6116",
+      "expected": "2.6116",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,11]",
+      "got": "2.76336",
+      "expected": "2.76336",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,12]",
+      "got": "3.40044",
+      "expected": "3.40044",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,0]",
+      "got": "1.5089",
+      "expected": "1.5089",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,1]",
+      "got": "0.921343",
+      "expected": "0.921343",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,2]",
+      "got": "2.40538",
+      "expected": "2.40538",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,3]",
+      "got": "2.82822",
+      "expected": "2.82822",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,4]",
+      "got": "0.719083",
+      "expected": "0.719083",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,5]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,6]",
+      "got": "0.974562",
+      "expected": "0.974562",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,7]",
+      "got": "1.62916",
+      "expected": "1.62916",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,8]",
+      "got": "1.58999",
+      "expected": "1.58999",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,9]",
+      "got": "3.23997",
+      "expected": "3.23997",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,10]",
+      "got": "2.72133",
+      "expected": "2.72133",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,11]",
+      "got": "2.64598",
+      "expected": "2.64598",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,12]",
+      "got": "3.0796",
+      "expected": "3.0796",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,0]",
+      "got": "1.53098",
+      "expected": "1.53098",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,1]",
+      "got": "0.977276",
+      "expected": "0.977276",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,2]",
+      "got": "1.54986",
+      "expected": "1.54986",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,3]",
+      "got": "2.07079",
+      "expected": "2.07079",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,4]",
+      "got": "1.31937",
+      "expected": "1.31937",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,5]",
+      "got": "0.974562",
+      "expected": "0.974562",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,6]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,7]",
+      "got": "1.12227",
+      "expected": "1.12227",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,8]",
+      "got": "2.23938",
+      "expected": "2.23938",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,9]",
+      "got": "3.97151",
+      "expected": "3.97151",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,10]",
+      "got": "3.46349",
+      "expected": "3.46349",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,11]",
+      "got": "3.26629",
+      "expected": "3.26629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,12]",
+      "got": "3.49964",
+      "expected": "3.49964",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,0]",
+      "got": "2.03115",
+      "expected": "2.03115",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,1]",
+      "got": "1.17567",
+      "expected": "1.17567",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,2]",
+      "got": "1.3424",
+      "expected": "1.3424",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,3]",
+      "got": "1.53093",
+      "expected": "1.53093",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,4]",
+      "got": "2.11707",
+      "expected": "2.11707",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,5]",
+      "got": "1.62916",
+      "expected": "1.62916",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,6]",
+      "got": "1.12227",
+      "expected": "1.12227",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,7]",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,8]",
+      "got": "2.93992",
+      "expected": "2.93992",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,9]",
+      "got": "4.79296",
+      "expected": "4.79296",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,10]",
+      "got": "4.27541",
+      "expected": "4.27541",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,11]",
+      "got": "4.0209",
+      "expected": "4.0209",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,12]",
+      "got": "4.12204",
+      "expected": "4.12204",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.rep.row_index",
+      "got": "72",
+      "expected": "72",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.rep.dist",
+      "got": "0.286757",
+      "expected": "0.286757",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.rep.row_index",
+      "got": "126",
+      "expected": "126",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 1.rep.dist",
+      "got": "0.262123",
+      "expected": "0.262123",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.rep.row_index",
+      "got": "130",
+      "expected": "130",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 2.rep.dist",
+      "got": "0.284881",
+      "expected": "0.284881",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.rep.row_index",
+      "got": "117",
+      "expected": "117",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.rep.dist",
+      "got": "0.576301",
+      "expected": "0.576301",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.rep.row_index",
+      "got": "82",
+      "expected": "82",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.rep.dist",
+      "got": "0.186874",
+      "expected": "0.186874",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.rep.row_index",
+      "got": "61",
+      "expected": "61",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.rep.dist",
+      "got": "0.155193",
+      "expected": "0.155193",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.rep.row_index",
+      "got": "86",
+      "expected": "86",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.rep.dist",
+      "got": "0.188949",
+      "expected": "0.188949",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.rep.row_index",
+      "got": "140",
+      "expected": "140",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.rep.dist",
+      "got": "0.281648",
+      "expected": "0.281648",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.rep.row_index",
+      "got": "80",
+      "expected": "80",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.rep.dist",
+      "got": "0.213448",
+      "expected": "0.213448",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.rep.row_index",
+      "got": "41",
+      "expected": "41",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.rep.dist",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.rep.row_index",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.rep.dist",
+      "got": "0.140195",
+      "expected": "0.140195",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.rep.row_index",
+      "got": "17",
+      "expected": "17",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.rep.dist",
+      "got": "0.149909",
+      "expected": "0.149909",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.rep.row_index",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.rep.dist",
+      "got": "0.186773",
+      "expected": "0.186773",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.total_nodes",
+      "got": "16",
+      "expected": "16",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.counts[empty]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.pct[empty]",
+      "got": "18.75",
+      "expected": "18.75",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.counts[sparse]",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.pct[sparse]",
+      "got": "12.5",
+      "expected": "12.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.counts[typical]",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.pct[typical]",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.counts[dense]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.pct[dense]",
+      "got": "18.75",
+      "expected": "18.75",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.qm.empty_node_rate",
+      "got": "0.1875",
+      "expected": "0.1875",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.qm.dead_unit_rate",
+      "got": "0.1875",
+      "expected": "0.1875",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.qm.average_hit_count",
+      "got": "11.5385",
+      "expected": "11.5385",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.qm.neighbor_preservation",
+      "got": "0.98",
+      "expected": "0.98",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

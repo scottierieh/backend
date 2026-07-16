@@ -1,9 +1,9 @@
 {
   "title": "NAIVE BAYES (Python)",
-  "total_checks": 16,
-  "numeric_checks": 16,
-  "exact_checks": 0,
-  "pass": 16,
+  "total_checks": 47,
+  "numeric_checks": 46,
+  "exact_checks": 1,
+  "pass": 47,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -19,8 +19,8 @@
     "scipy": "1.17.1",
     "sklearn": "1.9.0"
   },
-  "git_commit": "c927e29",
-  "validation_date": "2026-07-12",
+  "git_commit": "7e4ef8e",
+  "validation_date": "2026-07-16",
   "checks": [
     {
       "name": "nb.accuracy",
@@ -146,6 +146,254 @@
       "name": "nb.n_test",
       "got": "30",
       "expected": "30",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.class_prior[setosa]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.class_prior[versicolor]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.class_prior[virginica]",
+      "got": "0.333333",
+      "expected": "0.333333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance[sepal length (cm)]",
+      "got": "0.0902382",
+      "expected": "0.0902382",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance_pct[sepal length (cm)]",
+      "got": "9.02382",
+      "expected": "9.02382",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance[sepal width (cm)]",
+      "got": "0.188035",
+      "expected": "0.188035",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance_pct[sepal width (cm)]",
+      "got": "18.8035",
+      "expected": "18.8035",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance[petal length (cm)]",
+      "got": "0.128889",
+      "expected": "0.128889",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance_pct[petal length (cm)]",
+      "got": "12.8889",
+      "expected": "12.8889",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance[petal width (cm)]",
+      "got": "0.592837",
+      "expected": "0.592837",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance_pct[petal width (cm)]",
+      "got": "59.2837",
+      "expected": "59.2837",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.importance_sorted_desc",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_mean",
+      "got": "0.946667",
+      "expected": "0.946667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_std",
+      "got": "0.04",
+      "expected": "0.04",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_score[0]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_score[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_score[2]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_score[3]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.cv_score[4]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.precision[setosa]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.recall[setosa]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.f1[setosa]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.support[setosa]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.precision[versicolor]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.recall[versicolor]",
+      "got": "0.9",
+      "expected": "0.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.f1[versicolor]",
+      "got": "0.947368",
+      "expected": "0.947368",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.support[versicolor]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.precision[virginica]",
+      "got": "0.909091",
+      "expected": "0.909091",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.recall[virginica]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.f1[virginica]",
+      "got": "0.952381",
+      "expected": "0.952381",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "nb.per_class.support[virginica]",
+      "got": "10",
+      "expected": "10",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"

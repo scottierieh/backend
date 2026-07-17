@@ -18,3 +18,5 @@ pingouin
 linearmodels
 plotly
 pillow
+joblib                    # Model Registry (RC-2): Pipeline serialization
+google-cloud-storage      # Model Registry (RC-2): GCSStorage (prod); lazy-imported

@@ -154,6 +154,76 @@ for _path, _script, _confirmed in SCRIPT_ROUTES:
     register_script_route(_path, _script)
 
 
+# ---------------------------------------------------------------------------
+# Model Registry / Predict (RC-2) — model-centric REST. Frontend owns the
+# registry metadata in Firestore; this backend is stateless: it trains, stores
+# the joblib Pipeline, and predicts. See model_registry.py.
+#
+# ⚠️ DEVELOPMENT MODE: training runs synchronously (ImmediateExecutor) inside the
+# request — for small data / API validation only. Production swaps in
+# CloudTasksExecutor + a Cloud Run Job so large-data training leaves the request path.
+# Storage auto-selects GCSStorage when MODEL_STORE_BUCKET is set, else LocalStorage.
+# ---------------------------------------------------------------------------
+from model_registry import default_storage, ImmediateExecutor, predict as _rg_predict
+
+_MODEL_STORAGE = default_storage()
+_TRAIN_EXECUTOR = ImmediateExecutor(_MODEL_STORAGE)  # DEV: synchronous
+
+
+@app.post("/api/models/{model_id}/train")
+async def model_train(model_id: str, request: Request):
+    """Train the selected algorithm on full data as a Pipeline, store it, return the
+    registry outcome (artifactUri, featureSchema, metrics, versions) for the frontend
+    to persist to Firestore. Body: {data, algorithm, target, features, task}."""
+    body = await request.json()
+    try:
+        return await run_in_threadpool(_TRAIN_EXECUTOR.enqueue_training, model_id, body)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/models/{model_id}/predict")
+async def model_predict(model_id: str, request: Request):
+    """Load the stored Pipeline and predict. Body: {artifactUri, rows}."""
+    body = await request.json()
+    artifact_uri = body.get("artifactUri")
+    rows = body.get("rows") or []
+    if not artifact_uri:
+        raise HTTPException(status_code=400, detail="artifactUri required")
+    try:
+        return await run_in_threadpool(_rg_predict, artifact_uri, rows, _MODEL_STORAGE)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/models/{model_id}/schema")
+async def model_schema(model_id: str, request: Request):
+    """Return the stored feature schema (input form / batch validation). Body: {artifactUri}."""
+    body = await request.json()
+    artifact_uri = body.get("artifactUri")
+    if not artifact_uri:
+        raise HTTPException(status_code=400, detail="artifactUri required")
+    try:
+        bundle = await run_in_threadpool(_MODEL_STORAGE.load, artifact_uri)
+        return {"featureSchema": bundle.get("feature_schema", []),
+                "target": bundle.get("target"), "task": bundle.get("task")}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/models/{model_id}")
+async def model_delete(model_id: str, artifactUri: str = ""):
+    """Delete the stored artifact. The frontend removes the Firestore registry entry;
+    this frees the joblib. artifactUri passed as a query param."""
+    if not artifactUri:
+        raise HTTPException(status_code=400, detail="artifactUri required")
+    try:
+        await run_in_threadpool(_MODEL_STORAGE.delete, artifactUri)
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

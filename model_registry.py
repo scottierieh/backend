@@ -21,6 +21,7 @@ import os
 import io
 import json
 import uuid
+import tempfile
 import datetime
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
@@ -51,12 +52,15 @@ class ModelStorage(ABC):
 
 
 class LocalStorage(ModelStorage):
-    """Dev/test storage under a local dir. artifact_uri = file://<path>."""
+    """Dev/test storage under a writable temp dir. artifact_uri = file://<path>.
+    Defaults to the OS temp dir (/tmp on Cloud Run) because the app directory is
+    read-only there — creating a dir next to the code crashes the container on boot.
+    Dir creation is lazy (in save) so importing this module never touches the FS."""
     def __init__(self, root: Optional[str] = None):
-        self.root = root or os.path.join(os.path.dirname(os.path.abspath(__file__)), "_model_store")
-        os.makedirs(self.root, exist_ok=True)
+        self.root = root or os.path.join(tempfile.gettempdir(), "model_store")
 
     def save(self, model_id: str, obj: Any) -> str:
+        os.makedirs(self.root, exist_ok=True)
         path = os.path.join(self.root, f"{model_id}.joblib")
         joblib.dump(obj, path)
         return f"file://{path}"

@@ -101,6 +101,36 @@ def _compute_shap_beeswarm(pipe, X, algorithm: str, cap_rows: int = 300,
         return None
 
 
+def _compute_learning_curve(pipe, X, y, task: str, cap_rows: int = 800):
+    """Best-effort learning curve: model score vs. training-set size, to diagnose
+    under/overfitting and whether more data would help. Runs in the async
+    registration step on a capped sample (few sizes, cv=3) so it stays cheap.
+    Returns {sizes, trainMean, trainStd, valMean, valStd} or None."""
+    try:
+        from sklearn.model_selection import learning_curve
+        from sklearn.base import clone
+        n = min(cap_rows, len(X))
+        if n < 60:
+            return None
+        idx = X.sample(n=n, random_state=42).index if len(X) > n else X.index
+        Xs, ys = X.loc[idx].reset_index(drop=True), y.loc[idx].reset_index(drop=True)
+        scoring = "accuracy" if task == "classification" else "r2"
+        sizes_abs, train_sc, val_sc = learning_curve(
+            clone(pipe), Xs, ys, cv=3, scoring=scoring,
+            train_sizes=[0.2, 0.4, 0.6, 0.8, 1.0], n_jobs=1, shuffle=True, random_state=42,
+        )
+        return {
+            "scoring": scoring,
+            "sizes": [int(s) for s in sizes_abs],
+            "trainMean": [float(x) for x in train_sc.mean(axis=1)],
+            "trainStd": [float(x) for x in train_sc.std(axis=1)],
+            "valMean": [float(x) for x in val_sc.mean(axis=1)],
+            "valStd": [float(x) for x in val_sc.std(axis=1)],
+        }
+    except Exception:
+        return None
+
+
 # ── Storage abstraction ──────────────────────────────────────────────────────
 class ModelStorage(ABC):
     @abstractmethod
@@ -293,9 +323,10 @@ def train_and_store(model_id: str, spec: Dict[str, Any], storage: ModelStorage) 
                                            "target": target, "task": task,
                                            "feature_schema": feature_schema})
 
-    # Heavy explainability (SHAP beeswarm) piggybacks on this already-async training
-    # step, capped so it never stalls the request. best-effort → None if unavailable.
+    # Heavy explainability (SHAP beeswarm + learning curve) piggybacks on this
+    # already-async training step, capped so it never stalls the request.
     shap_beeswarm = _compute_shap_beeswarm(pipe, X, algorithm)
+    learning_curve_data = _compute_learning_curve(pipe, X, y, task)
 
     outcome = {
         "modelId": model_id,
@@ -310,6 +341,8 @@ def train_and_store(model_id: str, spec: Dict[str, Any], storage: ModelStorage) 
     }
     if shap_beeswarm:
         outcome["shapBeeswarm"] = shap_beeswarm
+    if learning_curve_data:
+        outcome["learningCurve"] = learning_curve_data
     return outcome
 
 

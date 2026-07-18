@@ -3,6 +3,7 @@ import sys
 import json
 import pandas as pd
 import numpy as np
+from regression_diag import regression_sample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import ElasticNet, ElasticNetCV
@@ -209,6 +210,9 @@ def main():
             'plot': plot_image,
             'path_plot': path_plot_image
         }
+        _rd = regression_sample(y_test, y_pred_test)
+        if _rd:
+            response.update(_rd)
 
         print(json.dumps(response, default=_to_native_type))
 

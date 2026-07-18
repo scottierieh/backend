@@ -3,6 +3,7 @@ import sys
 import json
 import pandas as pd
 import numpy as np
+from regression_diag import regression_sample
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report, confusion_matrix
@@ -272,6 +273,10 @@ def main():
             'guardrails': guardrails,
             'plot': f"data:image/png;base64,{plot_image}"
         }
+        if problem_type == 'regression':
+            _rd = regression_sample(y_test, y_pred)
+            if _rd:
+                response.update(_rd)
 
         print(json.dumps(response, default=_to_native_type))
 

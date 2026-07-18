@@ -11,6 +11,7 @@ import json
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
+from regression_diag import regression_sample
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -592,6 +593,9 @@ def main():
             response['roc_plot'] = roc_plot
         else:
             response['regression_plot'] = regression_plot
+            _rd = regression_sample(result['y_test'], result['y_pred'])
+            if _rd:
+                response.update(_rd)
 
         print(json.dumps(response, default=_to_native_type))
 

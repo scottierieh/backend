@@ -40,6 +40,66 @@ PREPROCESSING_VERSION = "1.0.0"
 PIPELINE_VERSION = "1.0.0"
 TRAINING_CODE_VERSION = "1.0.0"
 
+# Algorithms SHAP TreeExplainer handles fast. Non-tree models would need the slow
+# KernelExplainer, so beeswarm is skipped for them (honest — no fabricated insight).
+_SHAP_TREE_ALGOS = {
+    "random_forest", "xgboost", "lightgbm", "gbm", "gradient_boosting",
+    "decision_tree", "catboost", "adaboost", "extra_trees",
+}
+
+
+def _compute_shap_beeswarm(pipe, X, algorithm: str, cap_rows: int = 300,
+                           top_features: int = 10, points_per_feature: int = 200):
+    """Best-effort SHAP beeswarm for tree models. Runs inside the (already async)
+    registration training step, on a capped sample so it can't stall the request.
+    Returns a compact structure the frontend charts, or None on any issue —
+    registration never fails because of this."""
+    if algorithm not in _SHAP_TREE_ALGOS:
+        return None
+    try:
+        import shap
+        pre = pipe.named_steps["pre"]
+        model = pipe.named_steps["model"]
+        n = min(cap_rows, len(X))
+        Xs = X.sample(n=n, random_state=42) if len(X) > n else X
+        Xt = pre.transform(Xs)
+        if hasattr(Xt, "toarray"):
+            Xt = Xt.toarray()
+        try:
+            names = list(pre.get_feature_names_out())
+        except Exception:
+            names = [f"f{i}" for i in range(Xt.shape[1])]
+
+        explainer = shap.TreeExplainer(model)
+        sv = explainer.shap_values(Xt)
+        # Multiclass → list per class; use class index 1 (or 0) for a signed beeswarm.
+        if isinstance(sv, list):
+            sv = sv[1] if len(sv) > 1 else sv[0]
+        sv = np.asarray(sv)
+        if sv.ndim != 2 or sv.shape[1] != len(names):
+            return None
+
+        mean_abs = np.abs(sv).mean(axis=0)
+        order = np.argsort(mean_abs)[::-1][:top_features]
+        step = max(1, sv.shape[0] // points_per_feature)
+        feats = []
+        for j in order:
+            col_vals = np.asarray(Xt[:, j], dtype=float)
+            shap_col = sv[:, j][::step][:points_per_feature]
+            val_col = col_vals[::step][:points_per_feature]
+            feats.append({
+                "feature": str(names[j]),
+                "meanAbsShap": float(mean_abs[j]),
+                "points": [
+                    {"shap": float(s), "value": float(v)}
+                    for s, v in zip(shap_col, val_col)
+                    if np.isfinite(s) and np.isfinite(v)
+                ],
+            })
+        return {"features": feats} if feats else None
+    except Exception:
+        return None
+
 
 # ── Storage abstraction ──────────────────────────────────────────────────────
 class ModelStorage(ABC):
@@ -232,7 +292,12 @@ def train_and_store(model_id: str, spec: Dict[str, Any], storage: ModelStorage) 
     artifact_uri = storage.save(model_id, {"pipeline": pipe, "features": features,
                                            "target": target, "task": task,
                                            "feature_schema": feature_schema})
-    return {
+
+    # Heavy explainability (SHAP beeswarm) piggybacks on this already-async training
+    # step, capped so it never stalls the request. best-effort → None if unavailable.
+    shap_beeswarm = _compute_shap_beeswarm(pipe, X, algorithm)
+
+    outcome = {
         "modelId": model_id,
         "status": "ready",
         "artifactUri": artifact_uri,
@@ -243,6 +308,9 @@ def train_and_store(model_id: str, spec: Dict[str, Any], storage: ModelStorage) 
         "trainingCodeVersion": TRAINING_CODE_VERSION,
         "readyAt": datetime.datetime.utcnow().isoformat() + "Z",
     }
+    if shap_beeswarm:
+        outcome["shapBeeswarm"] = shap_beeswarm
+    return outcome
 
 
 def predict(artifact_uri: str, rows: List[Dict[str, Any]], storage: ModelStorage) -> Dict[str, Any]:

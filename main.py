@@ -97,6 +97,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/adaboost",                    "adaboost_analysis.py",                    True),
     ("/api/analysis/ahp",                         "ahp_analysis.py",                         False),
     ("/api/analysis/catboost",                    "catboost_analysis.py",                    True),
+    ("/api/analysis/capm",                       "capm_analysis.py",                        True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

@@ -135,6 +135,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/relative-importance",         "relative_importance_analysis.py",         False),
     ("/api/analysis/ridge-regression",            "ridge_regression_analysis.py",             True),
     ("/api/analysis/rfm-segmentation",            "rfm_analysis.py",                         True),
+    ("/api/analysis/returns-volatility",          "returns_volatility_analysis.py",          False),
     ("/api/analysis/seasonal-analysis",           "seasonal_decomposition_analysis.py",      True),
     ("/api/analysis/sentiment-analysis",          "sentiment_analyzer.py",                   True),
     ("/api/analysis/som",                         "som_analysis.py",                         True),

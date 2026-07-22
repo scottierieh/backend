@@ -8,7 +8,7 @@ Input (from fin-stationarity-page.tsx):
     data        : list[dict]
     asset_col   : str
     series_type : "level"|"returns"|"log_returns"   what to test (default level)
-Output: { results: {adf, kpss, verdict}, plot }
+Output: { results: {adf, kpss, pp, verdict}, plot }
 """
 import sys, json, io, base64
 import numpy as np
@@ -62,6 +62,22 @@ def main():
             warnings.simplefilter("ignore")
             kpss_stat, kpss_p, kpss_lags, kpss_crit = kpss(x.values, regression="c", nlags="auto")
 
+        # PP (Phillips-Perron): null = unit root (non-stationary), same interpretation as ADF.
+        # Optional dependency (arch package) — degrade gracefully if unavailable.
+        pp_stat = pp_p = None
+        pp_stationary = None
+        pp_note = None
+        try:
+            from arch.unitroot import PhillipsPerron
+            pp_res = PhillipsPerron(x.values)
+            pp_stat = float(pp_res.stat)
+            pp_p = float(pp_res.pvalue)
+            pp_stationary = bool(pp_p < 0.05)
+        except ImportError:
+            pp_note = "Phillips-Perron test skipped: the optional 'arch' package is not installed."
+        except Exception as e:
+            pp_note = f"Phillips-Perron test failed: {e}"
+
         adf_stationary = bool(adf_p < 0.05)      # reject unit root -> stationary
         kpss_stationary = bool(kpss_p >= 0.05)   # fail to reject stationarity -> stationary
 
@@ -114,8 +130,16 @@ def main():
                     "critical": {k: _fin(v, 4) for k, v in adf_crit.items()}, "stationary": adf_stationary},
             "kpss": {"statistic": _fin(kpss_stat, 4), "p_value": _fin(kpss_p, 6), "lags": int(kpss_lags),
                      "critical": {k: _fin(v, 4) for k, v in kpss_crit.items()}, "stationary": kpss_stationary},
+            "pp": ({"statistic": _fin(pp_stat, 4), "p_value": _fin(pp_p, 6), "stationary": pp_stationary}
+                   if pp_stat is not None else None),
+            "pp_note": pp_note,
             "verdict": verdict, "confidence": confidence, "is_stationary": bool(verdict == "stationary"),
             "interpretation": interpretation,
+            "test_comparison": [
+                {"test": "ADF", "statistic": _fin(adf_stat, 4), "p_value": _fin(adf_p, 6), "stationary": adf_stationary},
+                {"test": "KPSS", "statistic": _fin(kpss_stat, 4), "p_value": _fin(kpss_p, 6), "stationary": kpss_stationary},
+            ] + ([{"test": "PP", "statistic": _fin(pp_stat, 4), "p_value": _fin(pp_p, 6), "stationary": pp_stationary}]
+                 if pp_stat is not None else []),
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

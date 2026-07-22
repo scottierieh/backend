@@ -110,6 +110,37 @@ def main():
         # event-day AR (rel day 0)
         ar0 = next((x for x in ar_list if x["rel_day"] == 0), None)
 
+        # Window comparison: re-run the CAR computation at a few standard event windows,
+        # always including the user's own choice, using the same market-model (alpha/beta/resid_sd).
+        def _car_for_window(w_pre, w_post):
+            w_start = ev - w_pre
+            w_end = ev + w_post
+            if w_start < 0 or w_end >= n:
+                return None
+            w_idxs = list(range(w_start, w_end + 1))
+            w_car = 0.0
+            for i in w_idxs:
+                ai, mi = a[i], m[i]
+                normal = alpha + beta * mi
+                w_car += (ai - normal)
+            w_L = len(w_idxs)
+            w_se = resid_sd * np.sqrt(w_L) if resid_sd > 0 else np.nan
+            w_t = w_car / w_se if w_se and np.isfinite(w_se) and w_se > 0 else np.nan
+            w_p = 2 * (1 - sstats.norm.cdf(abs(w_t))) if np.isfinite(w_t) else None
+            return {
+                "window": f"[-{w_pre},+{w_post}]", "pre": w_pre, "post": w_post,
+                "car": _fin(w_car, 6), "car_t_stat": _fin(w_t, 4), "car_p_value": _fin(w_p, 6),
+                "significant": bool(w_p is not None and w_p < 0.05),
+            }
+
+        candidate_windows = sorted({(pre, post), (1, 1), (5, 5), (10, 10)}, key=lambda w: w[0] + w[1])
+        window_comparison = []
+        for w_pre, w_post in candidate_windows:
+            row = _car_for_window(w_pre, w_post)
+            if row is not None:
+                row["is_selected"] = bool(w_pre == pre and w_post == post)
+                window_comparison.append(row)
+
         plot = None
         try:
             fig, ax1 = plt.subplots(figsize=(11, 5.2), dpi=120)
@@ -156,6 +187,7 @@ def main():
             "event_day_ar": _fin(ar0["abnormal_return"], 6) if ar0 else None,
             "event_day_t": _fin(ar0["t_stat"], 4) if ar0 else None,
             "abnormal_returns": ar_list,
+            "window_comparison": window_comparison,
             "interpretation": interpretation,
         }
         print(json.dumps({"results": results, "plot": plot}))

@@ -87,13 +87,38 @@ def main():
         alpha_annual = alpha_period * ppy
         alpha_p = float(pvals[0])
 
+        # factor premium: mean period/annualised return of each factor itself
+        factor_premium = []
+        for c in factor_cols:
+            mean_period = float(reg[c].mean())
+            factor_premium.append({
+                "name": c,
+                "mean_period": _fin(mean_period, 6),
+                "annualized": _fin(mean_period * ppy, 6),
+            })
+
         # predicted vs actual for plot
         fitted = model.fittedvalues
         resid = model.resid
 
+        # cumulative growth of each factor (for "Cumulative Factor Return" chart)
+        cumulative_factor_return = {}
+        for c in factor_cols:
+            fvals = reg[c].to_numpy(dtype=float)
+            cumulative_factor_return[c] = [_fin(v, 6) for v in (np.cumprod(1 + fvals) - 1).tolist()]
+
+        # per-period contribution of each factor to the fitted return: loading * factor value
+        factor_loading_map = {f["name"]: f["coef"] for f in loadings[1:]}
+        factor_contribution_series = {}
+        for c in factor_cols:
+            fvals = reg[c].to_numpy(dtype=float)
+            contrib = factor_loading_map.get(c, 0.0) * fvals
+            factor_contribution_series[c] = [_fin(v, 6) for v in contrib.tolist()]
+
         plot = None
         try:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 5), dpi=120)
+            fig, axes = plt.subplots(2, 2, figsize=(12.5, 9.5), dpi=120)
+            (ax1, ax2), (ax3, ax4) = axes
             # factor loadings bar (exclude alpha)
             fl = loadings[1:]
             xs = [f["name"] for f in fl]
@@ -113,6 +138,25 @@ def main():
             ax2.plot([lo, hi], [lo, hi], "--", color="#dc2626", lw=1)
             ax2.set_xlabel("Fitted excess return"); ax2.set_ylabel("Actual excess return")
             ax2.set_title(f"Fit (R² = {model.rsquared:.2f})")
+
+            # cumulative factor return (multi-line)
+            palette = ["#2563eb", "#dc2626", "#0f766e", "#7c3aed", "#d97706", "#059669"]
+            for i, c in enumerate(factor_cols):
+                ax3.plot(cumulative_factor_return[c], color=palette[i % len(palette)], lw=1.6, label=c)
+            ax3.axhline(0, color="#cbd5e1", lw=0.6)
+            ax3.set_xlabel("Period"); ax3.set_ylabel("Cumulative return")
+            ax3.set_title("Cumulative factor return"); ax3.legend(fontsize=8, frameon=False)
+
+            # factor contribution over time (stacked area)
+            contrib_stack = np.array([factor_contribution_series[c] for c in factor_cols], dtype=float)
+            xs_idx = np.arange(contrib_stack.shape[1]) if contrib_stack.size else np.array([])
+            if contrib_stack.size:
+                ax4.stackplot(xs_idx, contrib_stack, labels=factor_cols,
+                               colors=[palette[i % len(palette)] for i in range(len(factor_cols))], alpha=0.8)
+            ax4.axhline(0, color="#111827", lw=0.6)
+            ax4.set_xlabel("Period"); ax4.set_ylabel("Contribution to fitted return")
+            ax4.set_title("Factor return contribution"); ax4.legend(fontsize=8, frameon=False)
+
             fig.tight_layout()
             buf = io.BytesIO(); fig.savefig(buf, format="png"); plt.close(fig)
             plot = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -139,9 +183,12 @@ def main():
             "alpha_period": _fin(alpha_period, 6), "alpha_annual": _fin(alpha_annual, 6),
             "alpha_p_value": _fin(alpha_p, 6), "alpha_significant": bool(alpha_p < 0.05),
             "loadings": loadings,
+            "factor_premium": factor_premium,
             "f_stat": _fin(model.fvalue, 4), "f_p_value": _fin(model.f_pvalue, 6),
             "resid_std": _fin(float(np.std(resid, ddof=1)), 6),
             "interpretation": interpretation,
+            "cumulative_factor_return": cumulative_factor_return,
+            "factor_contribution_series": factor_contribution_series,
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

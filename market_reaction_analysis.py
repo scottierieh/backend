@@ -107,9 +107,72 @@ def main():
         asym_coef = float(fit2.params[2]); asym_p = float(fit2.pvalues[2])
         asymmetric = bool(asym_p < 0.05)
 
+        # ---- optional: volume reaction ----
+        volume_reaction = None
+        try:
+            volume_col = p.get("volume_col")
+            if volume_col and volume_col in df.columns:
+                vol = pd.to_numeric(df[volume_col], errors="coerce")
+                vol_aligned = vol.loc[base.index].reset_index(drop=True) if len(vol) == len(base) else vol.reindex(range(len(base)))
+                vol_aligned = vol_aligned.dropna()
+                if len(vol_aligned) >= 20:
+                    mid_v = len(vol_aligned) // 2
+                    baseline_avg = float(vol_aligned.iloc[:mid_v].mean())
+                    event_avg = float(vol_aligned.iloc[mid_v:].mean())
+                    pct_change = (event_avg / baseline_avg - 1.0) if baseline_avg else None
+                    volume_reaction = {"baseline_avg": _fin(baseline_avg, 2), "event_avg": _fin(event_avg, 2),
+                                       "pct_change": _fin(pct_change, 4) if pct_change is not None else None}
+        except Exception:
+            volume_reaction = None
+
+        # ---- optional: volatility reaction (before vs after sample midpoint) ----
+        volatility_reaction = None
+        try:
+            asset_series = base["a"].reset_index(drop=True)
+            mid_vol = len(asset_series) // 2
+            if mid_vol >= 10 and (len(asset_series) - mid_vol) >= 10:
+                vol_before = float(asset_series.iloc[:mid_vol].std(ddof=1))
+                vol_after = float(asset_series.iloc[mid_vol:].std(ddof=1))
+                pct_change_v = (vol_after / vol_before - 1.0) if vol_before else None
+                volatility_reaction = {"before": _fin(vol_before, 6), "after": _fin(vol_after, 6),
+                                       "pct_change": _fin(pct_change_v, 4) if pct_change_v is not None else None}
+        except Exception:
+            volatility_reaction = None
+
+        # ---- optional: industry/market grouping ----
+        by_group = None
+        try:
+            group_col = p.get("group_col")
+            if group_col and group_col in df.columns:
+                grp_series = df[group_col]
+                grp_aligned = grp_series.loc[base.index].reset_index(drop=True) if len(grp_series) == len(df) else None
+                if grp_aligned is not None:
+                    rows_out = []
+                    for gval in pd.unique(grp_aligned.dropna()):
+                        gmask = (grp_aligned == gval).values
+                        sub = base.loc[gmask].reset_index(drop=True)
+                        if len(sub) < n_lags + 20:
+                            continue
+                        gy = sub["a"].values
+                        gX = sm.add_constant(sub["m"].values)
+                        gfit = sm.OLS(gy, gX).fit()
+                        g_beta0 = float(gfit.params[1]); g_p = float(gfit.pvalues[1])
+                        rows_out.append({"group": str(gval), "beta_lag0": _fin(g_beta0, 5),
+                                          "significant": bool(g_p < 0.05), "n": int(len(sub))})
+                    if rows_out:
+                        by_group = rows_out
+        except Exception:
+            by_group = None
+
+        n_extra_panels = (1 if volume_reaction is not None else 0) + (1 if volatility_reaction is not None else 0)
         plot = None
         try:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 5), dpi=120)
+            n_panels = 2 + n_extra_panels
+            fig = plt.figure(figsize=(12.5 if n_panels <= 2 else 12.5, 5 if n_panels <= 2 else 5 * ((n_panels + 1) // 2)), dpi=120)
+            ncols = 2
+            nrows = (n_panels + 1) // 2
+            ax1 = fig.add_subplot(nrows, ncols, 1)
+            ax2 = fig.add_subplot(nrows, ncols, 2)
             lags = [l["lag"] for l in lag_betas]
             betas = [l["beta"] for l in lag_betas]
             cols_c = ["#2563eb" if l["significant"] else "#94a3b8" for l in lag_betas]
@@ -124,6 +187,17 @@ def main():
                 ax2.text(i, v, f"{v:.2f}", ha="center", va="bottom", fontsize=10)
             ax2.axhline(0, color="#111827", lw=0.7)
             ax2.set_ylabel("Beta"); ax2.set_title(f"Up vs down market beta ({'asymmetric' if asymmetric else 'symmetric'})")
+
+            panel_i = 3
+            if volume_reaction is not None:
+                ax3 = fig.add_subplot(nrows, ncols, panel_i); panel_i += 1
+                ax3.bar(["Baseline", "Event window"], [volume_reaction["baseline_avg"], volume_reaction["event_avg"]], color=["#94a3b8", "#2563eb"])
+                ax3.set_ylabel("Avg volume"); ax3.set_title("Trading volume reaction")
+            if volatility_reaction is not None:
+                ax4 = fig.add_subplot(nrows, ncols, panel_i); panel_i += 1
+                ax4.bar(["Before", "After"], [volatility_reaction["before"], volatility_reaction["after"]], color=["#94a3b8", "#dc2626"])
+                ax4.set_ylabel("Realized volatility"); ax4.set_title("Volatility reaction (before vs after midpoint)")
+
             fig.tight_layout()
             buf = io.BytesIO(); fig.savefig(buf, format="png"); plt.close(fig)
             plot = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -160,6 +234,12 @@ def main():
             "r_squared": _fin(float(fit.rsquared), 4),
             "interpretation": interpretation,
         }
+        if volume_reaction is not None:
+            results["volume_reaction"] = volume_reaction
+        if volatility_reaction is not None:
+            results["volatility_reaction"] = volatility_reaction
+        if by_group is not None:
+            results["by_group"] = by_group
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

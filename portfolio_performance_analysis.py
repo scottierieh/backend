@@ -87,6 +87,32 @@ def main():
             "stability": _fin(ep.stability_of_timeseries(r), 4),
         }
 
+        # per-period time series (additive: does not change existing scalar metrics)
+        cum_series = np.asarray(ep.cum_returns(r, starting_value=1.0)) - 1.0
+        wealth = cum_series + 1.0
+        running_peak = np.maximum.accumulate(wealth)
+        dd_series = wealth / running_peak - 1.0
+        period_returns = [{"period": int(i), "return": _fin(v, 6)} for i, v in enumerate(r)]
+        cumulative_series = [_fin(v, 6) for v in cum_series]
+        drawdown_series = [_fin(v, 6) for v in dd_series]
+
+        roll = max(2, min(21 if ppy >= 200 else (4 if ppy <= 12 else 5), len(r) // 2))
+        rf_ppy = rf_period
+        roll_sharpe_vals = []
+        for i in range(len(r)):
+            if i + 1 < roll:
+                roll_sharpe_vals.append(None)
+                continue
+            window = r[i + 1 - roll:i + 1]
+            mu = np.mean(window) - rf_ppy
+            sd = np.std(window, ddof=1)
+            roll_sharpe_vals.append(float(mu / sd * np.sqrt(ann_factor)) if sd > 0 else None)
+        rolling_sharpe = [_fin(v, 4) if v is not None else None for v in roll_sharpe_vals]
+
+        benchmark_cumulative_series = None
+        if has_bench:
+            benchmark_cumulative_series = [_fin(v, 6) for v in (np.asarray(ep.cum_returns(b, starting_value=1.0)) - 1.0)]
+
         benchmark = None
         if has_bench:
             alpha, beta = ep.alpha_beta(r, b, risk_free=rf_period, annualization=ann_factor)
@@ -104,11 +130,12 @@ def main():
                 "down_capture": _fin(ep.down_capture(r, b), 4),
             }
 
-        # plot: cumulative curve + key ratio bars
+        # plot: 2x3 grid — cumulative, drawdown, rolling Sharpe, ratio bars, portfolio vs benchmark
         plot = None
         try:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=118,
-                                           gridspec_kw={"width_ratios": [1.5, 1]})
+            ncols = 3 if has_bench else 2
+            fig, axes = plt.subplots(2, ncols, figsize=(6.2 * ncols, 9), dpi=118)
+            ax1 = axes[0, 0]
             cr = ep.cum_returns(r, starting_value=1.0)
             ax1.plot(np.asarray(cr) * 100 - 100, color="#2563eb", lw=2, label=asset_col)
             if has_bench:
@@ -117,6 +144,8 @@ def main():
             ax1.axhline(0, color="#111827", lw=0.8)
             ax1.set_xlabel("Period"); ax1.set_ylabel("Cumulative return (%)")
             ax1.set_title("Cumulative performance"); ax1.legend(fontsize=8, frameon=False); ax1.grid(alpha=0.2)
+
+            ax2 = axes[0, 1]
             names = ["Sharpe", "Sortino", "Calmar"]
             vals = [metrics["sharpe"], metrics["sortino"], metrics["calmar"]]
             cols = ["#16a34a" if (v or 0) > 0 else "#dc2626" for v in vals]
@@ -126,6 +155,30 @@ def main():
                          va="bottom" if (v or 0) >= 0 else "top", fontsize=9)
             ax2.axhline(0, color="#111827", lw=0.8)
             ax2.set_title("Risk-adjusted ratios"); ax2.grid(axis="y", alpha=0.2)
+
+            if has_bench:
+                ax3 = axes[0, 2]
+                ax3.plot(np.asarray(cr) * 100 - 100, color="#2563eb", lw=2, label=asset_col)
+                ax3.plot(np.asarray(cb) * 100 - 100, color="#f59e0b", lw=2, label=bench_col)
+                ax3.axhline(0, color="#111827", lw=0.8)
+                ax3.set_xlabel("Period"); ax3.set_ylabel("Cumulative return (%)")
+                ax3.set_title("Portfolio vs benchmark"); ax3.legend(fontsize=8, frameon=False); ax3.grid(alpha=0.2)
+
+            ax4 = axes[1, 0]
+            ax4.fill_between(np.arange(len(dd_series)), dd_series * 100, 0, color="#dc2626", alpha=0.35)
+            ax4.plot(dd_series * 100, color="#dc2626", lw=1)
+            ax4.set_xlabel("Period"); ax4.set_ylabel("Drawdown (%)")
+            ax4.set_title("Drawdown"); ax4.grid(alpha=0.2)
+
+            ax5 = axes[1, 1]
+            rs_arr = np.array([v if v is not None else np.nan for v in roll_sharpe_vals])
+            ax5.plot(rs_arr, color="#7c3aed", lw=1.5)
+            ax5.axhline(0, color="#111827", lw=0.8)
+            ax5.set_xlabel("Period"); ax5.set_ylabel("Rolling Sharpe")
+            ax5.set_title(f"Rolling Sharpe ({roll}p)"); ax5.grid(alpha=0.2)
+
+            if ncols == 3:
+                fig.delaxes(axes[1, 2])
             fig.tight_layout()
             buf = io.BytesIO(); fig.savefig(buf, format="png"); plt.close(fig)
             plot = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -149,6 +202,13 @@ def main():
             "status": "ok", "asset": asset_col, "n_obs": int(len(r)), "periods_per_year": ppy,
             "rf_annual": _fin(rf_annual, 5), **metrics, "benchmark": benchmark,
             "interpretation": interpretation,
+            "period_returns": period_returns,
+            "cumulative_series": cumulative_series,
+            "drawdown_series": drawdown_series,
+            "rolling_sharpe": rolling_sharpe,
+            "roll_window": roll,
+            "benchmark_cumulative_series": benchmark_cumulative_series,
+            "monthly_returns": None,  # no reliable date column in the input payload — skipped
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

@@ -31,12 +31,27 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+BLUE = "#2563eb"
+GREEN = "#16a34a"
+RED = "#dc2626"
+AMBER = "#d97706"
+LIGHT_BLUE = "#93c5fd"
+LIGHT_RED = "#fca5a5"
+
+
 def _fin(x, nd=6):
     try:
         v = float(x)
     except (TypeError, ValueError):
         return None
     return round(v, nd) if np.isfinite(v) else None
+
+
+def _png(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def to_returns(values, is_returns, log_ret):
@@ -182,11 +197,19 @@ def main():
             label = date_rows[min(i, len(date_rows) - 1)] if date_rows else str(i)
             chart_data.append({"idx": i, "label": label, "dd": _fin(v, 6)})
 
-        episodes = find_drawdown_episodes(cum)[:5]
+        all_episodes = find_drawdown_episodes(cum)  # sorted worst (most negative) first
+        episodes = all_episodes[:5]
         episodes_out = [{
             "depth": _fin(e["depth"], 6), "duration": e["duration"],
             "recovery": e["recovery"], "recovered": e["recovered"],
         } for e in episodes]
+
+        def _label(idx):
+            if idx is None:
+                return None
+            if date_rows is not None:
+                return date_rows[min(idx, len(date_rows) - 1)]
+            return str(idx)
 
         rv_window = min(20, max(5, len(returns) // 4))
         rv = rolling_vol(returns, rv_window, ppy)
@@ -225,6 +248,225 @@ def main():
             plt.close("all")
             plot = None
 
+        # ══════════════════════════════════════════════════════════════════
+        # Additive step-6 full report: 7 sections, each with a table (and
+        # most with their own PNG chart), rendered via SortableResultTable /
+        # VisualizationTabs on the frontend. Does not alter any field above.
+        # ══════════════════════════════════════════════════════════════════
+        returns_arr = np.array(returns, dtype=float)
+        worst_ep = all_episodes[0] if all_episodes else None
+
+        # ---- ① Risk Summary ----
+        worst_loss = float(np.min(returns_arr))
+        risk_summary = {
+            "maxDrawdown": _fin(max_dd, 6),
+            "recoveryPeriod": (worst_ep["recovery"] if worst_ep else None),
+            "downsideDeviation": _fin(downside_dev, 6),
+            "lossFrequency": _fin(pct_negative, 6),
+            "averageLoss": _fin(avg_neg_return, 6),
+            "worstLoss": _fin(worst_loss, 6),
+            "maxConsecutiveLosses": longest_losing_streak,
+        }
+
+        # ---- ② Drawdown Analysis (the worst single episode, in detail) ----
+        drawdown_detail = None
+        chart_drawdown_curve = None
+        if worst_ep is not None:
+            start_idx, trough_idx, end_idx = worst_ep["startIdx"], worst_ep["troughIdx"], worst_ep["endIdx"]
+            duration_full = (end_idx - start_idx) if end_idx is not None else None  # peak-to-recovery
+            drawdown_detail = {
+                "maxDrawdown": _fin(worst_ep["depth"], 6),
+                "startPeriod": _label(start_idx), "startIdx": start_idx,
+                "troughPeriod": _label(trough_idx), "troughIdx": trough_idx,
+                "recoveryPeriod": _label(end_idx) if end_idx is not None else None,
+                "recoveryIdx": end_idx,
+                "recovered": worst_ep["recovered"],
+                "duration": duration_full,               # peak -> recovery
+                "recoveryTime": worst_ep["recovery"],     # trough -> recovery
+            }
+            try:
+                fig, ax = plt.subplots(figsize=(9.5, 4.6), dpi=115)
+                xs = list(range(len(dd)))
+                ax.fill_between(xs, [d * 100 for d in dd], 0, color=LIGHT_RED, alpha=0.6)
+                ax.plot(xs, [d * 100 for d in dd], color=RED, lw=1.2)
+                ax.axhline(0, color="#6b7280", lw=0.8)
+                ax.scatter([start_idx], [dd[start_idx] * 100], color=GREEN, zorder=5, s=45, label="Peak")
+                ax.scatter([trough_idx], [dd[trough_idx] * 100], color=RED, zorder=5, s=45, label="Trough")
+                if end_idx is not None:
+                    ax.scatter([end_idx], [dd[end_idx] * 100], color=BLUE, zorder=5, s=45, label="Recovery")
+                ax.set_title(f"Drawdown Curve (worst episode {worst_ep['depth']:.1%})")
+                ax.set_xlabel("Period"); ax.set_ylabel("Drawdown (%)")
+                ax.legend(fontsize=8, frameon=False)
+                ax.grid(alpha=0.2)
+                fig.tight_layout()
+                chart_drawdown_curve = _png(fig)
+            except Exception:
+                plt.close("all"); chart_drawdown_curve = None
+
+        # ---- ③ Historical Drawdowns (top 5, or top 10 if enough episodes) ----
+        top_n = 10 if len(all_episodes) >= 10 else 5
+        top_eps = all_episodes[:top_n]
+        top_drawdowns = [{
+            "rank": i + 1,
+            "start": _label(e["startIdx"]),
+            "trough": _label(e["troughIdx"]),
+            "end": _label(e["endIdx"]) if e["endIdx"] is not None else "ongoing",
+            "drawdown": _fin(e["depth"], 6),
+            "duration": (e["endIdx"] - e["startIdx"]) if e["endIdx"] is not None else e["duration"],
+        } for i, e in enumerate(top_eps)]
+
+        chart_top_drawdowns = None
+        if top_eps:
+            try:
+                fig, ax = plt.subplots(figsize=(9, 4.6), dpi=115)
+                labels = [f"#{i+1}" for i in range(len(top_eps))]
+                vals = [e["depth"] * 100 for e in top_eps]
+                ax.bar(labels, vals, color=RED, width=0.6)
+                ax.axhline(0, color="#111827", lw=0.7)
+                ax.set_title(f"Top {len(top_eps)} Drawdowns")
+                ax.set_ylabel("Drawdown (%)")
+                ax.grid(alpha=0.2, axis="y")
+                fig.tight_layout()
+                chart_top_drawdowns = _png(fig)
+            except Exception:
+                plt.close("all"); chart_top_drawdowns = None
+
+        # ---- ④ Downside Risk ----
+        neg_arr = returns_arr[returns_arr < 0]
+        downside_table = {
+            "downsideDeviation": _fin(downside_dev, 6),
+            "averageLoss": _fin(avg_neg_return, 6),
+            "worstLoss": _fin(worst_loss, 6),
+            "lossFrequency": _fin(pct_negative, 6),
+            "downsideCaptureSkipped": "No benchmark series provided for this analysis — downside capture ratio requires one and is skipped.",
+        }
+        chart_downside_dist = None
+        if len(neg_arr) >= 2:
+            try:
+                fig, ax = plt.subplots(figsize=(8.5, 4.6), dpi=115)
+                ax.hist(neg_arr * 100, bins=min(30, max(6, len(neg_arr) // 3)), color=LIGHT_RED, edgecolor="white")
+                ax.axvline(0, color="#111827", lw=0.7)
+                ax.set_title("Downside Return Distribution (negative periods only)")
+                ax.set_xlabel("Return (%)"); ax.set_ylabel("Count")
+                ax.grid(alpha=0.2)
+                fig.tight_layout()
+                chart_downside_dist = _png(fig)
+            except Exception:
+                plt.close("all"); chart_downside_dist = None
+
+        # ---- ⑤ Loss Analysis ----
+        median_loss = float(np.median(neg_arr)) if len(neg_arr) else None
+        recoveries_all = [e["recovery"] for e in all_episodes if e["recovered"] and e["recovery"] is not None]
+        avg_recovery_all = float(np.mean(recoveries_all)) if recoveries_all else None
+        loss_table = {
+            "lossPeriods": int(len(neg_arr)),
+            "lossFrequency": _fin(pct_negative, 6),
+            "averageLoss": _fin(avg_neg_return, 6),
+            "medianLoss": _fin(median_loss, 6),
+            "worstLoss": _fin(worst_loss, 6),
+            "maxConsecutiveLosses": longest_losing_streak,
+            "averageRecoveryTime": _fin(avg_recovery_all, 3) if avg_recovery_all is not None else None,
+        }
+        # Distinct from ④: bucketed bar chart of loss MAGNITUDE (not a continuous
+        # histogram) so the two charts are not redundant.
+        chart_loss_dist = None
+        if len(neg_arr) >= 1:
+            try:
+                mags = np.abs(neg_arr) * 100
+                bins_edges = [0, 1, 2, 5, 10, np.inf]
+                bin_labels = ["<1%", "1-2%", "2-5%", "5-10%", ">10%"]
+                counts = [int(np.sum((mags >= lo) & (mags < hi))) for lo, hi in zip(bins_edges[:-1], bins_edges[1:])]
+                fig, ax = plt.subplots(figsize=(8, 4.6), dpi=115)
+                ax.bar(bin_labels, counts, color=AMBER, width=0.6)
+                ax.set_title("Loss Distribution (by magnitude)")
+                ax.set_xlabel("Loss size"); ax.set_ylabel("Count")
+                ax.grid(alpha=0.2, axis="y")
+                fig.tight_layout()
+                chart_loss_dist = _png(fig)
+            except Exception:
+                plt.close("all"); chart_loss_dist = None
+
+        # ---- ⑥ Recovery Analysis ----
+        durations_all_recovered = recoveries_all
+        median_recovery = float(np.median(durations_all_recovered)) if durations_all_recovered else None
+        longest_recovery = max(durations_all_recovered) if durations_all_recovered else None
+        n_episodes_total = len(all_episodes)
+        n_recovered = sum(1 for e in all_episodes if e["recovered"])
+        pct_recovered = (n_recovered / n_episodes_total) if n_episodes_total else None
+        currently_in_dd = bool(dd[-1] < 0) if dd else False
+        recovery_table = {
+            "averageRecoveryTime": _fin(avg_recovery_all, 3) if avg_recovery_all is not None else None,
+            "medianRecoveryTime": _fin(median_recovery, 3) if median_recovery is not None else None,
+            "longestRecovery": longest_recovery,
+            "fullyRecoveredPct": _fin(pct_recovered, 6) if pct_recovered is not None else None,
+            "currentlyInDrawdown": currently_in_dd,
+        }
+        chart_recovery_timeline = None
+        if all_episodes:
+            try:
+                eps_by_start = sorted(all_episodes, key=lambda e: e["startIdx"])
+                fig, ax = plt.subplots(figsize=(9.5, max(3.2, 0.42 * len(eps_by_start) + 1)), dpi=115)
+                ys = np.arange(len(eps_by_start))
+                for i, e in enumerate(eps_by_start):
+                    decline_len = e["troughIdx"] - e["startIdx"]
+                    ax.barh(i, decline_len, left=e["startIdx"], color=RED, height=0.5, label="Decline" if i == 0 else None)
+                    if e["recovered"] and e["endIdx"] is not None:
+                        ax.barh(i, e["endIdx"] - e["troughIdx"], left=e["troughIdx"], color=GREEN, height=0.5, label="Recovery" if i == 0 else None)
+                    else:
+                        ax.barh(i, max(1, len(dd) - 1 - e["troughIdx"]), left=e["troughIdx"], color=AMBER, height=0.5, alpha=0.6, label="Ongoing" if i == 0 else None)
+                ax.set_yticks(ys)
+                ax.set_yticklabels([f"#{i+1}" for i in range(len(eps_by_start))], fontsize=8)
+                ax.set_xlabel("Period")
+                ax.set_title("Drawdown Recovery Timeline (decline vs. recovery, all episodes)")
+                ax.legend(fontsize=8, frameon=False)
+                ax.grid(alpha=0.2, axis="x")
+                fig.tight_layout()
+                chart_recovery_timeline = _png(fig)
+            except Exception:
+                plt.close("all"); chart_recovery_timeline = None
+
+        # ---- ⑦ Tail Risk Profile (exploratory tail shape — NOT VaR/CVaR) ----
+        p1 = float(np.percentile(returns_arr, 1))
+        p5 = float(np.percentile(returns_arr, 5))
+        p10 = float(np.percentile(returns_arr, 10))
+        mean_r = float(np.mean(returns_arr))
+        std_r = float(np.std(returns_arr, ddof=1)) if len(returns_arr) > 1 else 0.0
+        extreme_thresh = mean_r - 2 * std_r  # "extreme" := beyond 2 std devs below the mean
+        extreme_freq = float(np.mean(returns_arr < extreme_thresh))
+        tail_table = {
+            "worst1Pct": _fin(p1, 6),
+            "worst5Pct": _fin(p5, 6),
+            "worst10Pct": _fin(p10, 6),
+            "extremeLossFrequency": _fin(extreme_freq, 6),
+            "_note": "Extreme Loss Frequency = share of periods below (mean - 2*std). Exploratory tail-shape metrics only; formal VaR/CVaR live on the Value-at-Risk page.",
+        }
+        chart_tail_dist = None
+        try:
+            tail_mask = returns_arr <= p10
+            tail_vals = returns_arr[tail_mask] if np.any(tail_mask) else returns_arr[returns_arr <= np.percentile(returns_arr, 25)]
+            if len(tail_vals) >= 2:
+                fig, ax = plt.subplots(figsize=(8.5, 4.6), dpi=115)
+                ax.hist(tail_vals * 100, bins=min(25, max(5, len(tail_vals) // 2)), color=RED, edgecolor="white", alpha=0.85)
+                ax.axvline(p1 * 100, color="#111827", ls="--", lw=1, label="1st pct")
+                ax.axvline(p5 * 100, color="#374151", ls=":", lw=1, label="5th pct")
+                ax.set_title("Left-tail Distribution (returns at/below 10th percentile)")
+                ax.set_xlabel("Return (%)"); ax.set_ylabel("Count")
+                ax.legend(fontsize=8, frameon=False)
+                ax.grid(alpha=0.2)
+                fig.tight_layout()
+                chart_tail_dist = _png(fig)
+        except Exception:
+            plt.close("all"); chart_tail_dist = None
+
+        charts = {
+            "drawdown_curve": chart_drawdown_curve,
+            "top_drawdowns": chart_top_drawdowns,
+            "downside_dist": chart_downside_dist,
+            "loss_dist": chart_loss_dist,
+            "recovery_timeline": chart_recovery_timeline,
+            "tail_dist": chart_tail_dist,
+        }
+
         results = {
             "n_returns": len(returns), "value_col": value_col, "freq": str(p.get("freq") or "252"),
             "ppy": ppy, "smallSample": small_sample,
@@ -236,6 +478,14 @@ def main():
             "chartData": chart_data, "episodes": episodes_out,
             "rollingChartData": rolling_chart_data, "rvWindow": rv_window,
             "rf": _fin(rf, 6), "mar": _fin(mar_annual, 6),
+            "risk_summary": risk_summary,
+            "drawdown_detail": drawdown_detail,
+            "top_drawdowns": top_drawdowns,
+            "downside_table": downside_table,
+            "loss_table": loss_table,
+            "recovery_table": recovery_table,
+            "tail_table": tail_table,
+            "charts": charts,
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

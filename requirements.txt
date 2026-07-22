@@ -22,3 +22,4 @@ PyPortfolioOpt
 QuantLib
 empyrical-reloaded
 pytz
+arch

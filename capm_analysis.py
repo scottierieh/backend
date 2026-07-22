@@ -136,8 +136,10 @@ def main():
         cumulative_fitted = np.cumprod(1 + fitted_arr) - 1
         resid = np.asarray(model.resid, dtype=float)
 
-        # --- Security Market Line: beta grid from 0 to 2x this asset's beta ---
-        beta_grid = np.linspace(0, max(2 * beta, 0.1), 40)
+        # --- Security Market Line: beta grid spanning at least 0-1.5 so the
+        # market portfolio (beta=1) always falls inside the plotted range,
+        # even when this asset's own beta is small or negative. ---
+        beta_grid = np.linspace(0, max(2 * beta, 1.5), 40)
         sml_expected = rf_p + beta_grid * mean_mkt_excess
         sml_expected_ann = (1 + sml_expected) ** ppy - 1
         sml_points = [{"beta": _fin(b, 4), "expected_return": _fin(er, 6)}

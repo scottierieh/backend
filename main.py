@@ -115,6 +115,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/enterprise-value-analysis",  "enterprise_value_analysis.py",            True),
     ("/api/analysis/return-time-series",         "return_time_series_analysis.py",          True),
     ("/api/analysis/fin-autocorrelation-analysis","fin_autocorrelation_analysis.py",        True),
+    ("/api/analysis/fin-stationarity-analysis",  "fin_stationarity_analysis.py",            True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

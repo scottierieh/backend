@@ -23,6 +23,20 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+BLUE = "#2563eb"
+GREEN = "#16a34a"
+RED = "#dc2626"
+AMBER = "#d97706"
+GRAY = "#94a3b8"
+PURPLE = "#7c3aed"
+
+
+def _png(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
 
 def _fin(x, nd=6):
     try:
@@ -130,6 +144,261 @@ def main():
                 "down_capture": _fin(ep.down_capture(r, b), 4),
             }
 
+        # ═══════════════════════ Step-6 report: 9 additive sections ═══════════════════════
+        wealth_p = np.asarray(cum_series) + 1.0  # portfolio growth-of-1 series (already computed above)
+        INITIAL_VALUE = 100000.0
+
+        def _cagr(total_ret, n_obs, ppy_):
+            years = n_obs / ppy_ if ppy_ else None
+            if years and years > 0 and (1 + total_ret) > 0:
+                return (1 + total_ret) ** (1 / years) - 1.0
+            return None
+
+        # ① Performance Summary ------------------------------------------------------------
+        perf_summary_table = [
+            {"metric": "Total Return", "portfolio": metrics["cumulative_return"],
+             "benchmark": (_fin(ep.cum_returns_final(b), 5) if has_bench else None), "fmt": "pct"},
+            {"metric": "Annualized Return", "portfolio": metrics["annual_return"],
+             "benchmark": (benchmark["bench_annual_return"] if has_bench else None), "fmt": "pct"},
+            {"metric": "Annualized Volatility", "portfolio": metrics["annual_volatility"],
+             "benchmark": (_fin(ep.annual_volatility(b, annualization=ann_factor), 5) if has_bench else None), "fmt": "pct"},
+            {"metric": "Sharpe Ratio", "portfolio": metrics["sharpe"],
+             "benchmark": (_fin(ep.sharpe_ratio(b, risk_free=rf_period, annualization=ann_factor), 4) if has_bench else None), "fmt": "num"},
+            {"metric": "Sortino Ratio", "portfolio": metrics["sortino"],
+             "benchmark": (_fin(ep.sortino_ratio(b, required_return=rf_period, annualization=ann_factor), 4) if has_bench else None), "fmt": "num"},
+            {"metric": "Max Drawdown", "portfolio": metrics["max_drawdown"],
+             "benchmark": (_fin(ep.max_drawdown(b), 5) if has_bench else None), "fmt": "pct"},
+            {"metric": "Calmar Ratio", "portfolio": metrics["calmar"],
+             "benchmark": (_fin(ep.calmar_ratio(b, annualization=ann_factor), 4) if has_bench else None), "fmt": "num"},
+        ]
+        if has_bench:
+            perf_summary_table.append({"metric": "Alpha (annualized)", "portfolio": benchmark["alpha"], "benchmark": None, "fmt": "pct"})
+            perf_summary_table.append({"metric": "Beta", "portfolio": benchmark["beta"], "benchmark": None, "fmt": "num"})
+
+        # ② Cumulative Performance ----------------------------------------------------------
+        p_final = INITIAL_VALUE * (1.0 + (metrics["cumulative_return"] or 0.0))
+        p_cagr = _cagr(metrics["cumulative_return"] or 0.0, len(r), ppy)
+        cumulative_table = [{
+            "series": asset_col, "initial_value": _fin(INITIAL_VALUE, 2), "final_value": _fin(p_final, 2),
+            "total_return": metrics["cumulative_return"], "cagr": _fin(p_cagr, 5) if p_cagr is not None else None,
+        }]
+        if has_bench:
+            b_total = _fin(ep.cum_returns_final(b), 5)
+            b_final = INITIAL_VALUE * (1.0 + (b_total or 0.0))
+            b_cagr = _cagr(b_total or 0.0, len(r), ppy)
+            cumulative_table.append({
+                "series": bench_col, "initial_value": _fin(INITIAL_VALUE, 2), "final_value": _fin(b_final, 2),
+                "total_return": b_total, "cagr": _fin(b_cagr, 5) if b_cagr is not None else None,
+            })
+        cumulative_note = f"Based on a ${INITIAL_VALUE:,.0f} initial investment."
+
+        chart_cumulative_vs_benchmark = None
+        try:
+            fig, ax = plt.subplots(figsize=(9.5, 4.6), dpi=115)
+            ax.plot(wealth_p * (INITIAL_VALUE / 1.0), color=BLUE, lw=1.8, label=asset_col)
+            if has_bench:
+                wealth_b = np.asarray(ep.cum_returns(b, starting_value=1.0))
+                ax.plot(wealth_b * INITIAL_VALUE, color=GRAY, lw=1.5, ls="--", label=bench_col)
+            ax.axhline(INITIAL_VALUE, color="#111827", lw=0.7, ls=":")
+            ax.set_title("Portfolio vs Benchmark Growth"); ax.set_xlabel("Period"); ax.set_ylabel("Value ($)")
+            ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.2)
+            fig.tight_layout()
+            chart_cumulative_vs_benchmark = _png(fig)
+        except Exception:
+            plt.close("all"); chart_cumulative_vs_benchmark = None
+
+        # ③ Risk-Adjusted Performance ---------------------------------------------------------
+        treynor = None
+        if has_bench and benchmark["beta"] not in (None, 0):
+            treynor = _fin((metrics["annual_return"] - rf_annual) / benchmark["beta"], 4)
+        risk_adjusted_table = [
+            {"metric": "Sharpe Ratio", "portfolio": metrics["sharpe"], "benchmark": (_fin(ep.sharpe_ratio(b, risk_free=rf_period, annualization=ann_factor), 4) if has_bench else None)},
+            {"metric": "Sortino Ratio", "portfolio": metrics["sortino"], "benchmark": (_fin(ep.sortino_ratio(b, required_return=rf_period, annualization=ann_factor), 4) if has_bench else None)},
+            {"metric": "Calmar Ratio", "portfolio": metrics["calmar"], "benchmark": (_fin(ep.calmar_ratio(b, annualization=ann_factor), 4) if has_bench else None)},
+            {"metric": "Treynor Ratio", "portfolio": treynor, "benchmark": None,
+             "note": None if treynor is not None else ("Requires a benchmark (beta)." if not has_bench else "Beta unavailable/zero.")},
+            {"metric": "Information Ratio", "portfolio": (benchmark["information_ratio"] if has_bench else None), "benchmark": None,
+             "note": None if has_bench else "Requires a benchmark."},
+        ]
+
+        # ④ Benchmark Comparison ----------------------------------------------------------
+        benchmark_comparison_table = None
+        chart_relative_performance = None
+        if has_bench:
+            b_ann_vol = _fin(ep.annual_volatility(b, annualization=ann_factor), 5)
+            b_sharpe = _fin(ep.sharpe_ratio(b, risk_free=rf_period, annualization=ann_factor), 4)
+            b_max_dd = _fin(ep.max_drawdown(b), 5)
+            benchmark_comparison_table = [
+                {"metric": "Annual Return", "portfolio": metrics["annual_return"], "benchmark": benchmark["bench_annual_return"],
+                 "difference": _fin(metrics["annual_return"] - benchmark["bench_annual_return"], 5)},
+                {"metric": "Volatility", "portfolio": metrics["annual_volatility"], "benchmark": b_ann_vol,
+                 "difference": _fin(metrics["annual_volatility"] - b_ann_vol, 5)},
+                {"metric": "Sharpe", "portfolio": metrics["sharpe"], "benchmark": b_sharpe,
+                 "difference": _fin(metrics["sharpe"] - b_sharpe, 4)},
+                {"metric": "Max Drawdown", "portfolio": metrics["max_drawdown"], "benchmark": b_max_dd,
+                 "difference": _fin(metrics["max_drawdown"] - b_max_dd, 5)},
+                {"metric": "Beta", "portfolio": benchmark["beta"], "benchmark": 1.0, "difference": _fin(benchmark["beta"] - 1.0, 4)},
+            ]
+            rel_cum = (np.asarray(ep.cum_returns(r, starting_value=1.0)) - np.asarray(ep.cum_returns(b, starting_value=1.0))) * 100.0
+            try:
+                fig, ax = plt.subplots(figsize=(9.5, 4.6), dpi=115)
+                xs = np.arange(len(rel_cum))
+                ax.fill_between(xs, rel_cum, 0, where=(rel_cum >= 0), color=GREEN, alpha=0.35, interpolate=True)
+                ax.fill_between(xs, rel_cum, 0, where=(rel_cum < 0), color=RED, alpha=0.35, interpolate=True)
+                ax.plot(xs, rel_cum, color="#111827", lw=1.2)
+                ax.axhline(0, color="#111827", lw=0.8)
+                ax.set_title("Relative Performance (Portfolio − Benchmark, cumulative %)")
+                ax.set_xlabel("Period"); ax.set_ylabel("Difference (pp)")
+                ax.grid(alpha=0.2)
+                fig.tight_layout()
+                chart_relative_performance = _png(fig)
+            except Exception:
+                plt.close("all"); chart_relative_performance = None
+
+        # ⑤ Performance Attribution ----------------------------------------------------------
+        # NOT computable: this endpoint receives a single aggregate portfolio return series and a
+        # single aggregate benchmark return series (asset_col / benchmark_col), with no per-asset
+        # weight/return columns. A true Brinson-style allocation/selection/interaction decomposition
+        # requires asset-level weights in both the portfolio and the benchmark, which this page does
+        # not collect. Section is intentionally omitted rather than fabricated.
+        attribution_note = ("Performance attribution requires per-asset weight and return data "
+                             "(portfolio and benchmark holdings), which this analysis does not collect — "
+                             "only aggregate portfolio and benchmark return series are available. Skipped.")
+
+        # ⑥ Period Performance ----------------------------------------------------------------
+        n = len(r)
+        lookback_defs = [("1M", ppy / 12.0), ("3M", ppy / 4.0), ("6M", ppy / 2.0), ("1Y", float(ppy)), ("3Y", ppy * 3.0)]
+        period_performance_table = []
+        for label, wlen in lookback_defs:
+            wlen_i = int(round(wlen))
+            if wlen_i < 1 or wlen_i >= n:
+                continue
+            p_ret = float(wealth_p[-1] / wealth_p[-1 - wlen_i] - 1.0)
+            row = {"window": label, "portfolio_return": _fin(p_ret, 5)}
+            if has_bench:
+                wealth_b_full = np.asarray(ep.cum_returns(b, starting_value=1.0))
+                b_ret = float(wealth_b_full[-1] / wealth_b_full[-1 - wlen_i] - 1.0)
+                row["benchmark_return"] = _fin(b_ret, 5)
+                row["active_return"] = _fin(p_ret - b_ret, 5)
+            period_performance_table.append(row)
+
+        chart_period_comparison = None
+        if period_performance_table:
+            try:
+                labels = [row["window"] for row in period_performance_table]
+                p_vals = [row["portfolio_return"] * 100 if row["portfolio_return"] is not None else 0 for row in period_performance_table]
+                fig, ax = plt.subplots(figsize=(9, 4.6), dpi=115)
+                xs = np.arange(len(labels))
+                width = 0.38 if has_bench else 0.55
+                ax.bar(xs - (width / 2 if has_bench else 0), p_vals, width=width, color=BLUE, label=asset_col)
+                if has_bench:
+                    b_vals = [row.get("benchmark_return", 0) * 100 if row.get("benchmark_return") is not None else 0 for row in period_performance_table]
+                    ax.bar(xs + width / 2, b_vals, width=width, color=GRAY, label=bench_col)
+                ax.axhline(0, color="#111827", lw=0.7)
+                ax.set_xticks(xs); ax.set_xticklabels(labels)
+                ax.set_title("Periodic Return Comparison"); ax.set_ylabel("Return (%)")
+                ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.2, axis="y")
+                fig.tight_layout()
+                chart_period_comparison = _png(fig)
+            except Exception:
+                plt.close("all"); chart_period_comparison = None
+
+        # ⑦ Rolling Performance -----------------------------------------------------------------
+        rolling_table = []
+        for label, wlen in lookback_defs:
+            wlen_i = int(round(wlen))
+            if wlen_i < roll or wlen_i >= n:
+                continue
+            window = r[-wlen_i:]
+            w_ret = float(np.mean(window) * ann_factor)
+            w_vol = float(np.std(window, ddof=1) * np.sqrt(ann_factor)) if len(window) > 1 else None
+            w_sharpe = ((w_ret - rf_annual) / w_vol) if (w_vol and w_vol > 0) else None
+            rolling_table.append({
+                "window": label, "return": _fin(w_ret, 5), "volatility": _fin(w_vol, 5) if w_vol is not None else None,
+                "sharpe": _fin(w_sharpe, 4) if w_sharpe is not None else None,
+            })
+
+        chart_rolling_sharpe = None
+        try:
+            fig, ax = plt.subplots(figsize=(9.5, 4.2), dpi=115)
+            rs_arr = np.array([v if v is not None else np.nan for v in roll_sharpe_vals])
+            ax.plot(rs_arr, color=PURPLE, lw=1.5)
+            ax.axhline(0, color="#111827", lw=0.8)
+            ax.set_title(f"Rolling Sharpe Ratio ({roll}-period window)")
+            ax.set_xlabel("Period"); ax.set_ylabel("Rolling Sharpe")
+            ax.grid(alpha=0.2)
+            fig.tight_layout()
+            chart_rolling_sharpe = _png(fig)
+        except Exception:
+            plt.close("all"); chart_rolling_sharpe = None
+
+        # ⑧ Up / Down Capture -------------------------------------------------------------------
+        capture_table = None
+        if has_bench:
+            up_cap = benchmark["up_capture"]
+            down_cap = benchmark["down_capture"]
+            capture_ratio = _fin(up_cap / down_cap, 4) if (up_cap is not None and down_cap not in (None, 0)) else None
+            capture_table = [
+                {"metric": "Up Capture Ratio", "value": up_cap, "hint": "Portfolio gain / benchmark gain, when benchmark > 0"},
+                {"metric": "Down Capture Ratio", "value": down_cap, "hint": "Portfolio loss / benchmark loss, when benchmark < 0"},
+                {"metric": "Capture Ratio", "value": capture_ratio, "hint": "Up capture / down capture — above 1 is favourable"},
+            ]
+
+        # ⑨ Drawdown Performance -----------------------------------------------------------------
+        episodes = []
+        in_dd = False
+        start_i = trough_i = None
+        trough_v = 0.0
+        for i, dv in enumerate(dd_series):
+            if dv < 0 and not in_dd:
+                in_dd = True; start_i = i; trough_i = i; trough_v = dv
+            elif dv < 0 and in_dd:
+                if dv < trough_v:
+                    trough_v = dv; trough_i = i
+            elif dv >= 0 and in_dd:
+                episodes.append({"start": start_i, "trough": trough_i, "end": i, "recovered": True,
+                                  "depth": float(trough_v), "duration": i - start_i, "recovery": i - trough_i})
+                in_dd = False
+        if in_dd:
+            episodes.append({"start": start_i, "trough": trough_i, "end": None, "recovered": False,
+                              "depth": float(trough_v), "duration": len(dd_series) - 1 - start_i, "recovery": None})
+
+        recovered_eps = [e for e in episodes if e["recovered"]]
+        best_recovery = min((e["recovery"] for e in recovered_eps), default=None)
+        longest_dd = max((e["duration"] for e in episodes), default=None)
+        current_dd_recovery = next((e for e in episodes if not e["recovered"]), None)
+        recovery_period = current_dd_recovery["duration"] if current_dd_recovery else (
+            max((e["recovery"] for e in recovered_eps), default=None))
+
+        drawdown_table = [
+            {"metric": "Maximum Drawdown", "value": metrics["max_drawdown"], "fmt": "pct"},
+            {"metric": "Recovery Period (periods)", "value": recovery_period, "fmt": "int"},
+            {"metric": "Calmar Ratio", "value": metrics["calmar"], "fmt": "num"},
+            {"metric": "Best Recovery (periods)", "value": best_recovery, "fmt": "int"},
+            {"metric": "Longest Drawdown (periods)", "value": longest_dd, "fmt": "int"},
+        ]
+
+        chart_drawdown = None
+        try:
+            fig, ax = plt.subplots(figsize=(9.5, 4.2), dpi=115)
+            ax.fill_between(np.arange(len(dd_series)), dd_series * 100, 0, color=RED, alpha=0.35)
+            ax.plot(dd_series * 100, color=RED, lw=1.2)
+            ax.set_title("Portfolio Drawdown & Recovery")
+            ax.set_xlabel("Period"); ax.set_ylabel("Drawdown (%)")
+            ax.grid(alpha=0.2)
+            fig.tight_layout()
+            chart_drawdown = _png(fig)
+        except Exception:
+            plt.close("all"); chart_drawdown = None
+
+        charts = {
+            "cumulative_vs_benchmark": chart_cumulative_vs_benchmark,
+            "relative_performance": chart_relative_performance,
+            "period_comparison": chart_period_comparison,
+            "rolling_sharpe": chart_rolling_sharpe,
+            "drawdown": chart_drawdown,
+        }
+
         # plot: 2x3 grid — cumulative, drawdown, rolling Sharpe, ratio bars, portfolio vs benchmark
         plot = None
         try:
@@ -209,6 +478,17 @@ def main():
             "roll_window": roll,
             "benchmark_cumulative_series": benchmark_cumulative_series,
             "monthly_returns": None,  # no reliable date column in the input payload — skipped
+            "performance_summary_table": perf_summary_table,
+            "cumulative_table": cumulative_table,
+            "cumulative_note": cumulative_note,
+            "risk_adjusted_table": risk_adjusted_table,
+            "benchmark_comparison_table": benchmark_comparison_table,
+            "attribution_note": attribution_note,
+            "period_performance_table": period_performance_table,
+            "rolling_table": rolling_table,
+            "capture_table": capture_table,
+            "drawdown_table": drawdown_table,
+            "charts": charts,
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

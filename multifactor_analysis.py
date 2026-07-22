@@ -114,6 +114,28 @@ def main():
         max_vif = max([v for v in vif.values() if v is not None], default=0.0)
         collinear = max_vif >= 5.0
 
+        # model comparison: single-factor baseline (first factor only) vs full multifactor model
+        model_comparison = []
+        try:
+            X_single = sm.add_constant(Xf[:, [0]])
+            model_single = sm.OLS(yv, X_single).fit()
+            model_comparison = [
+                {
+                    "model": f"Single-factor ({factor_cols[0]})",
+                    "r_squared": _fin(model_single.rsquared, 4),
+                    "adj_r_squared": _fin(model_single.rsquared_adj, 4),
+                    "aic": _fin(model_single.aic, 2),
+                },
+                {
+                    "model": "Full multifactor",
+                    "r_squared": _fin(full_r2, 4),
+                    "adj_r_squared": _fin(model.rsquared_adj, 4),
+                    "aic": _fin(model.aic, 2),
+                },
+            ]
+        except Exception:
+            model_comparison = []
+
         # plot: standardized betas + contribution + fit + residuals (2x2 grid)
         fitted = model.fittedvalues
         resid = model.resid
@@ -173,6 +195,7 @@ def main():
             "resid_std": _fin(float(np.std(resid, ddof=1)), 6),
             "coefficients": coefficients,
             "interpretation": interpretation,
+            "model_comparison": model_comparison,
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

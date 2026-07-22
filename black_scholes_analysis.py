@@ -77,10 +77,30 @@ def main():
         state = ("in-the-money" if intrinsic > 0 else "out-of-the-money" if
                  (is_call and S < K) or (not is_call and S > K) else "at-the-money")
 
-        # ---- plot: option value & payoff vs spot ----
+        # ---- sensitivity sweeps: price vs volatility, price vs time-to-maturity ----
+        # (same sweep-and-reprice pattern as greeks_analysis.py, but over sigma and T)
+        vol_range = np.linspace(max(0.5 * sigma, 0.01), 2.0 * sigma, 25)
+        sensitivity_vol = []
+        for v in vol_range:
+            vol_ts_v = ql.BlackVolTermStructureHandle(ql.BlackConstantVol(val_date, cal, float(v), dc))
+            proc_v = ql.BlackScholesMertonProcess(spot_h, div_ts, rf_ts, vol_ts_v)
+            o_v = ql.VanillaOption(payoff, exercise); o_v.setPricingEngine(ql.AnalyticEuropeanEngine(proc_v))
+            sensitivity_vol.append({"vol": _fin(v, 6), "price": _fin(o_v.NPV(), 6)})
+
+        t_range = np.linspace(max(T * 0.02, 1.0 / 365.0), T, 25)
+        sensitivity_time = []
+        for tt in t_range:
+            maturity_t = val_date + int(round(float(tt) * 365))
+            exercise_t = ql.EuropeanExercise(maturity_t)
+            proc_t = ql.BlackScholesMertonProcess(spot_h, div_ts, rf_ts, vol_ts)
+            o_t = ql.VanillaOption(payoff, exercise_t); o_t.setPricingEngine(ql.AnalyticEuropeanEngine(proc_t))
+            sensitivity_time.append({"t": _fin(tt, 6), "price": _fin(o_t.NPV(), 6)})
+
+        # ---- plot: option value & payoff vs spot, plus vol/time sensitivity ----
         plot = None
         try:
-            fig, ax = plt.subplots(figsize=(8, 5), dpi=120)
+            fig, axes = plt.subplots(2, 2, figsize=(13, 10), dpi=118)
+            ax, ax_vol, ax_time, ax_spare = axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]
             srange = np.linspace(max(0.3 * S, 0.01), 1.7 * S, 120)
             payoffs = np.maximum(srange - K, 0) if is_call else np.maximum(K - srange, 0)
             values = []
@@ -97,6 +117,22 @@ def main():
             ax.set_xlabel("Underlying price"); ax.set_ylabel("Option value")
             ax.set_title(f"{otype.capitalize()} option value vs underlying")
             ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.2)
+
+            ax_vol.plot(vol_range, [row["price"] for row in sensitivity_vol], color="#16a34a", lw=2)
+            ax_vol.axvline(sigma, color="#111827", ls="--", lw=1, label=f"Input σ {sigma:g}")
+            ax_vol.scatter([sigma], [price], color="#16a34a", zorder=5, s=50, edgecolor="white")
+            ax_vol.set_xlabel("Volatility (σ)"); ax_vol.set_ylabel("Option value")
+            ax_vol.set_title("Price vs Volatility")
+            ax_vol.legend(fontsize=8, frameon=False); ax_vol.grid(alpha=0.2)
+
+            ax_time.plot(t_range, [row["price"] for row in sensitivity_time], color="#9333ea", lw=2)
+            ax_time.axvline(T, color="#111827", ls="--", lw=1, label=f"Input T {T:g}y")
+            ax_time.scatter([T], [price], color="#9333ea", zorder=5, s=50, edgecolor="white")
+            ax_time.set_xlabel("Time to maturity (years)"); ax_time.set_ylabel("Option value")
+            ax_time.set_title("Price vs Time to Maturity")
+            ax_time.legend(fontsize=8, frameon=False); ax_time.grid(alpha=0.2)
+
+            ax_spare.axis("off")
             fig.tight_layout()
             buf = io.BytesIO(); fig.savefig(buf, format="png"); plt.close(fig)
             plot = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -122,6 +158,7 @@ def main():
             "vega": _fin(vega, 6), "theta": _fin(theta_day, 6), "rho": _fin(rho, 6),
             "vega_per_100": _fin(vega_raw, 6), "theta_per_year": _fin(theta_raw, 6),
             "d1": _fin(d1, 4), "d2": _fin(d2, 4),
+            "sensitivity_vol": sensitivity_vol, "sensitivity_time": sensitivity_time,
             "interpretation": interpretation,
         }
         print(json.dumps({"results": results, "plot": plot}))

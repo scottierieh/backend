@@ -79,23 +79,39 @@ def main():
         percentiles = [{"pct": q, "price": _fin(float(np.percentile(terminal, q)), 4),
                         "return": _fin(float(np.percentile(total_ret, q)), 5)} for q in pcts]
 
+        sim_stats = [
+            {"metric": "Mean", "value": _fin(mean_T, 4)},
+            {"metric": "Median", "value": _fin(median_T, 4)},
+            {"metric": "Std Dev", "value": _fin(std_T, 4)},
+            {"metric": "Min", "value": _fin(float(np.min(terminal)), 4)},
+            {"metric": "Max", "value": _fin(float(np.max(terminal)), 4)},
+        ]
+
         # optional European option pricing via risk-neutral? Here we use the
         # simulated (real-world drift) terminal — clarify it's an expected payoff,
         # discounted at the drift as a simple estimate.
         option = None
+        payoff = None
         if strike is not None and str(strike) != "":
             Kx = float(strike)
             disc = np.exp(-mu * T)
-            call = float(np.mean(np.maximum(terminal - Kx, 0.0)) * disc)
-            put = float(np.mean(np.maximum(Kx - terminal, 0.0)) * disc)
+            call_payoff = np.maximum(terminal - Kx, 0.0)
+            put_payoff = np.maximum(Kx - terminal, 0.0)
+            call = float(np.mean(call_payoff) * disc)
+            put = float(np.mean(put_payoff) * disc)
             option = {"strike": _fin(Kx, 4), "call": _fin(call, 6), "put": _fin(put, 6),
                       "note": "Expected discounted payoff under the specified drift (not risk-neutral)."}
+            payoff = call_payoff  # default to call payoff for the histogram panel
 
-        # plot: sample paths + terminal histogram
+        # plot: sample paths + terminal histogram (+ payoff histogram if option priced)
         plot = None
         try:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=118,
-                                           gridspec_kw={"width_ratios": [1.4, 1]})
+            if payoff is not None:
+                fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5), dpi=118,
+                                                    gridspec_kw={"width_ratios": [1.4, 1, 1]})
+            else:
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=118,
+                                               gridspec_kw={"width_ratios": [1.4, 1]})
             tgrid = np.linspace(0, T, steps + 1)
             n_show = min(200, n_paths)
             show_paths = np.hstack([np.full((n_show, 1), S0), paths[:n_show]])
@@ -119,6 +135,12 @@ def main():
                         label=f"VaR {conf:.0%}")
             ax2.set_xlabel("Frequency"); ax2.set_title("Terminal price distribution")
             ax2.legend(fontsize=7, frameon=False)
+            if payoff is not None:
+                ax3.hist(payoff, bins=60, color="#86efac", edgecolor="white")
+                ax3.axvline(float(np.mean(payoff)), color="#dc2626", lw=1.2, label=f"Mean {np.mean(payoff):,.2f}")
+                ax3.set_xlabel("Payoff"); ax3.set_ylabel("Frequency")
+                ax3.set_title("Payoff Distribution")
+                ax3.legend(fontsize=7, frameon=False)
             fig.tight_layout()
             buf = io.BytesIO(); fig.savefig(buf, format="png"); plt.close(fig)
             plot = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -141,7 +163,7 @@ def main():
             "theoretical_mean": _fin(theo_mean, 4), "prob_loss": _fin(p_loss, 4),
             "var_loss": _fin(var_loss, 5), "cvar_loss": _fin(cvar_loss, 5),
             "expected_return": _fin(mean_T / S0 - 1.0, 5),
-            "percentiles": percentiles, "option": option,
+            "percentiles": percentiles, "option": option, "sim_stats": sim_stats,
             "interpretation": interpretation,
         }
         print(json.dumps({"results": results, "plot": plot}))

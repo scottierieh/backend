@@ -87,6 +87,16 @@ def main():
         alpha_annual = alpha_period * ppy
         alpha_p = float(pvals[0])
 
+        # factor premium: mean period/annualised return of each factor itself
+        factor_premium = []
+        for c in factor_cols:
+            mean_period = float(reg[c].mean())
+            factor_premium.append({
+                "name": c,
+                "mean_period": _fin(mean_period, 6),
+                "annualized": _fin(mean_period * ppy, 6),
+            })
+
         # predicted vs actual for plot
         fitted = model.fittedvalues
         resid = model.resid
@@ -139,6 +149,7 @@ def main():
             "alpha_period": _fin(alpha_period, 6), "alpha_annual": _fin(alpha_annual, 6),
             "alpha_p_value": _fin(alpha_p, 6), "alpha_significant": bool(alpha_p < 0.05),
             "loadings": loadings,
+            "factor_premium": factor_premium,
             "f_stat": _fin(model.fvalue, 4), "f_p_value": _fin(model.f_pvalue, 6),
             "resid_std": _fin(float(np.std(resid, ddof=1)), 6),
             "interpretation": interpretation,

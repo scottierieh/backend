@@ -114,10 +114,12 @@ def main():
         max_vif = max([v for v in vif.values() if v is not None], default=0.0)
         collinear = max_vif >= 5.0
 
-        # plot: standardized betas + contribution
+        # plot: standardized betas + contribution + fit + residuals (2x2 grid)
+        fitted = model.fittedvalues
+        resid = model.resid
         plot = None
         try:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 5), dpi=120)
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12.5, 10), dpi=120)
             fl = [c for c in coefficients if c["name"] != "alpha"]
             xs = [c["name"] for c in fl]
             sb = [c["std_beta"] or 0 for c in fl]
@@ -130,6 +132,17 @@ def main():
             ax2.barh(xs, contrib, color="#16a34a")
             ax2.set_xlabel("Marginal contribution to R² (%)")
             ax2.set_title(f"R² contribution (total R² = {full_r2:.2f})")
+            # actual vs fitted
+            ax3.scatter(fitted, yv, s=14, color="#2563eb", alpha=0.5)
+            lo, hi = float(min(fitted.min(), yv.min())), float(max(fitted.max(), yv.max()))
+            ax3.plot([lo, hi], [lo, hi], "--", color="#dc2626", lw=1)
+            ax3.set_xlabel("Predicted return"); ax3.set_ylabel("Actual return")
+            ax3.set_title(f"Actual vs predicted (R² = {full_r2:.2f})")
+            # residuals vs fitted
+            ax4.scatter(fitted, resid, s=14, color="#f59e0b", alpha=0.5)
+            ax4.axhline(0, color="#111827", lw=0.8, linestyle="--")
+            ax4.set_xlabel("Predicted return"); ax4.set_ylabel("Residual")
+            ax4.set_title("Residuals vs predicted")
             fig.tight_layout()
             buf = io.BytesIO(); fig.savefig(buf, format="png"); plt.close(fig)
             plot = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -157,6 +170,7 @@ def main():
             "alpha_p_value": _fin(float(pvals[0]), 6), "alpha_significant": bool(pvals[0] < 0.05),
             "f_stat": _fin(model.fvalue, 4), "f_p_value": _fin(model.f_pvalue, 6),
             "max_vif": _fin(max_vif, 3), "multicollinearity": bool(collinear),
+            "resid_std": _fin(float(np.std(resid, ddof=1)), 6),
             "coefficients": coefficients,
             "interpretation": interpretation,
         }

@@ -112,6 +112,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/portfolio-performance",      "portfolio_performance_analysis.py",       True),
     ("/api/analysis/volatility-modeling",        "volatility_modeling_analysis.py",         True),
     ("/api/analysis/comparable-company-analysis","comparable_company_analysis.py",          True),
+    ("/api/analysis/enterprise-value-analysis",  "enterprise_value_analysis.py",            True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

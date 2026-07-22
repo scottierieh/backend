@@ -105,6 +105,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/greeks-analysis",            "greeks_analysis.py",                      True),
     ("/api/analysis/portfolio-risk",             "portfolio_risk_analysis.py",              True),
     ("/api/analysis/value-at-risk",              "value_at_risk_analysis.py",               True),
+    ("/api/analysis/fin-risk-analysis",          "fin_risk_analysis_backend.py",            True),
     ("/api/analysis/fama-french-factor-model",   "fama_french_analysis.py",                 True),
     ("/api/analysis/option-pricing",             "option_pricing_analysis.py",              True),
     ("/api/analysis/fin-monte-carlo",            "monte_carlo_analysis.py",                 True),

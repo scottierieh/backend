@@ -121,6 +121,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/market-reaction-analysis",   "market_reaction_analysis.py",             True),
     ("/api/analysis/fin-asset-allocation",       "fin_asset_allocation_analysis.py",        True),
     ("/api/analysis/mmm",                        "mmm_analysis.py",                         True),
+    ("/api/analysis/churn-prediction",           "churn_prediction_analysis.py",            True),
     ("/api/analysis/market-basket",              "market_basket_analysis.py",               True),
     ("/api/analysis/price-sensitivity",          "price_sensitivity_analysis.py",           True),
     ("/api/analysis/cohort",                     "cohort_analysis.py",                      True),

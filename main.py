@@ -114,6 +114,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/comparable-company-analysis","comparable_company_analysis.py",          True),
     ("/api/analysis/enterprise-value-analysis",  "enterprise_value_analysis.py",            True),
     ("/api/analysis/return-time-series",         "return_time_series_analysis.py",          True),
+    ("/api/analysis/returns-volatility",         "returns_volatility_analysis.py",          True),
     ("/api/analysis/fin-autocorrelation-analysis","fin_autocorrelation_analysis.py",        True),
     ("/api/analysis/fin-stationarity-analysis",  "fin_stationarity_analysis.py",            True),
     ("/api/analysis/financial-forecasting",      "financial_forecasting_analysis.py",       True),

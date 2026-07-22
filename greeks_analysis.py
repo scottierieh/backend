@@ -110,6 +110,24 @@ def main():
             f"trade off in every option: the value of uncertainty versus the cost of time passing."
         )
 
+        greeks_table = [
+            {"greek": "Delta", "value": _fin(at["delta"], 6),
+             "desc_en": "Change in option value per $1 move in the underlying.",
+             "desc_ko": "기초자산이 $1 움직일 때 옵션 가치의 변화."},
+            {"greek": "Gamma", "value": _fin(at["gamma"], 6),
+             "desc_en": "Change in delta per $1 move in the underlying — how fast delta itself shifts.",
+             "desc_ko": "기초자산이 $1 움직일 때 델타의 변화 — 델타 자체가 얼마나 빨리 변하는지."},
+            {"greek": "Vega", "value": _fin(at["vega"], 6),
+             "desc_en": "Change in option value per 1 percentage-point rise in volatility.",
+             "desc_ko": "변동성이 1%p 상승할 때 옵션 가치의 변화."},
+            {"greek": "Theta", "value": _fin(at["theta"], 6),
+             "desc_en": "Change in option value per day of time decay, all else equal.",
+             "desc_ko": "다른 조건이 동일할 때 하루가 지나며 옵션 가치가 줄어드는 정도(시간가치 소멸)."},
+            {"greek": "Rho", "value": _fin(at["rho"], 6),
+             "desc_en": "Change in option value per 1 percentage-point rise in the risk-free rate.",
+             "desc_ko": "무위험이자율이 1%p 상승할 때 옵션 가치의 변화."},
+        ]
+
         results = {
             "status": "ok", "option_type": otype, "state": state, "moneyness": _fin(moneyness, 4),
             "spot": _fin(S, 4), "strike": _fin(K, 4), "expiry_years": _fin(T, 4),
@@ -117,6 +135,7 @@ def main():
             "price": _fin(at["price"], 6), "delta": _fin(at["delta"], 6), "gamma": _fin(at["gamma"], 6),
             "vega": _fin(at["vega"], 6), "theta": _fin(at["theta"], 6), "rho": _fin(at["rho"], 6),
             "profile": {"underlying": [_fin(x, 4) for x in srange.tolist()], **prof},
+            "greeks_table": greeks_table,
             "interpretation": interpretation,
         }
         print(json.dumps({"results": results, "plot": plot}))

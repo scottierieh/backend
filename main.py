@@ -106,6 +106,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/portfolio-risk",             "portfolio_risk_analysis.py",              True),
     ("/api/analysis/fama-french-factor-model",   "fama_french_analysis.py",                 True),
     ("/api/analysis/option-pricing",             "option_pricing_analysis.py",              True),
+    ("/api/analysis/fin-monte-carlo",            "monte_carlo_analysis.py",                 True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

@@ -102,6 +102,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/black-scholes",              "black_scholes_analysis.py",               True),
     ("/api/analysis/dcf-valuation",              "dcf_valuation_analysis.py",               True),
     ("/api/analysis/wacc-analysis",              "wacc_analysis.py",                        True),
+    ("/api/analysis/greeks-analysis",            "greeks_analysis.py",                      True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

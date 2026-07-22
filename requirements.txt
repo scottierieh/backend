@@ -19,3 +19,4 @@ linearmodels
 plotly
 pillow
 PyPortfolioOpt
+QuantLib

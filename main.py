@@ -122,6 +122,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/fin-asset-allocation",       "fin_asset_allocation_analysis.py",        True),
     ("/api/analysis/market-basket",              "market_basket_analysis.py",               True),
     ("/api/analysis/price-sensitivity",          "price_sensitivity_analysis.py",           True),
+    ("/api/analysis/cohort",                     "cohort_analysis.py",                      True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

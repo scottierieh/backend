@@ -28,12 +28,28 @@ import matplotlib.pyplot as plt
 EWMA_LAMBDA = 0.94
 
 
+BLUE = "#2563eb"
+GREEN = "#16a34a"
+RED = "#dc2626"
+AMBER = "#d97706"
+PURPLE = "#7c3aed"
+LIGHT_BLUE = "#93c5fd"
+REGIME_COLORS = {"Low": "#16a34a", "Medium": "#2563eb", "High": "#d97706", "Extreme": "#dc2626"}
+
+
 def _fin(x, nd=6):
     try:
         v = float(x)
     except (TypeError, ValueError):
         return None
     return round(v, nd) if np.isfinite(v) else None
+
+
+def _png(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def _to_returns(values, is_returns, log_ret):
@@ -134,6 +150,195 @@ def main():
                     "avg_vol": _fin(float(np.mean(seg)), 5) if len(seg) else None,
                 })
 
+        # ═══════════════════════ Step-6 full report (additive) ═══════════════════════
+
+        # ── ① Volatility Summary ──────────────────────────────────────────────
+        period_vol = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.0
+        pos_ret = returns[returns > 0]
+        neg_ret = returns[returns < 0]
+        upside_vol = float(np.std(pos_ret, ddof=1)) * np.sqrt(ppy) if len(pos_ret) > 1 else 0.0
+        downside_vol = float(np.std(neg_ret, ddof=1)) * np.sqrt(ppy) if len(neg_ret) > 1 else 0.0
+        vol_summary = {
+            "volatility": _fin(period_vol, 6),
+            "annualized_volatility": _fin(ann_vol, 6),
+            "upside_volatility": _fin(upside_vol, 6),
+            "downside_volatility": _fin(downside_vol, 6),
+            "min_volatility": _fin(min_rv, 6),
+            "max_volatility": _fin(max_rv, 6),
+            "average_volatility": _fin(avg_rv, 6),
+            "volatility_of_volatility": _fin(vol_of_vol, 6),
+        }
+
+        # ── ② Rolling Volatility — 4 windows overlaid ─────────────────────────
+        candidate_windows = [20, 60, 120, 252]
+        n_avail = len(returns)
+        active_windows = [w for w in candidate_windows if w <= n_avail // 2] or [win_n]
+        rolling_windows = {}
+        for w in active_windows:
+            rv_w = _rolling_vol(returns, w, ppy)
+            rolling_windows[str(w)] = [
+                {"idx": int(i + w), "vol": _fin(v, 6)} for i, v in enumerate(rv_w)
+            ]
+
+        chart_rolling_vol = None
+        try:
+            fig, ax = plt.subplots(figsize=(9.5, 4.8), dpi=115)
+            palette = [BLUE, GREEN, AMBER, RED]
+            for i, w in enumerate(active_windows):
+                series = rolling_windows[str(w)]
+                if not series:
+                    continue
+                xs = [pt["idx"] for pt in series]
+                ys = [pt["vol"] * 100 if pt["vol"] is not None else None for pt in series]
+                ax.plot(xs, ys, color=palette[i % len(palette)], lw=1.4, label=f"{w}-period")
+            ax.set_title("Rolling Volatility — Multiple Windows")
+            ax.set_xlabel("Period"); ax.set_ylabel("Annualized volatility (%)")
+            ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.2)
+            fig.tight_layout()
+            chart_rolling_vol = _png(fig)
+        except Exception:
+            plt.close("all"); chart_rolling_vol = None
+
+        # ── ③ Volatility Dynamics — return series + rolling vol (win_n) ──────
+        chart_dynamics = None
+        try:
+            fig, ax1 = plt.subplots(figsize=(9.5, 4.8), dpi=115)
+            ax1.bar(range(len(returns)), returns * 100, color="#9ca3af", width=1.0, alpha=0.6, label="Return")
+            ax1.axhline(0, color="#111827", lw=0.6)
+            ax1.set_xlabel("Period"); ax1.set_ylabel("Return (%)")
+            ax2 = ax1.twinx()
+            vol_xs = [c["idx"] for c in chart_data]
+            vol_ys = [c["vol"] * 100 if c["vol"] is not None else None for c in chart_data]
+            ax2.plot(vol_xs, vol_ys, color=BLUE, lw=1.8, label=f"Rolling vol ({win_n}p)")
+            ax2.set_ylabel("Annualized volatility (%)", color=BLUE)
+            ax2.tick_params(axis="y", colors=BLUE)
+            ax1.set_title("Volatility Dynamics — Return + Rolling Volatility")
+            lines1, labels1 = ax1.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8, frameon=False, loc="upper left")
+            fig.tight_layout()
+            chart_dynamics = _png(fig)
+        except Exception:
+            plt.close("all"); chart_dynamics = None
+
+        # ── ④ Volatility Regime — fixed bands, fall back to quartiles ────────
+        regime_table = []
+        regime_series = []
+        regime_method = "fixed"
+        if len(rv):
+            fixed_bands = [
+                ("Low", 0.0, 0.10), ("Medium", 0.10, 0.20),
+                ("High", 0.20, 0.30), ("Extreme", 0.30, np.inf),
+            ]
+            counts = [int(np.sum((rv >= lo) & (rv < hi))) for _, lo, hi in fixed_bands]
+            if max(counts) >= len(rv) * 0.98:
+                # fixed bands put (almost) everything in one bucket -> use quartiles instead
+                regime_method = "quartile"
+                qs = np.percentile(rv, [25, 50, 75])
+                fixed_bands = [
+                    ("Low", -np.inf, qs[0]), ("Medium", qs[0], qs[1]),
+                    ("High", qs[1], qs[2]), ("Extreme", qs[2], np.inf),
+                ]
+            for name, lo, hi in fixed_bands:
+                mask = (rv >= lo) & (rv < hi) if hi != np.inf else (rv >= lo)
+                seg = rv[mask]
+                lo_lbl = f"{lo * 100:.0f}%" if np.isfinite(lo) else "—"
+                hi_lbl = f"{hi * 100:.0f}%" if np.isfinite(hi) else "+"
+                regime_table.append({
+                    "regime": name,
+                    "range": f"{lo_lbl} – {hi_lbl}",
+                    "n": int(len(seg)),
+                    "period_share": _fin(len(seg) / len(rv), 4),
+                })
+            # per-period regime label, aligned to chart_data idx
+            band_bounds = [(name, lo, hi) for name, lo, hi in fixed_bands]
+            for i, v in enumerate(rv):
+                lbl = next((name for name, lo, hi in band_bounds if (v >= lo) and (v < hi or hi == np.inf)), "Low")
+                regime_series.append({"idx": int(i + win_n), "regime": lbl, "vol": _fin(float(v), 6)})
+
+        chart_regime_timeline = None
+        if regime_series:
+            try:
+                fig, ax = plt.subplots(figsize=(9.5, 3.2), dpi=115)
+                order = ["Low", "Medium", "High", "Extreme"]
+                y_of = {name: i for i, name in enumerate(order)}
+                xs = [pt["idx"] for pt in regime_series]
+                colors = [REGIME_COLORS.get(pt["regime"], "#9ca3af") for pt in regime_series]
+                ax.bar(xs, [1] * len(xs), color=colors, width=1.0)
+                ax.set_yticks([]); ax.set_xlabel("Period")
+                ax.set_title("Volatility Regime Timeline")
+                handles = [plt.Rectangle((0, 0), 1, 1, color=REGIME_COLORS[n]) for n in order]
+                ax.legend(handles, order, fontsize=8, frameon=False, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.25))
+                fig.tight_layout()
+                chart_regime_timeline = _png(fig)
+            except Exception:
+                plt.close("all"); chart_regime_timeline = None
+
+        # ── ⑤ Upside vs Downside Volatility ───────────────────────────────────
+        downside_total_ratio = (downside_vol / ann_vol) if ann_vol else None
+        updown_table = {
+            "total_volatility": _fin(ann_vol, 6),
+            "upside_volatility": _fin(upside_vol, 6),
+            "downside_volatility": _fin(downside_vol, 6),
+            "downside_total_ratio": _fin(downside_total_ratio, 4),
+        }
+        chart_upside_downside = None
+        try:
+            fig, ax = plt.subplots(figsize=(5.5, 4.6), dpi=115)
+            ax.bar(["Upside", "Downside"], [upside_vol * 100, downside_vol * 100], color=[GREEN, RED], width=0.55)
+            ax.set_title("Upside vs Downside Volatility")
+            ax.set_ylabel("Annualized volatility (%)")
+            ax.grid(alpha=0.2, axis="y")
+            fig.tight_layout()
+            chart_upside_downside = _png(fig)
+        except Exception:
+            plt.close("all"); chart_upside_downside = None
+
+        # ── ⑥ Volatility Comparison — optional, needs compare_cols ───────────
+        compare_cols = [c for c in (p.get("compare_cols") or []) if c in df.columns and c != value_col]
+        comparison_table = None
+        chart_comparison = None
+        if compare_cols:
+            comparison_table = []
+            comp_series = {value_col: ann_vol}
+            for c in compare_cols:
+                try:
+                    c_vals = pd.to_numeric(df[c], errors="coerce")
+                    c_vals = c_vals[np.isfinite(c_vals)].values
+                    c_ret = _to_returns(c_vals, is_returns, log_ret)
+                    if len(c_ret) < 5:
+                        continue
+                    c_vol = float(np.std(c_ret, ddof=1)) * np.sqrt(ppy) if len(c_ret) > 1 else 0.0
+                    comp_series[c] = c_vol
+                except Exception:
+                    continue
+            for name, vol_v in comp_series.items():
+                comparison_table.append({"asset": name, "annualized_volatility": _fin(vol_v, 6)})
+            if len(comparison_table) > 1:
+                try:
+                    fig, ax = plt.subplots(figsize=(max(5.5, 1.2 * len(comparison_table)), 4.6), dpi=115)
+                    names = [row["asset"] for row in comparison_table]
+                    vals = [row["annualized_volatility"] * 100 if row["annualized_volatility"] is not None else 0 for row in comparison_table]
+                    ax.bar(names, vals, color=PURPLE, width=0.55)
+                    ax.set_title("Volatility Comparison")
+                    ax.set_ylabel("Annualized volatility (%)")
+                    ax.tick_params(axis="x", rotation=30)
+                    ax.grid(alpha=0.2, axis="y")
+                    fig.tight_layout()
+                    chart_comparison = _png(fig)
+                except Exception:
+                    plt.close("all"); chart_comparison = None
+            else:
+                comparison_table = None
+
+        charts = {
+            "rolling_vol": chart_rolling_vol,
+            "dynamics": chart_dynamics,
+            "regime_timeline": chart_regime_timeline,
+            "upside_downside": chart_upside_downside,
+            "comparison": chart_comparison,
+        }
+
         # plot: rolling + EWMA overlay, clustering, return-vs-vol scatter, histogram
         plot = None
         try:
@@ -184,6 +389,14 @@ def main():
             "skewness": _fin(skewness, 6),
             "chartData": chart_data,
             "regimes": regimes,
+            "vol_summary": vol_summary,
+            "rolling_windows": rolling_windows,
+            "regime_table": regime_table,
+            "regime_series": regime_series,
+            "regime_method": regime_method,
+            "updown_table": updown_table,
+            "comparison_table": comparison_table,
+            "charts": charts,
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

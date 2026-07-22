@@ -20,3 +20,5 @@ plotly
 pillow
 PyPortfolioOpt
 QuantLib
+empyrical-reloaded
+pytz

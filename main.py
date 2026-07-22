@@ -109,6 +109,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/fin-monte-carlo",            "monte_carlo_analysis.py",                 True),
     ("/api/analysis/multifactor-models",         "multifactor_analysis.py",                 True),
     ("/api/analysis/event-study",                "event_study_analysis.py",                 True),
+    ("/api/analysis/portfolio-performance",      "portfolio_performance_analysis.py",       True),
     ("/api/analysis/classifier-comparison",       "classifier_comparison_analysis.py",       False),
     ("/api/analysis/cross-validation",            "cross_validation_analysis.py",            True),
     ("/api/analysis/dbscan",                      "dbscan_analysis.py",                      True),

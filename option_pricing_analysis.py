@@ -111,6 +111,15 @@ def main():
         chosen = binomial_price
         time_value = chosen - intrinsic
         moneyness = S / K
+        # ITM/ATM/OTM state (within 0.5% of strike counts as ATM)
+        if abs(S - K) / K < 0.005:
+            state = "at-the-money"
+        elif intrinsic > 0:
+            state = "in-the-money"
+        else:
+            state = "out-of-the-money"
+        # break-even underlying at expiry: strike +/- premium paid
+        break_even = K + chosen if is_call else K - chosen
 
         # plot: method comparison + convergence
         plot = None
@@ -166,7 +175,7 @@ def main():
             "monte_carlo_stderr": _fin(mc_stderr, 6) if mc_stderr is not None else None,
             "early_exercise_premium": _fin(early_premium, 6) if early_premium is not None else None,
             "intrinsic_value": _fin(intrinsic, 6), "time_value": _fin(time_value, 6),
-            "moneyness": _fin(moneyness, 4),
+            "moneyness": _fin(moneyness, 4), "state": state, "break_even": _fin(break_even, 6),
             "convergence": convergence,
             "interpretation": interpretation,
         }

@@ -101,6 +101,25 @@ def main():
         state = ("in-the-money" if (is_call and S > K) or (not is_call and S < K)
                  else "out-of-the-money" if (is_call and S < K) or (not is_call and S > K) else "at-the-money")
 
+        # per-Greek interpretation table
+        greeks_table = [
+            {"greek": "Delta", "value": _fin(at["delta"], 4),
+             "desc_en": f"Price moves ~{at['delta']:.3f} per 1 unit move in the underlying; behaves like {abs(at['delta']):.2f} shares.",
+             "desc_ko": f"기초자산 1 단위 변동당 가격이 약 {at['delta']:.3f} 움직입니다; 기초자산 {abs(at['delta']):.2f}주처럼 행동."},
+            {"greek": "Gamma", "value": _fin(at["gamma"], 4),
+             "desc_en": f"Delta itself changes {at['gamma']:.4f} per 1 unit move — highest near the strike, where directional risk shifts fastest.",
+             "desc_ko": f"델타 자체가 1 단위 변동당 {at['gamma']:.4f} 변합니다 — 행사가 근처에서 최대, 방향 위험이 가장 빠르게 변함."},
+            {"greek": "Vega", "value": _fin(at["vega"], 4),
+             "desc_en": f"Value gains {at['vega']:.4f} per 1% rise in volatility — how exposed the option is to changes in implied vol.",
+             "desc_ko": f"변동성 1% 상승당 가치가 {at['vega']:.4f} 증가 — 내재변동성 변화에 대한 노출."},
+            {"greek": "Theta", "value": _fin(at["theta"], 4),
+             "desc_en": f"Value {'decays' if at['theta'] < 0 else 'gains'} {abs(at['theta']):.4f} per calendar day — the cost of time passing (time decay).",
+             "desc_ko": f"하루당 가치가 {abs(at['theta']):.4f} {'감소' if at['theta'] < 0 else '증가'} — 시간 경과 비용(시간가치 소멸)."},
+            {"greek": "Rho", "value": _fin(at["rho"], 4),
+             "desc_en": f"Value moves {at['rho']:.4f} per 1% change in the risk-free rate — usually the smallest sensitivity.",
+             "desc_ko": f"무위험이자율 1% 변동당 가치가 {at['rho']:.4f} 움직임 — 보통 가장 작은 민감도."},
+        ]
+
         interpretation = (
             f"At a spot of {S:g}, this {otype} option has a delta of {at['delta']:.3f} — it behaves like "
             f"{abs(at['delta']):.2f} shares of the underlying — and a gamma of {at['gamma']:.4f}, which is how "
@@ -116,6 +135,7 @@ def main():
             "volatility": _fin(sigma, 6), "risk_free_rate": _fin(r, 6), "dividend_yield": _fin(q, 6),
             "price": _fin(at["price"], 6), "delta": _fin(at["delta"], 6), "gamma": _fin(at["gamma"], 6),
             "vega": _fin(at["vega"], 6), "theta": _fin(at["theta"], 6), "rho": _fin(at["rho"], 6),
+            "greeks_table": greeks_table,
             "profile": {"underlying": [_fin(x, 4) for x in srange.tolist()], **prof},
             "interpretation": interpretation,
         }

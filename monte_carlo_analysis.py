@@ -19,6 +19,7 @@ Output: { results: {...}, plot } (sample paths + terminal histogram).
 """
 import sys, json, io, base64
 import numpy as np
+from scipy.stats import norm
 
 import matplotlib
 matplotlib.use("Agg")
@@ -79,10 +80,12 @@ def main():
         percentiles = [{"pct": q, "price": _fin(float(np.percentile(terminal, q)), 4),
                         "return": _fin(float(np.percentile(total_ret, q)), 5)} for q in pcts]
 
-        # optional European option pricing via risk-neutral? Here we use the
-        # simulated (real-world drift) terminal — clarify it's an expected payoff,
-        # discounted at the drift as a simple estimate.
+        # optional European option pricing.
+        #  - "real_world": expected discounted payoff under the specified drift mu
+        #  - "risk_neutral": proper option value under risk-neutral drift r, with a
+        #     standard error, 95% CI, Black-Scholes comparison and a convergence path
         option = None
+        rf = p.get("risk_free_rate")
         if strike is not None and str(strike) != "":
             Kx = float(strike)
             disc = np.exp(-mu * T)
@@ -90,6 +93,39 @@ def main():
             put = float(np.mean(np.maximum(Kx - terminal, 0.0)) * disc)
             option = {"strike": _fin(Kx, 4), "call": _fin(call, 6), "put": _fin(put, 6),
                       "note": "Expected discounted payoff under the specified drift (not risk-neutral)."}
+
+            # risk-neutral valuation (re-use the same shocks with drift r)
+            r_rn = float(rf) if (rf is not None and str(rf) != "") else mu
+            rowsum_Z = Z.sum(axis=1)
+            terminal_rn = S0 * np.exp((r_rn - 0.5 * sigma ** 2) * T + sigma * np.sqrt(dt) * rowsum_Z)
+            disc_rn = np.exp(-r_rn * T)
+            call_payoff = np.maximum(terminal_rn - Kx, 0.0)
+            put_payoff = np.maximum(Kx - terminal_rn, 0.0)
+            mc_call = float(np.mean(call_payoff) * disc_rn)
+            mc_put = float(np.mean(put_payoff) * disc_rn)
+            se_call = float(disc_rn * np.std(call_payoff, ddof=1) / np.sqrt(n_paths))
+            se_put = float(disc_rn * np.std(put_payoff, ddof=1) / np.sqrt(n_paths))
+            # Black-Scholes closed form for comparison
+            d1 = (np.log(S0 / Kx) + (r_rn + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+            d2 = d1 - sigma * np.sqrt(T)
+            bs_call = float(S0 * norm.cdf(d1) - Kx * disc_rn * norm.cdf(d2))
+            bs_put = float(Kx * disc_rn * norm.cdf(-d2) - S0 * norm.cdf(-d1))
+            # convergence of the call estimate vs number of paths
+            cum_call = np.cumsum(call_payoff) / np.arange(1, n_paths + 1) * disc_rn
+            npts = min(60, n_paths)
+            idx = np.unique(np.linspace(50, n_paths, npts).astype(int))
+            convergence = [{"n": int(i), "price": _fin(float(cum_call[i - 1]), 6)} for i in idx if i >= 1]
+            option["risk_neutral"] = {
+                "risk_free_rate": _fin(r_rn, 6),
+                "mc_call": _fin(mc_call, 6), "mc_put": _fin(mc_put, 6),
+                "se_call": _fin(se_call, 6), "se_put": _fin(se_put, 6),
+                "ci_call_low": _fin(mc_call - 1.96 * se_call, 6), "ci_call_high": _fin(mc_call + 1.96 * se_call, 6),
+                "ci_put_low": _fin(mc_put - 1.96 * se_put, 6), "ci_put_high": _fin(mc_put + 1.96 * se_put, 6),
+                "bs_call": _fin(bs_call, 6), "bs_put": _fin(bs_put, 6),
+                "diff_call": _fin(mc_call - bs_call, 6), "diff_put": _fin(mc_put - bs_put, 6),
+                "mean_terminal_rn": _fin(float(np.mean(terminal_rn)), 4),
+                "convergence": convergence,
+            }
 
         # plot: sample paths + terminal histogram
         plot = None

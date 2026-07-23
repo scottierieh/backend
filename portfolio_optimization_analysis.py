@@ -12,16 +12,21 @@ Input (from portfolio-optimization-page.tsx):
     objective         : "max_sharpe" | "min_volatility" | "efficient_return" | "efficient_risk"
     target_return     : float (annual, for efficient_return)
     target_volatility : float (annual, for efficient_risk)
+    current_weights   : float[] (optional, aligned with asset_cols) — the user's current
+                        holdings, as fractions (need not sum to 1; normalised server-side).
+                        If omitted or all-zero, current-vs-optimal comparisons are skipped.
 
 Output: { results: {...}, plot,
           results.charts: {efficient_frontier, weights_bar, portfolio_comparison,
-                            risk_contribution, backtest} }
+                            risk_contribution, backtest,
+                            allocation_comparison?, rebalancing?} }
 
-Note: this page does not collect the user's *current* portfolio weights, so
-sections that compare "current vs optimal" (allocation change, rebalancing
-trades) are not built — results.current_portfolio_note explains this. An
-equal-weight portfolio is used instead, purely as a labeled baseline for
-comparison (never presented as the user's actual holdings).
+Note: if `current_weights` is provided, results.optimization_summary.current,
+results.allocation_table, and results.rebalancing_table are populated with a
+current-vs-optimal comparison. Otherwise these stay null/absent and
+results.current_portfolio_note explains that this comparison is optional and
+can be unlocked by supplying current weights. An equal-weight portfolio is
+still used in the portfolio comparison table purely as a labeled baseline.
 """
 import sys, json, io, base64
 import numpy as np
@@ -262,10 +267,11 @@ def main():
         n_held = sum(1 for z in weights if (z["weight"] or 0) > 1e-2)
         max_w = float(max((z["weight"] or 0) for z in weights)) if weights else None
         current_portfolio_note = (
-            "This page does not collect the user's current portfolio weights, so no "
-            "'current vs optimal' comparison, allocation-change, or rebalancing-trade table is "
-            "shown. An equal-weight portfolio is used only as a neutral, clearly-labeled baseline "
-            "in the portfolio comparison below — it is not presented as the user's actual holdings."
+            "You can now optionally provide your current portfolio weights (current_weights) to unlock "
+            "a 'current vs optimal' comparison — allocation change and rebalancing-trade tables. Without "
+            "it, this comparison is skipped. An equal-weight portfolio is used only as a neutral, "
+            "clearly-labeled baseline in the portfolio comparison below — it is not presented as the "
+            "user's actual holdings."
         )
         optimization_summary = {
             "optimal": {"expected_return": _fin(ret, 6), "volatility": _fin(vol, 6), "sharpe": _fin(shr, 4),
@@ -274,6 +280,50 @@ def main():
                       "this optimization — not a guaranteed future outcome. Past co-movement of assets may not persist."),
             "current_portfolio_note": current_portfolio_note,
         }
+
+        # ---------------------------------------------------------------
+        # optional: current-vs-optimal comparison (only if current_weights given)
+        # ---------------------------------------------------------------
+        allocation_table = None
+        rebalancing_table = None
+        try:
+            raw_cw = p.get("current_weights")
+            if raw_cw is not None and isinstance(raw_cw, (list, tuple)) and len(raw_cw) > 0:
+                cw = np.array([float(raw_cw[i]) if i < len(raw_cw) else 0.0 for i in range(n)], dtype=float)
+                cw = np.nan_to_num(cw, nan=0.0)
+                cw = np.clip(cw, 0, None)
+                if cw.sum() > 1e-9:
+                    cw_norm = cw / cw.sum()
+                    ret_c, vol_c, shr_c = _perf(cw_norm, mu, S, rf)
+                    max_w_c = float(cw_norm.max()) if n else None
+                    n_held_c = int(np.sum(cw_norm > 1e-2))
+                    optimization_summary["current"] = {
+                        "expected_return": _fin(ret_c, 6), "volatility": _fin(vol_c, 6), "sharpe": _fin(shr_c, 4),
+                        "max_weight": _fin(max_w_c, 4), "n_assets_held": n_held_c, "n_assets_total": n,
+                    }
+
+                    allocation_table = []
+                    rebalancing_table = []
+                    for i, c in enumerate(cols):
+                        cur_w = float(cw_norm[i])
+                        opt_w = float(w_vec[i])
+                        change = opt_w - cur_w
+                        allocation_table.append({
+                            "asset": c, "current_weight": _fin(cur_w, 4), "optimal_weight": _fin(opt_w, 4),
+                            "change": _fin(change, 4),
+                        })
+                        if abs(change) < 0.005:
+                            trade = "Hold"
+                        elif change > 0:
+                            trade = f"Buy +{change * 100:.1f}%"
+                        else:
+                            trade = f"Sell {change * 100:.1f}%"
+                        rebalancing_table.append({
+                            "asset": c, "current": _fin(cur_w, 4), "target": _fin(opt_w, 4), "trade": trade,
+                        })
+        except Exception:
+            allocation_table = None
+            rebalancing_table = None
 
         # ---------------------------------------------------------------
         # ⑧ constraints actually applied (long-only, weight_bounds=(0,1))
@@ -386,6 +436,38 @@ def main():
         except Exception:
             plt.close("all"); charts["risk_contribution"] = None
 
+        # current vs optimal allocation comparison + rebalancing trades (optional)
+        if allocation_table:
+            try:
+                fig, ax = plt.subplots(figsize=(7, 5), dpi=120)
+                x = np.arange(len(allocation_table))
+                width = 0.38
+                cur_vals = [row["current_weight"] * 100 for row in allocation_table]
+                opt_vals = [row["optimal_weight"] * 100 for row in allocation_table]
+                ax.bar(x - width / 2, cur_vals, width, color=GREY, label="Current")
+                ax.bar(x + width / 2, opt_vals, width, color=BLUE, label="Optimal")
+                ax.set_xticks(x); ax.set_xticklabels([row["asset"] for row in allocation_table], rotation=30, ha="right")
+                ax.set_ylabel("Weight (%)"); ax.set_title("Current vs Optimal Allocation")
+                ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.2, axis="y")
+                fig.tight_layout()
+                charts["allocation_comparison"] = _png(fig)
+            except Exception:
+                plt.close("all"); charts["allocation_comparison"] = None
+
+            try:
+                fig, ax = plt.subplots(figsize=(6.5, 4.8), dpi=120)
+                deltas = [row["change"] * 100 for row in allocation_table]
+                bar_colors = [GREEN if d >= 0 else RED for d in deltas]
+                ax.barh([row["asset"] for row in allocation_table][::-1], deltas[::-1], color=bar_colors[::-1])
+                ax.axvline(0, color="#475569", lw=0.8)
+                ax.set_xlabel("Trade (percentage points, + = buy, - = sell)")
+                ax.set_title("Rebalancing Trades")
+                ax.grid(alpha=0.2, axis="x")
+                fig.tight_layout()
+                charts["rebalancing"] = _png(fig)
+            except Exception:
+                plt.close("all"); charts["rebalancing"] = None
+
         # ⑫ backtest equity curve
         try:
             fig, ax = plt.subplots(figsize=(7.5, 4.8), dpi=120)
@@ -447,6 +529,8 @@ def main():
             "constraints_summary": constraints_summary,
             "backtest": backtest,
             "charts": charts,
+            "allocation_table": allocation_table,
+            "rebalancing_table": rebalancing_table,
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

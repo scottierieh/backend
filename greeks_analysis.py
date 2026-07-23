@@ -258,8 +258,9 @@ def main():
                 "pnl_decomposition": "Skipped: a Greek-based P&L decomposition (delta P&L + gamma P&L + vega P&L + theta P&L) requires an actual realized move in spot/vol/time between two dates. This page is a single-point-in-time calculator with no historical position tracking, so there is no real move to decompose — a synthetic assumed move would not reflect what actually happened to a position.",
                 "portfolio_greeks": "Skipped: portfolio-level Greeks require aggregating multiple option positions (different strikes, expiries, types and quantities). This page currently collects inputs for a single option only, so a true portfolio view would need a new multi-position input UI — a larger scope change than this analysis covers.",
             },
+            "charts": charts,
         }
-        print(json.dumps({"results": results, "charts": charts}))
+        print(json.dumps({"results": results, "plot": charts.get("price")}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)

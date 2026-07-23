@@ -23,3 +23,4 @@ QuantLib
 empyrical-reloaded
 pytz
 arch
+lifetimes

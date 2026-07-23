@@ -185,6 +185,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/xgboost",                     "xgboost_analysis.py",                     True),
     ("/api/analysis/income-statement-analysis",   "income_statement_analysis.py",            True),
     ("/api/analysis/balance-sheet-analysis",      "balance_sheet_analysis.py",                True),
+    ("/api/analysis/cash-flow-analysis",          "cash_flow_analysis.py",                   True),
 ]
 
 for _path, _script, _confirmed in SCRIPT_ROUTES:

@@ -188,6 +188,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/balance-sheet-analysis",      "balance_sheet_analysis.py",                True),
     ("/api/analysis/cash-flow-analysis",          "cash_flow_analysis.py",                   True),
     ("/api/analysis/cohort",                      "cohort_analysis.py",                      True),
+    ("/api/analysis/funnel",                      "funnel_analysis.py",                      True),
 ]
 
 for _path, _script, _confirmed in SCRIPT_ROUTES:

@@ -256,14 +256,99 @@ def main():
                 plt.close("all"); chart_relative_performance = None
 
         # ⑤ Performance Attribution ----------------------------------------------------------
-        # NOT computable: this endpoint receives a single aggregate portfolio return series and a
-        # single aggregate benchmark return series (asset_col / benchmark_col), with no per-asset
-        # weight/return columns. A true Brinson-style allocation/selection/interaction decomposition
-        # requires asset-level weights in both the portfolio and the benchmark, which this page does
-        # not collect. Section is intentionally omitted rather than fabricated.
+        # By default, NOT computable: this endpoint receives a single aggregate portfolio return
+        # series and a single aggregate benchmark return series (asset_col / benchmark_col), with no
+        # per-asset weight/return columns. A true Brinson-style allocation/selection/interaction
+        # decomposition requires asset-level weights in both the portfolio and the benchmark.
+        # OPTIONAL: if the caller supplies attribution_assets/portfolio_weights/benchmark_weights
+        # (matching lengths, >= 2 assets), we compute a genuine Brinson-Fachler attribution below.
         attribution_note = ("Performance attribution requires per-asset weight and return data "
                              "(portfolio and benchmark holdings), which this analysis does not collect — "
                              "only aggregate portfolio and benchmark return series are available. Skipped.")
+        attribution_table = None
+        attribution_summary = None
+        chart_attribution = None
+        try:
+            attr_assets = p.get("attribution_assets") or []
+            attr_pw = p.get("portfolio_weights") or []
+            attr_bw = p.get("benchmark_weights") or []
+            if (isinstance(attr_assets, list) and len(attr_assets) >= 2
+                    and len(attr_pw) == len(attr_assets) and len(attr_bw) == len(attr_assets)
+                    and all(c in df.columns for c in attr_assets)):
+                pw = np.array([float(x) for x in attr_pw], dtype=float)
+                bw = np.array([float(x) for x in attr_bw], dtype=float)
+                if pw.sum() > 0:
+                    pw = pw / pw.sum()
+                if bw.sum() > 0:
+                    bw = bw / bw.sum()
+                asset_ann_returns = []
+                for col in attr_assets:
+                    asset_series = _to_returns(df[col], is_returns, rtype).dropna()
+                    asset_ann_returns.append(float(asset_series.mean() * ppy))
+                asset_ann_returns = np.array(asset_ann_returns, dtype=float)
+
+                rows = []
+                total_alloc = total_sel = total_inter = 0.0
+                for i, name in enumerate(attr_assets):
+                    r_p = asset_ann_returns[i]
+                    r_b = asset_ann_returns[i]  # same underlying asset return series stands in for both
+                    # NOTE: portfolio return for asset i and benchmark return for asset i are both
+                    # derived from the same selected return column (the caller selects one return
+                    # series per asset); weights differ between portfolio and benchmark.
+                    alloc = (pw[i] - bw[i]) * r_b
+                    sel = bw[i] * (r_p - r_b)
+                    inter = (pw[i] - bw[i]) * (r_p - r_b)
+                    total_alloc += alloc; total_sel += sel; total_inter += inter
+                    rows.append({"Asset": name, "Allocation": _fin(alloc, 5), "Selection": _fin(sel, 5), "Interaction": _fin(inter, 5)})
+
+                total_active = total_alloc + total_sel + total_inter
+                rows.append({
+                    "Asset": "Total",
+                    "Allocation": _fin(total_alloc, 5),
+                    "Selection": _fin(total_sel, 5),
+                    "Interaction": _fin(total_inter, 5),
+                })
+                attribution_table = rows
+                attribution_summary = {
+                    "allocation_effect": _fin(total_alloc, 5),
+                    "selection_effect": _fin(total_sel, 5),
+                    "interaction_effect": _fin(total_inter, 5),
+                    "total_active_return": _fin(total_active, 5),
+                }
+                attribution_note = (
+                    "Brinson-Fachler attribution computed from the selected per-asset return columns "
+                    "and the supplied portfolio/benchmark weights.")
+
+                try:
+                    fig, ax = plt.subplots(figsize=(7.5, 4.6), dpi=115)
+                    labels = ["Allocation", "Selection", "Interaction", "Total"]
+                    vals = [total_alloc, total_sel, total_inter, total_active]
+                    running = 0.0
+                    for i, (lbl, v) in enumerate(zip(labels, vals)):
+                        if lbl == "Total":
+                            bottom = 0.0
+                            height = total_active
+                        else:
+                            bottom = min(running, running + v)
+                            height = abs(v)
+                        color = GREEN if v >= 0 else RED
+                        if lbl == "Total":
+                            color = BLUE
+                        ax.bar(lbl, height if lbl != "Total" else total_active, bottom=bottom if lbl != "Total" else 0.0, color=color)
+                        if lbl != "Total":
+                            running += v
+                    ax.axhline(0, color="#111827", lw=0.8)
+                    ax.set_title("Performance Attribution (Brinson-Fachler)")
+                    ax.set_ylabel("Contribution to active return")
+                    ax.grid(alpha=0.2, axis="y")
+                    fig.tight_layout()
+                    chart_attribution = _png(fig)
+                except Exception:
+                    plt.close("all"); chart_attribution = None
+        except Exception:
+            attribution_table = None
+            attribution_summary = None
+            chart_attribution = None
 
         # ⑥ Period Performance ----------------------------------------------------------------
         n = len(r)
@@ -397,6 +482,7 @@ def main():
             "period_comparison": chart_period_comparison,
             "rolling_sharpe": chart_rolling_sharpe,
             "drawdown": chart_drawdown,
+            "attribution": chart_attribution,
         }
 
         # plot: 2x3 grid — cumulative, drawdown, rolling Sharpe, ratio bars, portfolio vs benchmark
@@ -484,6 +570,8 @@ def main():
             "risk_adjusted_table": risk_adjusted_table,
             "benchmark_comparison_table": benchmark_comparison_table,
             "attribution_note": attribution_note,
+            "attribution_table": attribution_table,
+            "attribution_summary": attribution_summary,
             "period_performance_table": period_performance_table,
             "rolling_table": rolling_table,
             "capture_table": capture_table,

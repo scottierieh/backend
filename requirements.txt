@@ -5,6 +5,7 @@ numpy<2  # pinned: scikit-learn-extra (k-medoids) is not importable under numpy 
 scipy
 scikit-learn
 scikit-learn-extra
+mlxtend
 statsmodels
 matplotlib
 seaborn

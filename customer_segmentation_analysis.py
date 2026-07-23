@@ -328,9 +328,10 @@ def main():
             "customer_detail": detail_rows,
             "customer_detail_truncated": truncated,
             "customer_detail_total": n,
+            "charts": charts,
         }
 
-        print(json.dumps({"results": results, "charts": charts}, default=_native))
+        print(json.dumps({"results": results, "plot": charts.get("pca_map")}, default=_native))
 
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

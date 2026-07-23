@@ -151,6 +151,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/linear-programming",          "linear_programming_analysis.py",          False),
     ("/api/analysis/lstm-forecast",               "lstm_forecasting_analysis.py",            True),
     ("/api/analysis/marketing-dashboard",         "marketing_dashboard_analysis.py",         False),
+    ("/api/analysis/mmm",                         "mmm_analysis.py",                         True),
     ("/api/analysis/mlp",                         "mlp_analysis.py",                         True),
     ("/api/analysis/naive-bayes",                 "naive_bayes_analysis.py",                 True),
     ("/api/analysis/neural-network",              "neural_network_analysis.py",              False),

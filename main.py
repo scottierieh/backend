@@ -96,6 +96,7 @@ def register_script_route(path: str, script_file: str):
 SCRIPT_ROUTES = [
     ("/api/analysis/ab-test-analysis",            "ab_test_analysis.py",                     True),
     ("/api/analysis/uplift-modeling",              "uplift_modeling_analysis.py",             True),
+    ("/api/analysis/market-basket",                "market_basket_analysis.py",               True),
     ("/api/analysis/attribution-analysis",        "attribution_analysis.py",                 True),
     ("/api/analysis/churn-prediction-v2",         "churn_prediction_analysis.py",           True),
     ("/api/analysis/adaboost",                    "adaboost_analysis.py",                    True),

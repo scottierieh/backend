@@ -180,6 +180,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/tsne",                        "tsne_analysis.py",                        True),
     ("/api/analysis/umap",                        "umap_analysis.py",                        True),
     ("/api/analysis/van-westendorp",              "van_westendorp_analysis.py",              False),
+    ("/api/analysis/price-sensitivity",           "price_sensitivity_analysis.py",           False),
     ("/api/analysis/variability",                 "variability_analysis.py",                 False),
     ("/api/analysis/wordcloud",                   "wordcloud_analysis.py",                   False),
     ("/api/analysis/xgboost",                     "xgboost_analysis.py",                     True),

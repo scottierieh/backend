@@ -94,6 +94,7 @@ def register_script_route(path: str, script_file: str):
 # fetch()/endpoint constant before relying on those and correct the path here
 # if it doesn't match.
 SCRIPT_ROUTES = [
+    ("/api/analysis/attribution-analysis",        "attribution_analysis.py",                 True),
     ("/api/analysis/adaboost",                    "adaboost_analysis.py",                    True),
     ("/api/analysis/ahp",                         "ahp_analysis.py",                         False),
     ("/api/analysis/catboost",                    "catboost_analysis.py",                    True),

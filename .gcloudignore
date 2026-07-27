@@ -1,0 +1,30 @@
+# What `gcloud run deploy --source .` uploads to Cloud Build.
+#
+# Without this file gcloud generates a default that only skips .git, so any
+# local virtualenv or scratch file sitting in the working copy gets uploaded
+# and then baked into the image by `COPY . .`.
+#
+# Note: gcloud does NOT read .dockerignore, so the two lists are kept in sync
+# by hand.
+.git
+.gitignore
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+venv/
+.venv/
+env/
+ENV/
+
+*.log
+*.zip
+*.tar.gz
+.DS_Store
+.idea/
+.vscode/

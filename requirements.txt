@@ -13,7 +13,11 @@ catboost
 lightgbm
 xgboost
 shap
-tensorflow
+# tensorflow-cpu, not tensorflow: the plain wheel is 621 MB against 247 MB
+# because it ships GPU kernels, and Cloud Run has no GPU to run them on. Same
+# import surface — lstm_forecasting_analysis.py's `import tensorflow as tf` and
+# `from tensorflow.keras...` are unchanged.
+tensorflow-cpu
 umap-learn
 pingouin
 linearmodels

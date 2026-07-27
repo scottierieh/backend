@@ -1,0 +1,26 @@
+# Keep the build context — and therefore the image — to the code the service
+# actually runs. `COPY . .` copies everything left after these exclusions.
+.git
+.gitignore
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# local virtualenvs — never belong in the image
+venv/
+.venv/
+env/
+ENV/
+
+# local scratch that can sit in a working copy
+*.log
+*.zip
+*.tar.gz
+.DS_Store
+.idea/
+.vscode/

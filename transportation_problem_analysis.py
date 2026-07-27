@@ -12,7 +12,8 @@ Input (from transportation-problem-page.tsx):
     cost_matrix  : number[m][n]   per-unit shipping cost source x dest
 
 Output: { results: { status, unsolved, message, n_sources, n_destinations,
-                     total_cost, flows:[{from,to,amount,cost}], interpretation },
+                     total_cost, flows:[{from,to,amount,cost,route_cost}],
+                     interpretation },
           plot } (allocation heatmap, base64).
 """
 import sys, json, io, base64
@@ -83,8 +84,11 @@ def main():
         for i in range(m):
             for j in range(n):
                 if X[i, j] > tol:
+                    # `cost` is the PER-UNIT shipping cost: the flows table
+                    # multiplies it by the amount itself for the route cost.
                     flows.append({"from": src[i], "to": dst[j],
-                                  "amount": _fin(X[i, j], 4), "cost": _fin(X[i, j] * C[i][j], 4)})
+                                  "amount": _fin(X[i, j], 4), "cost": _fin(C[i][j], 4),
+                                  "route_cost": _fin(X[i, j] * C[i][j], 4)})
         n_routes = len(flows)
 
         # plot: allocation heatmap

@@ -5,7 +5,8 @@ LP via scipy.optimize.linprog.
 Input: resource_names[R], resource_available[R], activity_names[A],
        activity_value[A], usage_matrix[A][R]  (units of resource r per unit activity a)
 Output: results{status, unsolved, message, n_activities, n_resources, total_value,
-                activities:[{name,level,value}], resources:[{name,used,available,slack,binding}],
+                activities:[{name,value,level,value_per_unit,contribution}],
+                resources:[{name,used,available,slack,binding,shadow_price}],
                 interpretation}, plot
 """
 import sys, json, io, base64
@@ -51,7 +52,21 @@ def main():
             return
         x = res.x
         total = float(np.dot(value, x))
-        activities = [{"name": anames[a], "level": _fin(x[a], 4), "value": _fin(x[a] * value[a], 4)} for a in range(A)]
+        # The activity table reads `value` as the optimal level and
+        # `value_per_unit` as the per-unit value; `level` and `contribution`
+        # keep the unambiguous names alongside them.
+        activities = [{"name": anames[a], "value": _fin(x[a], 4), "level": _fin(x[a], 4),
+                       "value_per_unit": _fin(value[a], 4),
+                       "contribution": _fin(x[a] * value[a], 4)} for a in range(A)]
+
+        # HiGHS returns one marginal per <= row; its sign convention is for the
+        # minimisation of -value.x, so negate to get "extra value per one more
+        # unit of this resource".
+        try:
+            duals = [-float(v) for v in res.ineqlin.marginals]
+        except Exception:
+            duals = [None] * R
+
         resources = []
         n_binding = 0
         for r in range(R):
@@ -61,7 +76,8 @@ def main():
             if binding:
                 n_binding += 1
             resources.append({"name": rnames[r], "used": _fin(used, 4), "available": _fin(avail[r], 4),
-                              "slack": _fin(slack, 4), "binding": bool(binding)})
+                              "slack": _fin(slack, 4), "binding": bool(binding),
+                              "shadow_price": _fin(duals[r], 6) if r < len(duals) else None})
 
         plot = None
         try:

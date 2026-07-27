@@ -18,8 +18,11 @@ def main():
         out, x = build_result(res, fobj, maximize, var_names, ce, co, cr, gf)
         if out.get("unsolved"):
             print(json.dumps({"results": out, "plot": None})); return
+        # The page reports this as "binding inequalities / total inequalities",
+        # so equalities — always binding by definition — are counted separately
+        # there and must not be included here.
         n_binding = sum(1 for c in out["constraints"]
-                        if c["slack"] is not None and abs(c["slack"]) < 1e-4)
+                        if c["type"] != "eq" and c["binding"])
         out["n_binding"] = n_binding
         obj_val = out["objective_value"]
         out["interpretation"] = (

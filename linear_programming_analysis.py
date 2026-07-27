@@ -149,15 +149,33 @@ def main():
         if len(con_names) != m:
             con_names = [f"C{i+1}" for i in range(m)]
         problem_type = (p.get("problem_type") or "lp").lower()
-        is_integer = problem_type in ("integer", "milp")
-        var_types = p.get("var_types") or (["integer"] * n if is_integer else ["continuous"] * n)
+        # The integer/mixed-integer/binary pages declare their variable kinds in
+        # var_types only — they never send problem_type — so the categories come
+        # from var_types first, with problem_type as a fallback for callers that
+        # send it instead.
+        fallback = ("binary" if problem_type == "binary"
+                    else "integer" if problem_type in ("integer", "milp")
+                    else "continuous")
+        raw_types = p.get("var_types") or [fallback] * n
+        if len(raw_types) != n:
+            raw_types = [fallback] * n
+        cats = []
+        for t in raw_types:
+            s = str(t).strip().lower()
+            cats.append("Binary" if s.startswith("bin")
+                        else "Integer" if s.startswith("int")
+                        else "Continuous")
+        is_integer = any(c != "Continuous" for c in cats)
+        var_types = [c.lower() for c in cats]
 
         # ---- build model ----
         prob = pulp.LpProblem("LP", pulp.LpMaximize if maximize else pulp.LpMinimize)
         xvars = []
         for j in range(n):
-            cat = "Integer" if (is_integer and str(var_types[j]).lower().startswith("int")) else "Continuous"
-            xvars.append(pulp.LpVariable(var_names[j], lowBound=0, cat=cat))
+            # Solver-internal names: user-supplied names may contain spaces or
+            # duplicates, which the LP file format cannot carry. Display names
+            # come from var_names in the results.
+            xvars.append(pulp.LpVariable(f"x{j}", lowBound=0, cat=cats[j]))
         prob += pulp.lpSum(obj[j] * xvars[j] for j in range(n)), "objective"
         constraints = []
         for i in range(m):

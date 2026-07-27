@@ -4,7 +4,7 @@ Hungarian algorithm via scipy.optimize.linear_sum_assignment.
 
 Input: worker_names[], task_names[], cost_matrix[w][t], minimize(bool, default True)
 Output: results{status, minimize, n_workers, n_tasks, total_cost,
-                pairs:[{worker,task,cost}], interpretation}, plot
+                pairs:[{worker,task,cost,assigned}] (full grid), interpretation}, plot
 """
 import sys, json, io, base64
 import numpy as np
@@ -38,10 +38,15 @@ def main():
 
         cost = C if minimize else -C
         rows, cols = linear_sum_assignment(cost)
-        pairs = [{"worker": workers[r], "task": tasks[c], "cost": _fin(C[r, c], 4)}
-                 for r, c in zip(rows, cols)]
+        chosen = set(zip(rows.tolist(), cols.tolist()))
+        # Every worker-task pair is returned with an `assigned` flag, not just
+        # the chosen ones: the pairs table shows the whole grid and marks which
+        # pairs the optimal matching picked.
+        pairs = [{"worker": workers[r], "task": tasks[c], "cost": _fin(C[r, c], 4),
+                  "assigned": (r, c) in chosen}
+                 for r in range(w) for c in range(t)]
         total = float(sum(C[r, c] for r, c in zip(rows, cols)))
-        n_assigned = len(pairs)
+        n_assigned = len(chosen)
 
         plot = None
         try:

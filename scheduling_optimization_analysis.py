@@ -4,7 +4,8 @@ LPT (Longest Processing Time) list-scheduling heuristic — the classic 4/3-appr
 
 Input: job_names[], processing_times[] (one time per job), machine_names[]
 Output: results{status, unsolved, message, n_jobs, n_machines, makespan,
-                assignments:[{job,machine,time}], machines:[{name,jobs,load}],
+                assignments:[{job,machine,processing_time,time}],
+                machines:[{machine,name,jobs,n_jobs,load}],
                 interpretation}, plot
 """
 import sys, json, io, base64
@@ -45,9 +46,13 @@ def main():
             mi = int(np.argmin(load))          # least-loaded machine
             load[mi] += times[i]
             mjobs[mi].append(jobs[i])
-            assignments.append({"job": jobs[i], "machine": machines[mi], "time": _fin(times[i], 4)})
+            assignments.append({"job": jobs[i], "machine": machines[mi],
+                                "processing_time": _fin(times[i], 4), "time": _fin(times[i], 4)})
         makespan = float(max(load))
-        machines_out = [{"name": machines[m], "jobs": mjobs[m], "load": _fin(load[m], 4)} for m in range(M)]
+        # The machine table keys off `machine` and `n_jobs`; `name` and the job
+        # list stay for callers that read them.
+        machines_out = [{"machine": machines[m], "name": machines[m], "jobs": mjobs[m],
+                         "n_jobs": len(mjobs[m]), "load": _fin(load[m], 4)} for m in range(M)]
 
         plot = None
         try:

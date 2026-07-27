@@ -6,8 +6,10 @@ Input: var_names[], obj_expr[] (linear), obj_names[], obj_maximize[bool],
        obj_weights[] (sum to 1), con_matrix[m][n], con_ops[], con_rhs[],
        con_names[], n_pareto_points(int)
 Output: results{status, unsolved, message, n_vars, n_objectives, n_constraints,
-                chosen_objective_values:[{name,value}], variables:[{name,value}],
-                pareto_front:[{...obj values}], interpretation}, plot
+                chosen_objective_values:[number] (objective order),
+                variables:[{name,value}],
+                pareto_front:[{weights,objective_values,variables}],
+                interpretation}, plot
 """
 import sys, json, io, base64
 import numpy as np
@@ -96,33 +98,46 @@ def main():
             return [float(coefs[k] @ xx + consts[k]) for k in range(K)]
         chosen = obj_vals(x)
         variables = [{"name": var_names[i], "value": _fin(x[i], 6)} for i in range(n)]
-        chosen_objective_values = [{"name": onames[k], "value": _fin(chosen[k], 6)} for k in range(K)]
+        # The page indexes this positionally against its own objective list, so
+        # it must be a plain array of numbers in objective order.
+        chosen_objective_values = [_fin(chosen[k], 6) for k in range(K)]
 
-        # Pareto front: vary weights (2-obj: sweep; >2: random samples)
+        # Pareto front: vary weights (2-obj: sweep; >2: random samples). Each
+        # point carries the weights that produced it, the objective values in
+        # objective order, and the decision variables behind it — the shape the
+        # Pareto table and its "Weights used" column read.
+        def _point(w, xx):
+            v = obj_vals(xx)
+            return {
+                "weights": [_fin(float(z), 4) for z in w],
+                "objective_values": [_fin(z, 4) for z in v],
+                "variables": {var_names[i]: _fin(xx[i], 6) for i in range(n)},
+            }, tuple(round(z, 4) for z in v)
+
         pareto = []
         seen = set()
         if K == 2:
             for t in np.linspace(0, 1, max(npar, 2)):
                 r = solve_weighted([t, 1-t])
                 if r.success:
-                    v = obj_vals(r.x); key = tuple(round(z, 4) for z in v)
+                    pt, key = _point([t, 1-t], r.x)
                     if key not in seen:
-                        seen.add(key); pareto.append({onames[0]: _fin(v[0], 4), onames[1]: _fin(v[1], 4)})
+                        seen.add(key); pareto.append(pt)
         else:
             rng = np.random.default_rng(0)
             for _ in range(max(npar, 4)):
                 w = rng.random(K); w /= w.sum()
                 r = solve_weighted(w)
                 if r.success:
-                    v = obj_vals(r.x); key = tuple(round(z, 4) for z in v)
+                    pt, key = _point(w, r.x)
                     if key not in seen:
-                        seen.add(key); pareto.append({onames[k]: _fin(v[k], 4) for k in range(K)})
+                        seen.add(key); pareto.append(pt)
 
         plot = None
         if K == 2 and pareto:
             try:
                 fig, ax = plt.subplots(figsize=(7, 5.5), dpi=120)
-                pv = sorted([(pt[onames[0]], pt[onames[1]]) for pt in pareto])
+                pv = sorted([(pt["objective_values"][0], pt["objective_values"][1]) for pt in pareto])
                 xs = [a for a, _ in pv]; ys = [b for _, b in pv]
                 ax.plot(xs, ys, "-o", color="#2563eb", label="Pareto front")
                 ax.plot(chosen[0], chosen[1], "*", color="#dc2626", markersize=18, label="chosen (weights)")

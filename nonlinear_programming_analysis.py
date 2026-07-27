@@ -6,7 +6,8 @@ Input: objective(str), maximize(bool), var_names[], start[],
        con_expr[], con_ops[] (<=|>=|=), con_rhs[], con_names[]
 Output: results{status, unsolved, message, maximize, n_vars, n_constraints,
                 objective_value, iterations, variables:[{name,value}],
-                constraints:[{name,op,lhs,rhs,satisfied,slack}], interpretation}, plot
+                constraints:[{name,expr,op,type,lhs,value,rhs,satisfied,slack,
+                              binding,multiplier}], interpretation}, plot
 """
 import sys, json, io, base64
 import numpy as np
@@ -45,13 +46,18 @@ def solve_nlp(payload, force_min=False):
     con_ops = [str(o) for o in (payload.get("con_ops") or [])]
     con_rhs = [float(r) for r in (payload.get("con_rhs") or [])]
     con_types = payload.get("con_types") or None
+    con_names = payload.get("con_names") or []
     m = len(con_expr)
     cons = []
     gfuncs = []
     for i in range(m):
         g = make_func(con_expr[i], var_names); rhs = con_rhs[i]; op = con_ops[i] if i < len(con_ops) else "<="
-        gfuncs.append((g, op, rhs))
         ctype = (con_types[i] if con_types and i < len(con_types) else None)
+        name = con_names[i] if i < len(con_names) and str(con_names[i]).strip() else f"C{i+1}"
+        # The pages label constraints and split them into equality/inequality
+        # groups, so carry the name, the source expression and the declared type
+        # through to the result rows instead of regenerating "C1, C2, ...".
+        gfuncs.append((g, op, rhs, str(name), ctype, con_expr[i]))
         if op in ("=", "==") or ctype == "eq":
             cons.append({"type": "eq", "fun": (lambda x, g=g, r=rhs: g(x) - r)})
         elif op == ">=":
@@ -64,6 +70,42 @@ def solve_nlp(payload, force_min=False):
     return res, fobj, maximize, var_names, con_expr, con_ops, con_rhs, gfuncs
 
 
+def _grad(f, x, h=1e-6):
+    """Central-difference gradient of a scalar function at x."""
+    x = np.asarray(x, float)
+    out = np.zeros(len(x))
+    for j in range(len(x)):
+        step = h * max(1.0, abs(x[j]))
+        xp = x.copy(); xp[j] += step
+        xm = x.copy(); xm[j] -= step
+        out[j] = (float(f(xp)) - float(f(xm))) / (2 * step)
+    return out
+
+
+def _multipliers(fobj, x, gfuncs, active):
+    """d(objective)/d(rhs) for each constraint, from KKT stationarity.
+
+    At the optimum the objective gradient lies in the span of the active
+    constraint gradients: grad f = sum_i nu_i * grad g_i. Moving rhs_i by one
+    unit (holding the other active constraints) moves the objective by exactly
+    nu_i, which is the marginal value the Lagrange-multiplier column reports.
+    Inactive inequalities get 0 (complementary slackness).
+    """
+    mults = [0.0] * len(gfuncs)
+    idx = [i for i in range(len(gfuncs)) if active[i]]
+    if not idx:
+        return mults
+    try:
+        gf = _grad(fobj, x)
+        G = np.array([_grad(gfuncs[i][0], x) for i in idx])   # rows = grad g_i
+        nu, *_ = np.linalg.lstsq(G.T, gf, rcond=None)
+        for k, i in enumerate(idx):
+            mults[i] = float(nu[k])
+    except Exception:
+        return [None] * len(gfuncs)
+    return mults
+
+
 def build_result(res, fobj, maximize, var_names, con_expr, con_ops, con_rhs, gfuncs, extra=None):
     if not res.success and not np.all(np.isfinite(res.x)):
         return {"status": "failed", "unsolved": True,
@@ -72,8 +114,16 @@ def build_result(res, fobj, maximize, var_names, con_expr, con_ops, con_rhs, gfu
     obj_val = float(fobj(x))
     n = len(var_names)
     variables = [{"name": var_names[i], "value": _fin(x[i], 6)} for i in range(n)]
+
+    active = []
+    for (g, op, rhs, _name, ctype, _expr) in gfuncs:
+        lhs = float(g(x))
+        tol = 1e-4 * max(1.0, abs(rhs))
+        active.append(op in ("=", "==") or ctype == "eq" or abs(lhs - rhs) <= tol)
+    mults = _multipliers(fobj, x, gfuncs, active)
+
     constraints = []
-    for i, (g, op, rhs) in enumerate(gfuncs):
+    for i, (g, op, rhs, name, ctype, expr) in enumerate(gfuncs):
         lhs = float(g(x))
         if op in ("=", "=="):
             sat = abs(lhs - rhs) <= 1e-4; slack = 0.0
@@ -81,8 +131,16 @@ def build_result(res, fobj, maximize, var_names, con_expr, con_ops, con_rhs, gfu
             sat = lhs >= rhs - 1e-4; slack = lhs - rhs
         else:
             sat = lhs <= rhs + 1e-4; slack = rhs - lhs
-        constraints.append({"name": f"C{i+1}", "op": op, "lhs": _fin(lhs, 6),
-                            "rhs": _fin(rhs, 6), "satisfied": bool(sat), "slack": _fin(slack, 6)})
+        constraints.append({
+            "name": name, "expr": expr, "op": op,
+            "type": ctype or ("eq" if op in ("=", "==") else "ineq"),
+            "lhs": _fin(lhs, 6),
+            # The constraint tables read `value` for the left-hand side at the
+            # optimum; `lhs` is kept as well for callers that already use it.
+            "value": _fin(lhs, 6),
+            "rhs": _fin(rhs, 6), "satisfied": bool(sat), "slack": _fin(slack, 6),
+            "binding": bool(active[i]), "multiplier": _fin(mults[i], 6),
+        })
     out = {"status": "optimal" if res.success else "approximate", "unsolved": False,
            "maximize": maximize, "n_vars": n, "n_constraints": len(gfuncs),
            "objective_value": _fin(obj_val, 6),
@@ -102,7 +160,24 @@ def make_plot(fobj, var_names, x, con=None):
         xs = np.linspace(min(0, x[0]-r), x[0]+r, 120)
         ys = np.linspace(min(0, x[1]-r), x[1]+r, 120)
         GX, GY = np.meshgrid(xs, ys)
-        Z = np.vectorize(lambda a, b: fobj([a, b]))(GX, GY)
+
+        def _z(a, b):
+            # The grid can stray outside the objective's domain — x**0.5 at a
+            # negative point comes back complex, a log or a 1/x blows up. Those
+            # cells become NaN so contour leaves a hole instead of the whole
+            # plot silently dropping to None.
+            try:
+                v = complex(fobj([a, b]))
+            except Exception:
+                return np.nan
+            if abs(v.imag) > 1e-12 or not np.isfinite(v.real):
+                return np.nan
+            return v.real
+
+        Z = np.vectorize(_z)(GX, GY)
+        if not np.isfinite(Z).any():
+            plt.close(fig)
+            return None
         cs = ax.contour(GX, GY, Z, levels=18, cmap="viridis", alpha=0.7)
         ax.clabel(cs, inline=True, fontsize=6)
         ax.plot(x[0], x[1], "*", color="#dc2626", markersize=18)

@@ -64,60 +64,78 @@ class UmapAnalysis:
         self.embedding = reducer.fit_transform(self.scaled_data)
 
         self.results['embedding'] = self.embedding
+        self.results['n_neighbors_requested'] = self.n_neighbors
         self.results['n_neighbors_used'] = effective_neighbors
         self.results['min_dist'] = self.min_dist
         self.results['metric'] = self.metric
         self.results['n_components'] = self.n_components
         self.results['variables'] = self.variables
+        self.results['n_features'] = len(self.variables)
         self.results['n_samples'] = n_samples
+
+        if self.labels is not None:
+            try:
+                self.results['silhouette_score'] = float(silhouette_score(self.embedding, self.labels))
+            except Exception:
+                self.results['silhouette_score'] = None
+        else:
+            self.results['silhouette_score'] = None
 
         self.results['interpretation'] = self._generate_interpretation(n_samples)
 
     def _generate_interpretation(self, n_samples):
-        parts = []
-        parts.append("**Overall Assessment**")
-        parts.append(
-            f"→ UMAP embedded {n_samples} observations across {len(self.variables)} input variables "
-            f"into {self.n_components} dimensions using n_neighbors = {self.results['n_neighbors_used']}, "
-            f"min_dist = {self.min_dist}, metric = '{self.metric}'."
-        )
+        key_insights = []
+
+        key_insights.append({
+            'title': 'Embedding summary',
+            'description': (
+                f"UMAP embedded {n_samples} observations across {len(self.variables)} input variables "
+                f"into {self.n_components} dimensions using n_neighbors = {self.results['n_neighbors_used']}, "
+                f"min_dist = {self.min_dist}, metric = '{self.metric}'."
+            ),
+            'status': 'neutral',
+        })
         if self.n_neighbors != self.results['n_neighbors_used']:
-            parts.append(
-                f"→ Requested n_neighbors ({self.n_neighbors}) was reduced to "
-                f"{self.results['n_neighbors_used']} to stay below the sample size."
-            )
+            key_insights.append({
+                'title': 'n_neighbors was clamped',
+                'description': (
+                    f"Requested n_neighbors ({self.n_neighbors}) was reduced to "
+                    f"{self.results['n_neighbors_used']} to stay below the sample size."
+                ),
+                'status': 'warning',
+            })
 
-        parts.append("")
-        parts.append("**Statistical Insights**")
-        if self.labels is not None:
-            try:
-                sil = silhouette_score(self.embedding, self.labels)
-                sil_desc = "well separated" if sil >= 0.5 else "moderately separated" if sil >= 0.25 else "overlapping"
-                parts.append(
-                    f"→ Silhouette score of the embedding w.r.t. '{self.label_col}' = {sil:.3f} — groups "
+        sil = self.results.get('silhouette_score')
+        if sil is not None:
+            sil_desc = "well separated" if sil >= 0.5 else "moderately separated" if sil >= 0.25 else "overlapping"
+            key_insights.append({
+                'title': 'Silhouette score',
+                'description': (
+                    f"Silhouette score of the embedding w.r.t. '{self.label_col}' = {sil:.3f} — groups "
                     f"appear {sil_desc} in the projection."
-                )
-            except Exception:
-                pass
-        parts.append(
-            f"→ n_neighbors controls the local/global tradeoff: smaller values ({self.results['n_neighbors_used']} "
-            "used here) emphasize fine local structure, larger values emphasize broader global structure."
-        )
-        parts.append(
-            f"→ min_dist = {self.min_dist} controls how tightly points are packed; lower values produce "
-            "tighter, more separated clusters, higher values preserve a more even spread."
+                ),
+                'status': 'positive' if sil >= 0.5 else 'neutral' if sil >= 0.25 else 'warning',
+            })
+        key_insights.append({
+            'title': 'Parameter roles',
+            'description': (
+                f"n_neighbors controls the local/global tradeoff: smaller values ({self.results['n_neighbors_used']} "
+                "used here) emphasize fine local structure, larger values emphasize broader global structure. "
+                f"min_dist = {self.min_dist} controls how tightly points are packed; lower values produce "
+                "tighter, more separated clusters, higher values preserve a more even spread."
+            ),
+            'status': 'neutral',
+        })
+
+        recommendation = (
+            "Unlike t-SNE, UMAP better preserves some global structure, but inter-cluster distances "
+            "should still be interpreted cautiously rather than taken as precise dissimilarities. "
+            "Try a range of n_neighbors (5-50) and min_dist (0.0-0.5) to check how stable the cluster "
+            "structure is. Because UMAP is stochastic, re-run with a few random seeds if the embedding "
+            "will inform downstream decisions."
         )
 
-        parts.append("")
-        parts.append("**Recommendations**")
-        parts.append(
-            "→ Unlike t-SNE, UMAP better preserves some global structure, but inter-cluster distances "
-            "should still be interpreted cautiously rather than taken as precise dissimilarities."
-        )
-        parts.append("→ Try a range of n_neighbors (5-50) and min_dist (0.0-0.5) to check how stable the cluster structure is.")
-        parts.append("→ Because UMAP is stochastic, re-run with a few random seeds if the embedding will inform downstream decisions.")
-
-        return "\n".join(parts)
+        return {'key_insights': key_insights, 'recommendation': recommendation}
 
     def plot_results(self):
         fig, ax = plt.subplots(figsize=(9, 8))
@@ -169,10 +187,23 @@ def main():
         )
         analysis.run_analysis()
         plot_image = analysis.plot_results()
+        # plot_results() returns a full data: URI; the frontend prepends its own
+        # "data:image/png;base64," prefix, so only the base64 payload goes here.
+        embedding_plot = plot_image.split(',', 1)[1] if plot_image and ',' in plot_image else plot_image
 
         response = {
-            'results': analysis.results,
-            'plot': plot_image
+            'n_samples': analysis.results['n_samples'],
+            'n_features': analysis.results['n_features'],
+            'n_components': analysis.results['n_components'],
+            'n_neighbors_requested': analysis.results['n_neighbors_requested'],
+            'n_neighbors_used': analysis.results['n_neighbors_used'],
+            'random_state': 42,
+            'min_dist': analysis.results['min_dist'],
+            'metric': analysis.results['metric'],
+            'silhouette_score': analysis.results['silhouette_score'],
+            'embedding': analysis.results['embedding'],
+            'embedding_plot': embedding_plot,
+            'interpretation': analysis.results['interpretation'],
         }
 
         print(json.dumps(response, default=_to_native_type))

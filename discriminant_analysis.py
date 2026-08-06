@@ -229,6 +229,52 @@ def compute_lda_statistics(X_train: np.ndarray, y_train_encoded: np.ndarray,
     except Exception:
         stats_output['group_centroids'] = []
 
+    # Box's M test — H0: covariance matrices are equal across groups (LDA's key assumption).
+    # Requires every group's sample covariance matrix to be positive-definite (n_k > n_features
+    # for each group); returns None (not NaN) when that can't be satisfied, matching the
+    # frontend's "Not available" fallback.
+    try:
+        p = n_features
+        g = n_classes
+        group_covs = []
+        group_ns = []
+        for i in range(g):
+            mask = y_train_encoded == i
+            n_k = int(mask.sum())
+            if n_k <= p:
+                raise ValueError(f"Group '{class_labels[i]}' has n={n_k} <= {p} features — covariance matrix is singular")
+            cov_k = np.cov(X_train[mask], rowvar=False)
+            sign, logdet = np.linalg.slogdet(cov_k)
+            if sign <= 0:
+                raise ValueError(f"Group '{class_labels[i]}' covariance matrix is not positive-definite")
+            group_covs.append(cov_k)
+            group_ns.append(n_k)
+
+        group_ns = np.array(group_ns)
+        N = int(group_ns.sum())
+        pooled_cov = sum((n_k - 1) * cov_k for n_k, cov_k in zip(group_ns, group_covs)) / (N - g)
+        _, pooled_logdet = np.linalg.slogdet(pooled_cov)
+
+        M = (N - g) * pooled_logdet - sum(
+            (n_k - 1) * np.linalg.slogdet(cov_k)[1] for n_k, cov_k in zip(group_ns, group_covs)
+        )
+
+        c1 = ((np.sum(1 / (group_ns - 1)) - 1 / (N - g))
+              * (2 * p ** 2 + 3 * p - 1) / (6 * (p + 1) * (g - 1)))
+        chi2_stat = M * (1 - c1)
+        df_boxm = int((g - 1) * p * (p + 1) / 2)
+        p_value_boxm = float(1 - stats.chi2.cdf(chi2_stat, df_boxm))
+
+        stats_output['box_m'] = {
+            'M': _to_native_type(float(M)),
+            'chi2': _to_native_type(float(chi2_stat)),
+            'df': df_boxm,
+            'p_value': _to_native_type(p_value_boxm),
+            'significant': p_value_boxm < 0.05,
+        }
+    except Exception:
+        stats_output['box_m'] = None
+
     stats_output['class_info'] = class_info
 
     return stats_output

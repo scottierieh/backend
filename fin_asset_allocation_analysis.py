@@ -22,6 +22,8 @@ from scipy.optimize import minimize
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 
 def _fin(x, nd=6):

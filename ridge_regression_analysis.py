@@ -9,6 +9,7 @@ from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
 import seaborn as sns
+sns.set_theme(style="darkgrid")
 import io
 import base64
 import warnings

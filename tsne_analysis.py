@@ -8,6 +8,7 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
 import seaborn as sns
+sns.set_theme(style="darkgrid")
 import io
 import base64
 import warnings

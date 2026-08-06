@@ -9,6 +9,7 @@ from scipy.stats import f_oneway
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 import seaborn as sns
+sns.set_theme(style="darkgrid")
 import io
 import base64
 import warnings

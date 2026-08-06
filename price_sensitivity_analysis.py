@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 from scipy import interpolate, stats
 import io
 import base64

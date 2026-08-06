@@ -14,6 +14,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold

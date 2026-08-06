@@ -24,6 +24,8 @@ from scipy import stats as sstats
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 EWMA_LAMBDA = 0.94
 

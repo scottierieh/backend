@@ -28,6 +28,8 @@ from scipy import stats
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 CONFS = ["0.90", "0.95", "0.99"]
 

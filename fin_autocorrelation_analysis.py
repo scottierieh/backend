@@ -30,6 +30,8 @@ from statsmodels.stats.diagnostic import acorr_ljungbox
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 BLUE = "#2563eb"
 GREEN = "#16a34a"

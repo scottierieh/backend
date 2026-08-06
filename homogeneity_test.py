@@ -7,6 +7,7 @@ import io
 import base64
 import matplotlib.pyplot as plt
 import seaborn as sns
+sns.set_theme(style="darkgrid")
 from scipy import stats
 import warnings
 

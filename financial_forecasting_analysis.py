@@ -26,6 +26,8 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 import warnings
 warnings.filterwarnings("ignore")
 

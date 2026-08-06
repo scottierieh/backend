@@ -19,6 +19,8 @@ from _optexpr import make_func
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 
 def _fin(x, nd=6):

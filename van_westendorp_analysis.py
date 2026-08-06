@@ -4,6 +4,8 @@ import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 from scipy import interpolate
 import io
 import base64

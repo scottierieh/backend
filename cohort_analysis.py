@@ -56,8 +56,9 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import seaborn as sns
+sns.set_theme(style="darkgrid")
+import matplotlib.dates as mdates
 
 warnings.filterwarnings("ignore")
 

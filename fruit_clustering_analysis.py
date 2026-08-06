@@ -3,6 +3,8 @@ import sys
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 import base64
 from PIL import Image
 import io

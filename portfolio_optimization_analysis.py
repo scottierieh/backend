@@ -35,6 +35,8 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 from pypfopt import EfficientFrontier
 from scipy.optimize import minimize

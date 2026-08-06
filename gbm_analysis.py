@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report, confusion_matrix, precision_recall_curve, average_precision_score
+from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -292,6 +293,43 @@ def main():
             ax.set_title('Confusion Matrix')
             plt.tight_layout()
             plots.append({'label': 'Confusion Matrix', 'image': _fig_to_data_url(fig)})
+
+            # 3. Precision-Recall Curve
+            y_proba = model.predict_proba(X_test)
+            classes_ = model.classes_
+            n_classes = len(classes_)
+
+            fig, ax = plt.subplots(figsize=(7, 6))
+            if n_classes <= 2:
+                pos_label = classes_[1] if n_classes == 2 else classes_[0]
+                pos_idx = 1 if n_classes == 2 else 0
+                precision, recall, _ = precision_recall_curve(y_test, y_proba[:, pos_idx], pos_label=pos_label)
+                ap = average_precision_score((y_test == pos_label).astype(int), y_proba[:, pos_idx])
+                base_rate = (y_test == pos_label).mean()
+                ax.plot(recall, precision, color='C0', lw=2)
+                ax.axhline(y=base_rate, color='r', linestyle='--', lw=1, label=f'Base rate = {base_rate:.3f}')
+                ax.set_xlabel('Recall')
+                ax.set_ylabel('Precision')
+                ax.set_title(f'Precision-Recall Curve (AP = {ap:.3f})')
+                ax.set_xlim([0.0, 1.0])
+                ax.set_ylim([0.0, 1.05])
+                ax.legend(loc='best')
+                ax.grid(True, alpha=0.3)
+            else:
+                y_test_bin = label_binarize(y_test, classes=classes_)
+                for i, cls in enumerate(classes_):
+                    precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_proba[:, i])
+                    ap = average_precision_score(y_test_bin[:, i], y_proba[:, i])
+                    ax.plot(recall, precision, lw=1.5, label=f'{cls} (AP={ap:.3f})')
+                ax.set_xlabel('Recall')
+                ax.set_ylabel('Precision')
+                ax.set_title('Precision-Recall Curve (One-vs-Rest)')
+                ax.set_xlim([0.0, 1.0])
+                ax.set_ylim([0.0, 1.05])
+                ax.legend(loc='best', fontsize='small')
+                ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Precision-Recall Curve', 'image': _fig_to_data_url(fig)})
 
         try:
             from guardrails import compute_guardrails

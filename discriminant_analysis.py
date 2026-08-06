@@ -26,7 +26,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc,
-    roc_auc_score
+    roc_auc_score, precision_recall_curve, average_precision_score
 )
 from scipy import stats
 import warnings
@@ -371,6 +371,34 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         if macro_auc is not None:
             roc_data['__macro_auc__'] = macro_auc
 
+    pr_data = {}
+    if n_classes == 2:
+        precision_curve, recall_curve, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
+        ap_val = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        pr_data['binary'] = {
+            'precision': [_to_native_type(x) for x in precision_curve],
+            'recall': [_to_native_type(x) for x in recall_curve],
+            'average_precision': _to_native_type(ap_val),
+            'base_rate': _to_native_type(float(np.mean(y_test_encoded)))
+        }
+    else:
+        ap_list = []
+        for i, cls in enumerate(le.classes_):
+            y_binary = (y_test_encoded == i).astype(int)
+            if y_binary.sum() == 0 or y_binary.sum() == len(y_binary):
+                continue
+            precision_curve, recall_curve, _ = precision_recall_curve(y_binary, y_pred_proba[:, i])
+            ap_val = average_precision_score(y_binary, y_pred_proba[:, i])
+            pr_data[str(cls)] = {
+                'precision': [_to_native_type(x) for x in precision_curve],
+                'recall': [_to_native_type(x) for x in recall_curve],
+                'average_precision': _to_native_type(ap_val),
+                'base_rate': _to_native_type(float(np.mean(y_binary)))
+            }
+            ap_list.append(ap_val)
+        if ap_list:
+            pr_data['__macro_ap__'] = float(np.mean(ap_list))
+
     lda_info = {}
     lda_info['solver_used'] = solver_used
 
@@ -434,6 +462,7 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
+        'pr_data': pr_data,
         'label_encoder': le,
         'feature_importance': feature_importance,
         'lda_info': lda_info,
@@ -528,6 +557,34 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         if macro_auc is not None:
             roc_data['__macro_auc__'] = macro_auc
 
+    pr_data = {}
+    if n_classes == 2:
+        precision_curve, recall_curve, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
+        ap_val = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        pr_data['binary'] = {
+            'precision': [_to_native_type(x) for x in precision_curve],
+            'recall': [_to_native_type(x) for x in recall_curve],
+            'average_precision': _to_native_type(ap_val),
+            'base_rate': _to_native_type(float(np.mean(y_test_encoded)))
+        }
+    else:
+        ap_list = []
+        for i, cls in enumerate(le.classes_):
+            y_binary = (y_test_encoded == i).astype(int)
+            if y_binary.sum() == 0 or y_binary.sum() == len(y_binary):
+                continue
+            precision_curve, recall_curve, _ = precision_recall_curve(y_binary, y_pred_proba[:, i])
+            ap_val = average_precision_score(y_binary, y_pred_proba[:, i])
+            pr_data[str(cls)] = {
+                'precision': [_to_native_type(x) for x in precision_curve],
+                'recall': [_to_native_type(x) for x in recall_curve],
+                'average_precision': _to_native_type(ap_val),
+                'base_rate': _to_native_type(float(np.mean(y_binary)))
+            }
+            ap_list.append(ap_val)
+        if ap_list:
+            pr_data['__macro_ap__'] = float(np.mean(ap_list))
+
     qda_info = {}
     if hasattr(model, 'means_'):
         qda_info['class_means'] = model.means_.tolist()
@@ -567,6 +624,7 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
+        'pr_data': pr_data,
         'label_encoder': le,
         'feature_importance': feature_importance,
         'qda_info': qda_info
@@ -675,6 +733,35 @@ def generate_roc_plot(roc_data: Dict) -> Optional[str]:
     ax.set_ylabel('True Positive Rate', fontsize=11)
     ax.set_title('ROC Curve', fontsize=13, fontweight='bold')
     ax.legend(loc='lower right')
+    ax.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout(pad=1.5)
+    fig.subplots_adjust(left=0.15)
+    return _fig_to_data_url(fig)
+
+
+def generate_pr_plot(pr_data: Dict) -> Optional[str]:
+    plot_data = {k: v for k, v in pr_data.items() if k != '__macro_ap__'}
+    if not plot_data:
+        return None
+    fig, ax = plt.subplots(figsize=(8, 6))
+    colors = plt.cm.tab10(np.linspace(0, 1, len(plot_data)))
+    single_class = len(plot_data) == 1
+    for (label, data), color in zip(plot_data.items(), colors):
+        ax.plot(data['recall'], data['precision'], color=color, linewidth=2,
+                label=f'{label} (AP = {data["average_precision"]:.3f})')
+        if single_class:
+            ax.axhline(data['base_rate'], color=color, linestyle=':', linewidth=1.5, alpha=0.7,
+                       label=f'Baseline (base rate = {data["base_rate"]:.3f})')
+        else:
+            ax.axhline(data['base_rate'], color=color, linestyle=':', linewidth=1.5, alpha=0.7)
+    if '__macro_ap__' in pr_data:
+        ax.plot([], [], ' ', label=f'Macro AP = {pr_data["__macro_ap__"]:.3f}')
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1.05])
+    ax.set_xlabel('Recall', fontsize=11)
+    ax.set_ylabel('Precision', fontsize=11)
+    ax.set_title('Precision-Recall Curve', fontsize=13, fontweight='bold')
+    ax.legend(loc='upper right', fontsize=9)
     ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout(pad=1.5)
     fig.subplots_adjust(left=0.15)
@@ -995,6 +1082,10 @@ def main():
         roc_plot = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
         if roc_plot:
             plots.append({'label': 'ROC Curve', 'image': roc_plot})
+
+        pr_plot = generate_pr_plot(result['pr_data']) if result.get('pr_data') else None
+        if pr_plot:
+            plots.append({'label': 'Precision-Recall Curve', 'image': pr_plot})
 
         interpretation = generate_interpretation(result, method, result['feature_importance'], language=language)
 

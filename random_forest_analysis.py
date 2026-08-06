@@ -24,6 +24,7 @@ from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
+    precision_recall_curve, average_precision_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 from sklearn.tree import export_text
@@ -164,6 +165,28 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         if macro_auc is not None:
             metrics['auc'] = macro_auc
 
+    pr_data = {}
+    if n_classes == 2:
+        precision_curve, recall_curve, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
+        ap = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        pr_data['binary'] = {
+            'precision': [_to_native_type(x) for x in precision_curve],
+            'recall': [_to_native_type(x) for x in recall_curve],
+            'ap': _to_native_type(ap),
+            'base_rate': float(np.mean(y_test_encoded == 1))
+        }
+    else:
+        for i, cls in enumerate(le.classes_):
+            y_binary = (y_test_encoded == i).astype(int)
+            precision_curve, recall_curve, _ = precision_recall_curve(y_binary, y_pred_proba[:, i])
+            ap = average_precision_score(y_binary, y_pred_proba[:, i])
+            pr_data[str(cls)] = {
+                'precision': [_to_native_type(x) for x in precision_curve],
+                'recall': [_to_native_type(x) for x in recall_curve],
+                'ap': _to_native_type(ap),
+                'base_rate': float(np.mean(y_binary))
+            }
+
     return {
         'model': model,
         'metrics': metrics,
@@ -171,6 +194,7 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
+        'pr_data': pr_data,
         'label_encoder': le
     }
 
@@ -508,6 +532,25 @@ def generate_roc_plot(roc_data: Dict) -> str:
     return _fig_to_base64(fig)
 
 
+def generate_pr_plot(pr_data: Dict) -> str:
+    fig, ax = plt.subplots(figsize=(8, 6))
+    colors = sns.color_palette('husl', n_colors=len(pr_data))
+    for (label, data), color in zip(pr_data.items(), colors):
+        ax.plot(data['recall'], data['precision'], color=color, linewidth=2,
+                label=f'{label} (AP = {data["ap"]:.3f})')
+        ax.axhline(data['base_rate'], color=color, linestyle='--', linewidth=1, alpha=0.4)
+    ax.plot([], [], 'k--', linewidth=1, alpha=0.6, label='Base rate (no-skill)')
+    ax.set_xlim([0, 1]); ax.set_ylim([0, 1.05])
+    ax.set_xlabel('Recall', fontsize=11)
+    ax.set_ylabel('Precision', fontsize=11)
+    ax.set_title('Precision-Recall Curve', fontsize=13, fontweight='bold')
+    ax.legend(loc='lower left')
+    ax.grid(False)
+    plt.tight_layout(pad=1.5)
+    fig.subplots_adjust(left=0.15)
+    return _fig_to_base64(fig)
+
+
 def generate_tree_count_plot(model, X_test, y_test, task_type: str) -> str:
     """Generate tree count vs performance plot"""
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -765,10 +808,13 @@ def main():
         if task_type == 'classification':
             cm_plot = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
             roc_plot = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
+            pr_plot = generate_pr_plot(result['pr_data']) if result.get('pr_data') else None
             if cm_plot:
                 plots.append({'label': 'Confusion Matrix', 'image': cm_plot})
             if roc_plot:
                 plots.append({'label': 'ROC Curve', 'image': roc_plot})
+            if pr_plot:
+                plots.append({'label': 'Precision-Recall Curve', 'image': pr_plot})
         else:
             actual_vs_predicted_plot = generate_actual_vs_predicted_plot(result['y_test'], result['y_pred'])
             residual_plot = generate_residual_plot(result['y_test'], result['y_pred'])

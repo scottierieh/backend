@@ -28,6 +28,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, roc_curve, auc,
+    precision_recall_curve, average_precision_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
@@ -308,6 +309,50 @@ def generate_confusion_matrix_plot(y_true, y_pred, class_labels: List[str]) -> L
     return [{'label': 'Confusion Matrix', 'image': _fig_to_data_url(fig)}]
 
 
+def generate_pr_curve_plot(y_true, y_proba, class_labels: List[str]) -> List[Dict[str, str]]:
+    """Generate Precision-Recall curve(s) from cross-validated out-of-fold predicted probabilities"""
+    y_true = np.array(y_true)
+    y_proba = np.array(y_proba)
+    n_classes = y_proba.shape[1]
+
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+
+    if n_classes <= 2:
+        # Binary classification: use positive class (index 1) probabilities
+        y_score = y_proba[:, 1] if n_classes == 2 else y_proba[:, 0]
+        precision, recall, _ = precision_recall_curve(y_true, y_score)
+        ap = average_precision_score(y_true, y_score)
+        base_rate = np.mean(y_true == 1)
+
+        ax.plot(recall, precision, color='#22c55e', linewidth=2.5,
+                label=f'PR Curve (AP = {ap:.3f})')
+        ax.fill_between(recall, precision, alpha=0.15, color='#22c55e')
+        ax.axhline(y=base_rate, color='#94a3b8', linestyle='--', linewidth=1.5,
+                   label=f'Baseline (Positive Rate = {base_rate:.3f})')
+    else:
+        # Multiclass: one-vs-rest, one curve per class
+        cmap = plt.get_cmap('tab10')
+        for i in range(n_classes):
+            y_true_bin = (y_true == i).astype(int)
+            y_score = y_proba[:, i]
+            precision, recall, _ = precision_recall_curve(y_true_bin, y_score)
+            ap = average_precision_score(y_true_bin, y_score)
+            label = class_labels[i] if class_labels and i < len(class_labels) else str(i)
+            ax.plot(recall, precision, color=cmap(i % 10), linewidth=2,
+                    label=f'{label} (AP = {ap:.3f})')
+
+    ax.set_xlabel('Recall', fontsize=11)
+    ax.set_ylabel('Precision', fontsize=11)
+    ax.set_title('Precision-Recall Curve (Cross-Validated)', fontsize=13, fontweight='bold')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.legend(loc='best', fontsize=9)
+    ax.grid(True, linestyle='--', alpha=0.3)
+
+    plt.tight_layout()
+    return [{'label': 'Precision-Recall Curve', 'image': _fig_to_data_url(fig)}]
+
+
 def generate_regression_plot(y_true, y_pred) -> List[Dict[str, str]]:
     """Generate actual-vs-predicted and residual plots for regression as separate images"""
     plots = []
@@ -530,6 +575,15 @@ def main():
         if cv_results['y_pred'] is not None:
             additional_metrics = calculate_additional_metrics(y_encoded, cv_results['y_pred'], task_type)
 
+        # Pooled out-of-fold predicted probabilities (classification only), reusing the
+        # same cv_splitter used for scores/predictions above for consistency across panels
+        y_proba = None
+        if task_type == 'classification':
+            try:
+                y_proba = cross_val_predict(model, X_scaled, y_encoded, cv=cv_splitter, method='predict_proba')
+            except Exception:
+                y_proba = None
+
         # Generate visualizations
         plots = []
         plots += generate_cv_scores_plot(cv_results)
@@ -537,6 +591,8 @@ def main():
 
         if task_type == 'classification' and cv_results['y_pred'] is not None:
             plots += generate_confusion_matrix_plot(y_encoded, cv_results['y_pred'], class_labels)
+            if y_proba is not None:
+                plots += generate_pr_curve_plot(y_encoded, y_proba, class_labels)
         elif task_type == 'regression' and cv_results['y_pred'] is not None:
             plots += generate_regression_plot(y_encoded, cv_results['y_pred'])
 

@@ -24,6 +24,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
+    precision_recall_curve, average_precision_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 import lightgbm as lgb
@@ -160,12 +161,34 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
         if macro_auc is not None:
             metrics['auc'] = macro_auc
 
+    pr_data = {}
+    if n_classes == 2:
+        precision, recall, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
+        ap = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        pr_data['binary'] = {
+            'precision': [_to_native_type(x) for x in precision],
+            'recall': [_to_native_type(x) for x in recall],
+            'ap': _to_native_type(ap),
+            'base_rate': _to_native_type(np.mean(y_test_encoded))
+        }
+    else:
+        for i, cls in enumerate(le.classes_):
+            y_binary = (y_test_encoded == i).astype(int)
+            precision, recall, _ = precision_recall_curve(y_binary, y_pred_proba[:, i])
+            ap = average_precision_score(y_binary, y_pred_proba[:, i])
+            pr_data[str(cls)] = {
+                'precision': [_to_native_type(x) for x in precision],
+                'recall': [_to_native_type(x) for x in recall],
+                'ap': _to_native_type(ap),
+                'base_rate': _to_native_type(np.mean(y_binary))
+            }
+
     train_history = {'train': evals_result['train'][eval_metric], 'test': evals_result['test'][eval_metric]}
 
     return {
         'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data, 'train_history': train_history, 'eval_metric': eval_metric,
+        'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': eval_metric,
         'label_encoder': le, 'best_iteration': int(model.best_iteration_ or params['n_estimators']),
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
     }
@@ -341,6 +364,25 @@ def generate_roc_plot(roc_data: Dict) -> str:
     ax.set_xlabel('False Positive Rate', fontsize=11); ax.set_ylabel('True Positive Rate', fontsize=11)
     ax.set_title('ROC Curve', fontsize=13, fontweight='bold')
     ax.legend(loc='lower right'); ax.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    return _fig_to_base64(fig)
+
+
+def generate_pr_plot(pr_data: Dict) -> str:
+    fig, ax = plt.subplots(figsize=(8, 6))
+    colors = plt.cm.tab10(np.linspace(0, 1, len(pr_data)))
+    is_binary = len(pr_data) == 1
+    for (label, data), color in zip(pr_data.items(), colors):
+        ax.plot(data['recall'], data['precision'], color=color, linewidth=2, label=f'{label} (AP = {data["ap"]:.3f})')
+        if is_binary:
+            ax.axhline(y=data['base_rate'], color='gray', linestyle='--', linewidth=1.5,
+                        label=f'Baseline (positive rate = {data["base_rate"]:.3f})')
+        else:
+            ax.axhline(y=data['base_rate'], color=color, linestyle=':', linewidth=1, alpha=0.5)
+    ax.set_xlim([0, 1]); ax.set_ylim([0, 1.05])
+    ax.set_xlabel('Recall', fontsize=11); ax.set_ylabel('Precision', fontsize=11)
+    ax.set_title('Precision-Recall Curve', fontsize=13, fontweight='bold')
+    ax.legend(loc='best'); ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
     return _fig_to_base64(fig)
 
@@ -556,10 +598,12 @@ def main():
         if task_type == 'classification':
             cm_plot = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
             roc_plot = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
+            pr_plot = generate_pr_plot(result['pr_data']) if result['pr_data'] else None
             regression_plots = None
         else:
             cm_plot = None
             roc_plot = None
+            pr_plot = None
             regression_plots = generate_regression_plots(result['y_test'], result['y_pred'])
 
         interpretation = generate_interpretation(result, task_type, feature_importance, params)
@@ -599,6 +643,7 @@ def main():
             response['class_labels'] = result['class_labels']
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
+            response['pr_plot'] = pr_plot
         else:
             response['regression_plots'] = regression_plots
 

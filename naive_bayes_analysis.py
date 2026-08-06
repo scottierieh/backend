@@ -22,7 +22,8 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_curve, auc, roc_auc_score
+    confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
+    precision_recall_curve, average_precision_score
 )
 import warnings
 
@@ -156,6 +157,7 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
 
     # ── ROC curves + macro AUC ──────────────────────────────────────
     roc_data = {}
+    pr_data = {}
     if n_classes == 2:
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
@@ -165,6 +167,16 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
             'auc': _to_native_type(roc_auc)
         }
         metrics['auc'] = _to_native_type(roc_auc)
+
+        # ── Precision-Recall curve + average precision (binary) ─────
+        precision_vals, recall_vals, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
+        ap_score = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        pr_data['binary'] = {
+            'precision':  [_to_native_type(x) for x in precision_vals],
+            'recall':     [_to_native_type(x) for x in recall_vals],
+            'ap':         _to_native_type(ap_score),
+            'base_rate':  _to_native_type(float(np.mean(y_test_encoded == 1)))
+        }
     else:
         auc_values = []
         for i, cls in enumerate(le.classes_):
@@ -176,6 +188,16 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
                 'fpr': [_to_native_type(x) for x in fpr],
                 'tpr': [_to_native_type(x) for x in tpr],
                 'auc': _to_native_type(roc_auc)
+            }
+
+            # ── Precision-Recall curve (One-vs-Rest, mirrors ROC above) ──
+            precision_vals, recall_vals, _ = precision_recall_curve(y_binary, y_pred_proba[:, i])
+            ap_score = average_precision_score(y_binary, y_pred_proba[:, i])
+            pr_data[str(cls)] = {
+                'precision':  [_to_native_type(x) for x in precision_vals],
+                'recall':     [_to_native_type(x) for x in recall_vals],
+                'ap':         _to_native_type(ap_score),
+                'base_rate':  _to_native_type(float(np.mean(y_binary)))
             }
         # macro AUC summary for multiclass (sklearn's OvR macro average, consistent with other models)
         macro_auc = _compute_multiclass_auc(y_test_encoded, y_pred_proba)
@@ -196,6 +218,7 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
         'confusion_matrix':  cm.tolist(),
         'class_labels':      [str(c) for c in le.classes_],
         'roc_data':          roc_data,
+        'pr_data':           pr_data,
         'label_encoder':     le,
         'class_priors':      class_priors,
         'n_classes':         n_classes,
@@ -349,6 +372,31 @@ def generate_roc_plot(roc_data: Dict) -> str:
     ax.set_ylabel('True Positive Rate', fontsize=11)
     ax.set_title('ROC Curve', fontsize=13, fontweight='bold')
     ax.legend(loc='lower right')
+    ax.grid(True, linestyle='--', alpha=0.3)
+
+    plt.tight_layout()
+    return _fig_to_base64(fig)
+
+
+def generate_pr_plot(pr_data: Dict) -> str:
+    """Generate Precision-Recall curve plot (mirrors generate_roc_plot's style/helper).
+    Each class gets its curve plus a dotted horizontal line marking its base rate
+    (the precision a no-skill classifier would achieve for that class)."""
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    colors = plt.cm.tab10(np.linspace(0, 1, len(pr_data)))
+
+    for (label, data), color in zip(pr_data.items(), colors):
+        ax.plot(data['recall'], data['precision'], color=color, linewidth=2,
+                label=f'{label} (AP = {data["ap"]:.3f})')
+        ax.axhline(data['base_rate'], color=color, linestyle=':', linewidth=1.2, alpha=0.6)
+
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1.05])
+    ax.set_xlabel('Recall', fontsize=11)
+    ax.set_ylabel('Precision', fontsize=11)
+    ax.set_title('Precision-Recall Curve', fontsize=13, fontweight='bold')
+    ax.legend(loc='lower left')
     ax.grid(True, linestyle='--', alpha=0.3)
 
     plt.tight_layout()
@@ -678,6 +726,7 @@ def main():
         importance_plot  = generate_feature_importance_plot(feature_importance)
         cm_plot          = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
         roc_plot         = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
+        pr_plot          = generate_pr_plot(result['pr_data']) if result['pr_data'] else None
         prior_plot       = generate_class_prior_plot(result['class_priors'])
         prob_dist_plots  = generate_probability_distribution_plots(
             model, feature_cols, nb_type, result['class_labels']
@@ -712,6 +761,7 @@ def main():
             'importance_plot':     importance_plot,
             'cm_plot':             cm_plot,
             'roc_plot':            roc_plot,
+            'pr_plot':             pr_plot,
             'prior_plot':          prior_plot,
             'prob_dist_plots':     prob_dist_plots,
             'interpretation':      interpretation,

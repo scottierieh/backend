@@ -13,7 +13,7 @@ import json
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, label_binarize
 from sklearn.linear_model import LogisticRegression, Ridge, Lasso
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.svm import SVC, SVR
@@ -26,6 +26,7 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import (
     accuracy_score, classification_report, confusion_matrix,
     r2_score, mean_squared_error, mean_absolute_error,
+    precision_recall_curve, average_precision_score,
 )
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -323,6 +324,43 @@ def main():
             ax.set_ylabel('True Label')
             plt.tight_layout()
             plots.append({'label': 'Confusion Matrix', 'image': fig_to_base64(fig)})
+
+            # 1b. Precision-Recall curve, reusing the same tuned model's probabilities on the
+            # same held-out test set (no refit).
+            if hasattr(best_model, 'predict_proba'):
+                y_proba = best_model.predict_proba(X_test)
+                class_labels = best_model.classes_
+                fig, ax = plt.subplots(figsize=(7, 6))
+
+                if len(class_labels) == 2:
+                    pos_label = class_labels[1]
+                    y_true_bin = (np.asarray(y_test) == pos_label).astype(int)
+                    y_score = y_proba[:, 1]
+                    precision, recall, _ = precision_recall_curve(y_true_bin, y_score)
+                    ap = average_precision_score(y_true_bin, y_score)
+                    base_rate = y_true_bin.mean()
+                    ax.plot(recall, precision, color='#3b82f6', linewidth=2, label=f'AP = {ap:.3f}')
+                    ax.axhline(base_rate, color='gray', linestyle='--', linewidth=1,
+                               label=f'Base rate = {base_rate:.3f}')
+                    ax.set_title(f'Precision-Recall Curve (Positive Class: {pos_label})')
+                else:
+                    y_true_bin = label_binarize(y_test, classes=class_labels)
+                    colors = plt.cm.tab10(np.linspace(0, 1, len(class_labels)))
+                    for i, cls in enumerate(class_labels):
+                        precision, recall, _ = precision_recall_curve(y_true_bin[:, i], y_proba[:, i])
+                        ap = average_precision_score(y_true_bin[:, i], y_proba[:, i])
+                        ax.plot(recall, precision, color=colors[i], linewidth=2, label=f'{cls} (AP={ap:.3f})')
+                    ax.set_title('Precision-Recall Curve (One-vs-Rest, Tuned Model)')
+
+                ax.set_xlabel('Recall')
+                ax.set_ylabel('Precision')
+                ax.set_xlim(0, 1.02)
+                ax.set_ylim(0, 1.02)
+                ax.legend(loc='best', fontsize=9)
+                ax.grid(True, alpha=0.3)
+                plt.tight_layout()
+                pr_plot = fig_to_base64(fig)
+                plots.append({'label': 'Precision-Recall Curve', 'image': pr_plot})
         else:
             fig, ax = plt.subplots(figsize=(7, 5.5))
             ax.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6')

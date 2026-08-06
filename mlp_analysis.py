@@ -24,6 +24,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
+    precision_recall_curve, average_precision_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
@@ -315,6 +316,45 @@ def generate_roc_plot(roc_data: Dict) -> Optional[str]:
     return _fig_to_data_url(fig)
 
 
+def generate_precision_recall_plot(y_true_encoded, y_pred_proba, class_labels: List[str]) -> Optional[str]:
+    """Precision-Recall curve from the same y_true/predict_proba used for the ROC curve.
+    Binary: single curve with AP annotation + positive-class base-rate reference line.
+    Multiclass: one-vs-rest, one curve per class."""
+    if y_true_encoded is None or y_pred_proba is None:
+        return None
+    try:
+        y_true_arr = np.asarray(y_true_encoded)
+        proba_arr = np.asarray(y_pred_proba)
+        n_classes = proba_arr.shape[1]
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        if n_classes == 2:
+            precision, recall, _ = precision_recall_curve(y_true_arr, proba_arr[:, 1])
+            ap = average_precision_score(y_true_arr, proba_arr[:, 1])
+            ax.plot(recall, precision, color='#3b82f6', linewidth=2, label=f'PR curve (AP = {ap:.3f})')
+            base_rate = float(np.mean(y_true_arr))
+            ax.axhline(y=base_rate, color='gray', linestyle='--', linewidth=1, label=f'Base rate = {base_rate:.3f}')
+            ax.legend(loc='lower left')
+        else:
+            colors = plt.cm.tab10(np.linspace(0, 1, n_classes))
+            for i, (cls, color) in enumerate(zip(class_labels, colors)):
+                y_binary = (y_true_arr == i).astype(int)
+                precision, recall, _ = precision_recall_curve(y_binary, proba_arr[:, i])
+                ap = average_precision_score(y_binary, proba_arr[:, i])
+                ax.plot(recall, precision, color=color, linewidth=2, label=f'{cls} (AP = {ap:.3f})')
+            ax.legend(loc='lower left', fontsize=8)
+
+        ax.set_xlim([0, 1]); ax.set_ylim([0, 1.05])
+        ax.set_xlabel('Recall', fontsize=11); ax.set_ylabel('Precision', fontsize=11)
+        ax.set_title('Precision-Recall Curve', fontsize=13, fontweight='bold')
+        ax.grid(True, linestyle='--', alpha=0.3)
+        plt.tight_layout()
+        return _fig_to_data_url(fig)
+    except Exception:
+        return None
+
+
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 15) -> str:
     fig, ax = plt.subplots(figsize=(10, max(5, len(importance_data[:top_n]) * 0.4)))
     top_features = importance_data[:top_n]
@@ -552,6 +592,9 @@ def main():
             roc_plot = generate_roc_plot(result['roc_data'])
             if roc_plot:
                 plots.append({'label': 'ROC Curve', 'image': roc_plot})
+            pr_plot = generate_precision_recall_plot(result['y_test_encoded'], result['y_pred_proba'], result['class_labels'])
+            if pr_plot:
+                plots.append({'label': 'Precision-Recall Curve', 'image': pr_plot})
         else:
             plots.append({'label': 'Actual vs Predicted', 'image': generate_actual_vs_predicted_plot(result['y_test'], result['y_pred'])})
             plots.append({'label': 'Residual Plot', 'image': generate_residual_plot(result['y_test'], result['y_pred'])})

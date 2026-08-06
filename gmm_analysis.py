@@ -27,6 +27,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 — registers the 3D projection
 import seaborn as sns
 import warnings
 
@@ -565,6 +566,100 @@ def main():
         ax4.text(0, 0, f'n={sum(sizes)}', ha='center', va='center', fontsize=14, fontweight='bold')
         ax4.set_title('Component Distribution', fontsize=13, fontweight='bold')
         plots.append({'label': 'Component Distribution', 'image': _fig_to_data_url(fig4)})
+
+        # ── 11b. 3D PCA scatter (only when >=3 clustering features) ────────
+        if n_features >= 3:
+            try:
+                pca3 = PCA(n_components=3)
+                pca_data3 = pca3.fit_transform(cluster_data_scaled)
+                means_pca3 = pca3.transform(gmm.means_)
+
+                fig5 = plt.figure(figsize=(7, 5.5))
+                ax5 = fig5.add_subplot(111, projection='3d')
+                for i, label in enumerate(unique_labels):
+                    mask = labels == label
+                    ax5.scatter(
+                        pca_data3[mask, 0], pca_data3[mask, 1], pca_data3[mask, 2],
+                        c=[colors[i]], label=f'Component {label + 1}', alpha=0.7, s=45,
+                        edgecolors='white', linewidth=0.5
+                    )
+                ax5.scatter(
+                    means_pca3[:, 0], means_pca3[:, 1], means_pca3[:, 2],
+                    s=160, c='black', marker='X', edgecolors='white', linewidth=1.5,
+                    label='Component Mean', zorder=10
+                )
+                ax5.set_xlabel(f'PC1 ({pca3.explained_variance_ratio_[0]:.1%})', fontsize=9)
+                ax5.set_ylabel(f'PC2 ({pca3.explained_variance_ratio_[1]:.1%})', fontsize=9)
+                ax5.set_zlabel(f'PC3 ({pca3.explained_variance_ratio_[2]:.1%})', fontsize=9)
+                ax5.set_title('Components (3D PCA)', fontsize=13, fontweight='bold')
+                ax5.legend(loc='best', fontsize=8, frameon=True, facecolor='white')
+                plots.append({'label': 'Components (3D PCA)', 'image': _fig_to_data_url(fig5)})
+            except Exception:
+                pass
+
+        # ── 11c. Clustering Process — manual EM stepping (visualization only,
+        #         does not affect the reported `gmm` result used elsewhere) ──
+        try:
+            pca_proc = PCA(n_components=2)
+            pca_proc_data = pca_proc.fit_transform(cluster_data_scaled)
+
+            target_iters = [1, 3, 6]
+            max_manual_iters = 15
+            snapshots = []  # list of (title, labels_snapshot, means_pca_snapshot)
+
+            gmm_step = GaussianMixture(
+                n_components=n_components, covariance_type=covariance_type,
+                max_iter=1, warm_start=True, n_init=1, random_state=42
+            )
+
+            it = 0
+            step_labels, step_means_pca, step_converged = None, None, False
+            while it < max_manual_iters:
+                it += 1
+                gmm_step.fit(cluster_data_scaled)
+                step_labels = gmm_step.predict(cluster_data_scaled)
+                step_means_pca = pca_proc.transform(gmm_step.means_)
+                step_converged = bool(gmm_step.converged_)
+
+                if it in target_iters:
+                    snapshots.append((f'Iteration {it}', step_labels.copy(), step_means_pca.copy()))
+
+                if step_converged:
+                    break
+
+            final_title = 'Converged!' if step_converged else f'Final State (iter {it})'
+            final_snapshot = (final_title, step_labels.copy(), step_means_pca.copy())
+
+            # Guard against convergence happening before all target iterations
+            # were reached — pad with the final snapshot so the grid always has 4 panels.
+            while len(snapshots) < 3:
+                snapshots.append(final_snapshot)
+            snapshots = snapshots[:3] + [final_snapshot]
+
+            fig6, axes6 = plt.subplots(2, 2, figsize=(12, 10))
+            for ax6, (title, snap_labels, snap_means_pca) in zip(axes6.flatten(), snapshots):
+                snap_unique = np.unique(snap_labels)
+                for i, label in enumerate(snap_unique):
+                    mask = snap_labels == label
+                    color = colors[int(label) % len(colors)]
+                    ax6.scatter(
+                        pca_proc_data[mask, 0], pca_proc_data[mask, 1], c=[color],
+                        alpha=0.7, s=35, edgecolors='white', linewidth=0.5
+                    )
+                ax6.scatter(
+                    snap_means_pca[:, 0], snap_means_pca[:, 1], s=110, c='black',
+                    marker='X', edgecolors='white', linewidth=1.2, zorder=10
+                )
+                ax6.set_title(title, fontsize=12, fontweight='bold')
+                ax6.set_xlabel('PC1', fontsize=9)
+                ax6.set_ylabel('PC2', fontsize=9)
+                ax6.grid(True, alpha=0.3, linestyle='--')
+
+            fig6.suptitle('EM Algorithm Convergence', fontsize=14, fontweight='bold')
+            fig6.tight_layout()
+            plots.append({'label': 'Clustering Process', 'image': _fig_to_data_url(fig6)})
+        except Exception:
+            pass
 
         # ── 12. Response ───────────────────────────────────────────────────
         response = _to_native({

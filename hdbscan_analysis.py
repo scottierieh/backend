@@ -9,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
+from scipy.spatial import ConvexHull
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (registers 3D projection)
 import io
 import base64
 import warnings
@@ -175,10 +177,27 @@ def main():
 
             if len(unique_labels) > 0:
                 palette = sns.color_palette("viridis", n_colors=len(unique_labels))
+                color_map = {label: palette[i] for i, label in enumerate(unique_labels)}
 
                 # Plot non-noise points with size based on probability
                 clustered_points = plot_df[plot_df['cluster'] != -1]
                 if not clustered_points.empty:
+                    # Draw a translucent convex hull behind each real cluster's points
+                    for label in unique_labels:
+                        cluster_data = clustered_points[clustered_points['cluster'] == label]
+                        if len(cluster_data) >= 3:
+                            try:
+                                hull_points = cluster_data[['PC1', 'PC2']].values
+                                hull = ConvexHull(hull_points)
+                                polygon = hull_points[hull.vertices]
+                                ax.fill(
+                                    polygon[:, 0], polygon[:, 1],
+                                    color=color_map[label], alpha=0.15, zorder=1
+                                )
+                            except Exception:
+                                # Collinear/degenerate point sets can't form a hull; skip.
+                                pass
+
                     # Create sizes based on probability
                     sizes = clustered_points['probability'] * 150 + 20
 
@@ -189,9 +208,10 @@ def main():
                                 cluster_data['PC1'],
                                 cluster_data['PC2'],
                                 s=sizes[clustered_points['cluster'] == label],
-                                c=[palette[i]] * len(cluster_data),
+                                c=[color_map[label]] * len(cluster_data),
                                 label=f'Cluster {label}',
-                                alpha=0.7
+                                alpha=0.7,
+                                zorder=2
                             )
 
             # Plot noise points
@@ -216,6 +236,67 @@ def main():
             fig.tight_layout()
 
             plots.append({'label': 'PCA Cluster Projection', 'image': _fig_to_data_url(fig)})
+
+        # --- 3D PCA scatter (only when there are enough feature columns) ---
+        if df.shape[1] >= 3:
+            pca3 = PCA(n_components=3)
+            X_pca3 = pca3.fit_transform(X_scaled)
+
+            plot_df3 = pd.DataFrame(X_pca3, columns=['PC1', 'PC2', 'PC3'])
+            plot_df3['cluster'] = labels
+            plot_df3['probability'] = probabilities
+
+            fig3d = plt.figure(figsize=(7, 5.5))
+            ax3d = fig3d.add_subplot(111, projection='3d')
+
+            unique_labels_3d = sorted(list(set(labels)))
+            if -1 in unique_labels_3d:
+                unique_labels_3d.remove(-1)
+
+            if len(unique_labels_3d) > 0:
+                palette3d = sns.color_palette("viridis", n_colors=len(unique_labels_3d))
+                color_map_3d = {label: palette3d[i] for i, label in enumerate(unique_labels_3d)}
+
+                clustered_points_3d = plot_df3[plot_df3['cluster'] != -1]
+                if not clustered_points_3d.empty:
+                    # Carry probability over into point size, same idea as the 2D panel
+                    sizes_3d = clustered_points_3d['probability'] * 100 + 15
+
+                    for label in unique_labels_3d:
+                        cluster_data = clustered_points_3d[clustered_points_3d['cluster'] == label]
+                        if not cluster_data.empty:
+                            ax3d.scatter(
+                                cluster_data['PC1'],
+                                cluster_data['PC2'],
+                                cluster_data['PC3'],
+                                s=sizes_3d[clustered_points_3d['cluster'] == label],
+                                c=[color_map_3d[label]] * len(cluster_data),
+                                label=f'Cluster {label}',
+                                alpha=0.7
+                            )
+
+            noise_points_3d = plot_df3[plot_df3['cluster'] == -1]
+            if not noise_points_3d.empty:
+                ax3d.scatter(
+                    noise_points_3d['PC1'],
+                    noise_points_3d['PC2'],
+                    noise_points_3d['PC3'],
+                    color='gray',
+                    marker='x',
+                    s=25,
+                    label='Noise',
+                    alpha=0.5
+                )
+
+            title_3d = 'HDBSCAN Clustering (3D PCA Projection)' if HAS_HDBSCAN else 'Hierarchical Clustering Approximation (3D PCA Projection)'
+            ax3d.set_title(title_3d)
+            ax3d.set_xlabel(f'PC1 ({pca3.explained_variance_ratio_[0]:.1%})')
+            ax3d.set_ylabel(f'PC2 ({pca3.explained_variance_ratio_[1]:.1%})')
+            ax3d.set_zlabel(f'PC3 ({pca3.explained_variance_ratio_[2]:.1%})')
+            ax3d.legend(title='Cluster', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+            fig3d.tight_layout()
+
+            plots.append({'label': 'Clusters (3D PCA)', 'image': _fig_to_data_url(fig3d)})
 
         response = {
             'results': summary,

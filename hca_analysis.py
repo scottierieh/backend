@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 from scipy.spatial.distance import pdist, squareform
+from scipy.spatial import ConvexHull
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 from sklearn.decomposition import PCA
@@ -249,11 +251,27 @@ class HierarchicalClusterAnalysis:
             n_clusters = len(np.unique(self.cluster_labels))
             palette = sns.color_palette('crest', n_colors=n_clusters)
 
+            label_colors = {}
             for i, label in enumerate(np.unique(self.cluster_labels)):
                 mask = self.cluster_labels == label
+                label_colors[label] = palette[i]
                 ax2.scatter(pca_data[mask, 0], pca_data[mask, 1],
                           c=[palette[i]], label=f'Cluster {label}',
                           alpha=0.6, s=50, edgecolors='black', linewidth=0.5)
+
+            # Convex hull overlay per cluster
+            for label in np.unique(self.cluster_labels):
+                mask = self.cluster_labels == label
+                cluster_points = pca_data[mask]
+                if cluster_points.shape[0] < 3:
+                    continue
+                try:
+                    hull = ConvexHull(cluster_points)
+                    hull_points = cluster_points[hull.vertices]
+                    ax2.fill(hull_points[:, 0], hull_points[:, 1],
+                             color=label_colors[label], alpha=0.15, zorder=0)
+                except Exception:
+                    pass
 
             ax2.set_title('Clusters in PCA Space', fontsize=12, fontweight='bold')
             ax2.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})', fontsize=12)
@@ -319,6 +337,30 @@ class HierarchicalClusterAnalysis:
                 ax5.tick_params(axis='both', which='major', width=1.5)
                 plt.tight_layout()
                 plots.append({'label': 'Scaled Centroid Heatmap', 'image': self._fig_to_data_url(fig5)})
+
+        # 6. 3D PCA Scatter (only when there are enough features to justify a 3rd dimension)
+        if self.n_features >= 3:
+            fig6 = plt.figure(figsize=(7, 5.5))
+            ax6 = fig6.add_subplot(111, projection='3d')
+            pca3 = PCA(n_components=3)
+            pca3_data = pca3.fit_transform(self.cluster_data_scaled)
+
+            n_clusters_3d = len(np.unique(self.cluster_labels))
+            palette3 = sns.color_palette('viridis', n_colors=n_clusters_3d)
+
+            for i, label in enumerate(np.unique(self.cluster_labels)):
+                mask = self.cluster_labels == label
+                ax6.scatter(pca3_data[mask, 0], pca3_data[mask, 1], pca3_data[mask, 2],
+                           c=[palette3[i]], label=f'Cluster {label}',
+                           alpha=0.7, s=40, edgecolors='black', linewidth=0.4)
+
+            ax6.set_title('Clusters (3D PCA)', fontsize=12, fontweight='bold')
+            ax6.set_xlabel(f'PC1 ({pca3.explained_variance_ratio_[0]:.1%})', fontsize=10)
+            ax6.set_ylabel(f'PC2 ({pca3.explained_variance_ratio_[1]:.1%})', fontsize=10)
+            ax6.set_zlabel(f'PC3 ({pca3.explained_variance_ratio_[2]:.1%})', fontsize=10)
+            ax6.legend(title='Cluster')
+            plt.tight_layout()
+            plots.append({'label': 'Clusters (3D PCA)', 'image': self._fig_to_data_url(fig6)})
 
         return plots
 

@@ -9,7 +9,10 @@ sns.set_theme(style="darkgrid")
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.decomposition import PCA
+from sklearn.cluster import kmeans_plusplus
 from sklearn_extra.cluster import KMedoids
+from scipy.spatial import ConvexHull
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 - registers 3D projection
 import warnings
 import io
 import base64
@@ -144,31 +147,168 @@ class KMedoidsAnalysis:
         buf.seek(0)
         return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
 
+    def _simulate_clustering_process(self, pca_2d_data):
+        """
+        Approximate, self-contained PAM-style iteration used ONLY to render the
+        'Clustering Process' visualization. This does NOT feed back into
+        self.results / self.cluster_labels / the medoid indices used elsewhere
+        in the file - it is a lightweight re-derivation purely for the plot.
+
+        Approximation notes:
+          - Initial medoids are seeded via k-means++ (on the actual scaled data
+            points) and each seed is snapped to the nearest real data point.
+          - Each iteration reassigns points to their nearest current medoid,
+            then for every cluster picks the *actual data point closest to the
+            cluster mean* as the new medoid. This is a fast stand-in for the
+            real PAM swap step (which would test every candidate point for the
+            total-cost-minimizing swap) - cheap enough to run per-iteration
+            purely for illustrating convergence, not for the reported result.
+        """
+        X = self.cluster_data_scaled.values
+        n_samples = X.shape[0]
+        k = self.n_clusters
+
+        seeds, _ = kmeans_plusplus(X, n_clusters=k, random_state=42)
+        medoid_idx = []
+        for seed in seeds:
+            dists = np.linalg.norm(X - seed, axis=1)
+            for cand in np.argsort(dists):
+                if cand not in medoid_idx:
+                    medoid_idx.append(int(cand))
+                    break
+        medoid_idx = np.array(medoid_idx)
+
+        history = []
+        max_iter = 8
+        for iteration in range(1, max_iter + 1):
+            medoid_points = X[medoid_idx]
+            dists_to_medoids = np.linalg.norm(X[:, None, :] - medoid_points[None, :, :], axis=2)
+            labels = np.argmin(dists_to_medoids, axis=1)
+            history.append({'iter': iteration, 'medoid_idx': medoid_idx.copy(), 'labels': labels.copy()})
+
+            new_medoid_idx = medoid_idx.copy()
+            for ci in range(k):
+                members = np.where(labels == ci)[0]
+                if len(members) == 0:
+                    continue
+                cluster_mean = X[members].mean(axis=0)
+                local_dists = np.linalg.norm(X[members] - cluster_mean, axis=1)
+                new_medoid_idx[ci] = members[np.argmin(local_dists)]
+
+            if np.array_equal(new_medoid_idx, medoid_idx):
+                break  # converged - medoids stopped changing
+            medoid_idx = new_medoid_idx
+
+        n_hist = len(history)
+        raw_targets = [1, 3, 6, n_hist]
+        picked = []
+        for t in raw_targets:
+            i = min(t, n_hist) - 1
+            if i not in picked:
+                picked.append(i)
+        while len(picked) < 4:
+            picked.append(n_hist - 1)
+        picked = picked[:4]
+
+        snapshots = [history[i] for i in picked]
+
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        axes_flat = axes.flatten()
+        for pos, (ax_p, snap) in enumerate(zip(axes_flat, snapshots)):
+            ax_p.scatter(pca_2d_data[:, 0], pca_2d_data[:, 1], c=snap['labels'],
+                        cmap='viridis', s=30, alpha=0.6)
+            medoid_pts = pca_2d_data[snap['medoid_idx']]
+            ax_p.scatter(medoid_pts[:, 0], medoid_pts[:, 1], s=200, c='red', marker='X',
+                        edgecolors='black', linewidths=1.5, zorder=5)
+
+            title = 'Converged!' if pos == len(snapshots) - 1 else f"Iteration {snap['iter']}"
+            ax_p.set_title(title, fontsize=12, fontweight='bold')
+            ax_p.set_xlabel('PC1')
+            ax_p.set_ylabel('PC2')
+            ax_p.grid(True, alpha=0.3)
+
+        fig.suptitle('K-Medoids (PAM) Clustering Process', fontsize=14)
+        plt.tight_layout()
+        return self._fig_to_data_url(fig)
+
     def plot_results(self):
         plots = []
+
+        pca_2d = None
+        pca_2d_data = None
 
         # 1. Cluster Scatter Plot (PCA)
         if self.n_features >= 2:
             fig, ax = plt.subplots(figsize=(7, 5.5))
 
-            pca = PCA(n_components=2)
-            pca_data = pca.fit_transform(self.cluster_data_scaled)
+            pca_2d = PCA(n_components=2)
+            pca_2d_data = pca_2d.fit_transform(self.cluster_data_scaled)
 
-            sns.scatterplot(x=pca_data[:, 0], y=pca_data[:, 1], hue=self.cluster_labels,
+            sns.scatterplot(x=pca_2d_data[:, 0], y=pca_2d_data[:, 1], hue=self.cluster_labels,
                             palette='viridis', ax=ax, legend='full', s=50, alpha=0.7)
 
-            medoids_pca = pca.transform(self.cluster_data_scaled.iloc[self.results['clustering_summary']['medoid_indices']])
+            # Convex hulls per cluster, colored to match the scatter's viridis palette
+            unique_cluster_labels = sorted(np.unique(self.cluster_labels).tolist())
+            hull_palette = sns.color_palette('viridis', n_colors=len(unique_cluster_labels))
+            hull_color_map = dict(zip(unique_cluster_labels, hull_palette))
+            for label in unique_cluster_labels:
+                mask = self.cluster_labels == label
+                cluster_pts = pca_2d_data[mask]
+                if cluster_pts.shape[0] < 3:
+                    continue
+                try:
+                    hull = ConvexHull(cluster_pts)
+                    hull_pts = cluster_pts[hull.vertices]
+                    ax.fill(hull_pts[:, 0], hull_pts[:, 1], alpha=0.15, color=hull_color_map[label])
+                except Exception:
+                    pass  # collinear or degenerate points - skip hull for this cluster
+
+            medoids_pca = pca_2d.transform(self.cluster_data_scaled.iloc[self.results['clustering_summary']['medoid_indices']])
 
             ax.scatter(medoids_pca[:, 0], medoids_pca[:, 1], s=250, c='red', marker='X', label='Medoids', edgecolors='black')
 
             ax.set_title('Clusters in 2D PCA Space')
-            ax.set_xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
-            ax.set_ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
+            ax.set_xlabel(f'Principal Component 1 ({pca_2d.explained_variance_ratio_[0]:.1%})')
+            ax.set_ylabel(f'Principal Component 2 ({pca_2d.explained_variance_ratio_[1]:.1%})')
             ax.legend()
             ax.grid(True, alpha=0.3)
 
             plt.tight_layout()
             plots.append({'label': 'Clusters (PCA)', 'image': self._fig_to_data_url(fig)})
+
+        # 1b. Cluster Scatter Plot (3D PCA) - only when there are enough feature columns
+        if self.n_features >= 3:
+            fig = plt.figure(figsize=(7, 5.5))
+            ax3d = fig.add_subplot(111, projection='3d')
+
+            pca_3d = PCA(n_components=3)
+            pca_3d_data = pca_3d.fit_transform(self.cluster_data_scaled)
+
+            ax3d.scatter(pca_3d_data[:, 0], pca_3d_data[:, 1], pca_3d_data[:, 2],
+                        c=self.cluster_labels, cmap='viridis', s=40, alpha=0.7)
+
+            medoids_pca_3d = pca_3d.transform(self.cluster_data_scaled.iloc[self.results['clustering_summary']['medoid_indices']])
+            ax3d.scatter(medoids_pca_3d[:, 0], medoids_pca_3d[:, 1], medoids_pca_3d[:, 2],
+                        s=250, c='red', marker='X', label='Medoids', edgecolors='black', linewidths=1.2)
+
+            ax3d.set_title('Clusters in 3D PCA Space')
+            ax3d.set_xlabel(f'PC1 ({pca_3d.explained_variance_ratio_[0]:.1%})')
+            ax3d.set_ylabel(f'PC2 ({pca_3d.explained_variance_ratio_[1]:.1%})')
+            ax3d.set_zlabel(f'PC3 ({pca_3d.explained_variance_ratio_[2]:.1%})')
+            ax3d.legend()
+
+            plt.tight_layout()
+            plots.append({'label': 'Clusters (3D PCA)', 'image': self._fig_to_data_url(fig)})
+
+        # 1c. Clustering Process (K-Medoids/PAM convergence) - combined 2x2 snapshot grid.
+        # Purely illustrative: derived from a separate, approximate simulation and
+        # does not alter self.results, self.cluster_labels, or the reported medoids.
+        if pca_2d_data is not None:
+            try:
+                process_image = self._simulate_clustering_process(pca_2d_data)
+                plots.append({'label': 'Clustering Process', 'image': process_image})
+            except Exception:
+                pass  # visualization-only helper - never let it break the main response
 
         # 2. Radar Chart of Medoids
         if 'profiles' in self.results:

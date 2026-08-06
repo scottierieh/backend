@@ -6,7 +6,9 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import seaborn as sns
 sns.set_theme(style="darkgrid")
 import io
@@ -103,6 +105,7 @@ def main():
             unique_labels = sorted(list(set(labels)))
             palette = sns.color_palette("viridis", n_colors=len(unique_labels) - (1 if -1 in unique_labels else 0))
 
+            label_colors = {}
             for i, label in enumerate(unique_labels):
                 if label == -1:
                     # Noise points
@@ -116,15 +119,30 @@ def main():
                         ax=ax
                     )
                 else:
+                    color = palette[i - (1 if -1 in unique_labels else 0)]
+                    label_colors[label] = color
                     sns.scatterplot(
                         x=plot_df[plot_df['cluster'] == label]['PC1'],
                         y=plot_df[plot_df['cluster'] == label]['PC2'],
-                        color=palette[i - (1 if -1 in unique_labels else 0)],
+                        color=color,
                         label=f'Cluster {label}',
                         s=80,
                         alpha=0.7,
                         ax=ax
                     )
+
+            # Convex hulls around each real cluster (skip noise; need >= 3 points to form a hull)
+            for label, color in label_colors.items():
+                cluster_points = plot_df.loc[plot_df['cluster'] == label, ['PC1', 'PC2']].values
+                if cluster_points.shape[0] < 3:
+                    continue
+                try:
+                    hull = ConvexHull(cluster_points)
+                    hull_points = cluster_points[hull.vertices]
+                    ax.fill(hull_points[:, 0], hull_points[:, 1], color=color, alpha=0.15)
+                except Exception:
+                    # Collinear or degenerate point sets can't form a hull; skip silently
+                    pass
 
             ax.set_title('DBSCAN Clustering (PCA Projection)')
             ax.set_xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
@@ -134,6 +152,41 @@ def main():
             fig.tight_layout()
 
             plots.append({'label': 'Cluster Scatter (PCA Projection)', 'image': _fig_to_data_url(fig)})
+
+        if df.shape[1] >= 3:
+            pca3 = PCA(n_components=3)
+            X_pca3 = pca3.fit_transform(X_scaled)
+
+            fig3d = plt.figure(figsize=(7, 5.5))
+            ax3d = fig3d.add_subplot(111, projection='3d')
+
+            unique_labels_3d = sorted(list(set(labels)))
+            n_real_clusters = len(unique_labels_3d) - (1 if -1 in unique_labels_3d else 0)
+            palette3d = sns.color_palette("viridis", n_colors=max(n_real_clusters, 1))
+
+            real_idx = 0
+            for label in unique_labels_3d:
+                mask = (labels == label)
+                if label == -1:
+                    ax3d.scatter(
+                        X_pca3[mask, 0], X_pca3[mask, 1], X_pca3[mask, 2],
+                        c='gray', marker='x', s=30, label='Noise', alpha=0.6
+                    )
+                else:
+                    ax3d.scatter(
+                        X_pca3[mask, 0], X_pca3[mask, 1], X_pca3[mask, 2],
+                        color=palette3d[real_idx], marker='o', s=50, label=f'Cluster {label}', alpha=0.7
+                    )
+                    real_idx += 1
+
+            ax3d.set_title('DBSCAN Clustering (3D PCA Projection)')
+            ax3d.set_xlabel(f'PC1 ({pca3.explained_variance_ratio_[0]:.1%})')
+            ax3d.set_ylabel(f'PC2 ({pca3.explained_variance_ratio_[1]:.1%})')
+            ax3d.set_zlabel(f'PC3 ({pca3.explained_variance_ratio_[2]:.1%})')
+            ax3d.legend(title='Cluster', loc='best', fontsize='small')
+            fig3d.tight_layout()
+
+            plots.append({'label': 'Clusters (3D PCA)', 'image': _fig_to_data_url(fig3d)})
 
         response = {
             'results': summary,

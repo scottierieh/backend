@@ -7,10 +7,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, kmeans_plusplus
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.decomposition import PCA
+from scipy.spatial import ConvexHull
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the '3d' projection)
 import warnings
 import io
 import base64
@@ -177,6 +179,86 @@ class KMeansAnalysis:
         buf.seek(0)
         return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
 
+    def _plot_clustering_process(self):
+        """Manually run Lloyd's algorithm step-by-step so we can snapshot how the
+        centroids/assignments evolve, then render 4 sampled iterations as one
+        combined 2x2 figure (iteration 1, 3, 6, and the final converged state)."""
+        X = self.cluster_data_scaled.values
+        k = self.n_clusters
+        seed = 42  # same random_state used elsewhere in this file for reproducibility
+
+        try:
+            init_centroids, _ = kmeans_plusplus(X, n_clusters=k, random_state=seed)
+        except Exception:
+            rng = np.random.RandomState(seed)
+            init_idx = rng.choice(X.shape[0], size=k, replace=False)
+            init_centroids = X[init_idx].copy()
+
+        # Project once upfront so points don't jump around between panels.
+        pca_2d = PCA(n_components=2)
+        pca_data_2d = pca_2d.fit_transform(X)
+
+        history = []  # list of (labels, centroids) captured after each iteration's update
+        centroids = init_centroids.astype(float).copy()
+        max_iters = 15
+        tol = 1e-6
+        converged = False
+        for _ in range(max_iters):
+            dists = np.linalg.norm(X[:, np.newaxis, :] - centroids[np.newaxis, :, :], axis=2)
+            labels = np.argmin(dists, axis=1)
+            new_centroids = np.array([
+                X[labels == j].mean(axis=0) if np.any(labels == j) else centroids[j]
+                for j in range(k)
+            ])
+            history.append((labels.copy(), new_centroids.copy()))
+            shift = np.linalg.norm(new_centroids - centroids)
+            centroids = new_centroids
+            if shift < tol:
+                converged = True
+                break
+
+        final_idx = len(history) - 1
+
+        # Sample iterations 1, 3, 6 (0-indexed: 0, 2, 5), falling back to earlier
+        # iterations if convergence happened sooner than that.
+        candidate_iters = [1, 3, 6]
+        sample_idxs = [c - 1 for c in candidate_iters if c - 1 < final_idx]
+        fill = 0
+        while len(sample_idxs) < 3 and fill < final_idx:
+            if fill not in sample_idxs:
+                sample_idxs.append(fill)
+            fill += 1
+        sample_idxs = sorted(set(sample_idxs))[:3]
+        panel_idxs = sample_idxs + [final_idx]
+        seen = set()
+        panel_idxs = [i for i in panel_idxs if not (i in seen or seen.add(i))]
+
+        final_title = 'Converged!' if converged else f'Iteration {final_idx + 1} (Max Reached)'
+        titles = [
+            final_title if idx == final_idx else f'Iteration {idx + 1}'
+            for idx in panel_idxs
+        ]
+
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        axes_flat = axes.flatten()
+
+        for ax_i, idx in enumerate(panel_idxs):
+            ax = axes_flat[ax_i]
+            labels_i, centroids_i = history[idx]
+            centroids_proj = pca_2d.transform(centroids_i)
+            ax.scatter(pca_data_2d[:, 0], pca_data_2d[:, 1], c=labels_i, cmap='viridis', s=40, alpha=0.8)
+            ax.scatter(centroids_proj[:, 0], centroids_proj[:, 1], s=200, c='red', marker='X', edgecolor='black')
+            ax.set_title(titles[ax_i])
+            ax.set_xlabel('PC1')
+            ax.set_ylabel('PC2')
+            ax.grid(True, alpha=0.3)
+
+        for ax_j in range(len(panel_idxs), 4):
+            axes_flat[ax_j].axis('off')
+
+        fig.suptitle('K-Means Clustering Process', fontsize=14)
+        return self._fig_to_data_url(fig)
+
     def plot_results(self):
         plots = []
 
@@ -208,6 +290,22 @@ class KMeansAnalysis:
             pca_data = pca.fit_transform(self.cluster_data_scaled)
 
             fig, ax = plt.subplots(figsize=(7, 5.5))
+
+            # Draw a translucent convex hull behind each cluster's points, matching
+            # the color that sns.scatterplot's viridis hue assignment will use.
+            unique_labels_sorted = np.unique(self.cluster_labels)
+            hull_palette = sns.color_palette('viridis', n_colors=len(unique_labels_sorted))
+            label_color_map = dict(zip(unique_labels_sorted, hull_palette))
+            for lbl in unique_labels_sorted:
+                cluster_points = pca_data[self.cluster_labels == lbl]
+                if cluster_points.shape[0] >= 3:
+                    try:
+                        hull = ConvexHull(cluster_points)
+                        hull_pts = cluster_points[hull.vertices]
+                        ax.fill(hull_pts[:, 0], hull_pts[:, 1], color=label_color_map[lbl], alpha=0.15)
+                    except Exception:
+                        pass
+
             sns.scatterplot(x=pca_data[:, 0], y=pca_data[:, 1], hue=self.cluster_labels,
                             palette='viridis', ax=ax, legend='full')
 
@@ -220,6 +318,30 @@ class KMeansAnalysis:
             ax.legend()
             ax.grid(True, alpha=0.3)
             plots.append({'label': 'Clusters (PCA)', 'image': self._fig_to_data_url(fig)})
+
+        # 3b. Cluster Scatter Plot (3D PCA) - only when at least 3 clustering variables were used
+        if len(self.feature_cols) >= 3:
+            pca3 = PCA(n_components=3)
+            pca3_data = pca3.fit_transform(self.cluster_data_scaled)
+            centroids_pca3 = pca3.transform(self.results['clustering_summary']['centroids'])
+
+            fig = plt.figure(figsize=(7, 5.5))
+            ax3 = fig.add_subplot(111, projection='3d')
+            ax3.scatter(pca3_data[:, 0], pca3_data[:, 1], pca3_data[:, 2],
+                        c=self.cluster_labels, cmap='viridis', s=40, alpha=0.8)
+            ax3.scatter(centroids_pca3[:, 0], centroids_pca3[:, 1], centroids_pca3[:, 2],
+                        s=200, c='red', marker='X', label='Centroids')
+
+            ax3.set_title('Clusters in 3D PCA Space')
+            ax3.set_xlabel(f'PC1 ({pca3.explained_variance_ratio_[0]:.1%})')
+            ax3.set_ylabel(f'PC2 ({pca3.explained_variance_ratio_[1]:.1%})')
+            ax3.set_zlabel(f'PC3 ({pca3.explained_variance_ratio_[2]:.1%})')
+            ax3.legend()
+            plots.append({'label': 'Clusters (3D PCA)', 'image': self._fig_to_data_url(fig)})
+
+        # 3c. Clustering Process - manually step through Lloyd's algorithm to snapshot convergence
+        if self.n_features >= 2 and hasattr(self, 'n_clusters'):
+            plots.append({'label': 'Clustering Process', 'image': self._plot_clustering_process()})
 
         # 4. Radar Chart of Centroids
         if 'profiles' in self.results:

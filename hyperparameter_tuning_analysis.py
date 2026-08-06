@@ -310,42 +310,58 @@ def main():
             search.best_score_, cv_folds, len(cv_results_df), std_at_best, scoring
         )
 
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle(f'Hyperparameter Tuning ({search_method.title()} Search) — {model_name} ({task_type})', fontsize=16)
+        plots = []
+        score_label = 'Accuracy' if task_type == 'classification' else scoring.upper()
 
+        # 1. Confusion matrix (classification) or actual-vs-predicted scatter (regression)
         if task_type == 'classification':
             cm = np.array(response['confusion_matrix'])
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[0, 0])
-            axes[0, 0].set_title('Confusion Matrix (Tuned Model)')
-            axes[0, 0].set_xlabel('Predicted Label')
-            axes[0, 0].set_ylabel('True Label')
+            fig, ax = plt.subplots(figsize=(6.5, 6))
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+            ax.set_title('Confusion Matrix (Tuned Model)')
+            ax.set_xlabel('Predicted Label')
+            ax.set_ylabel('True Label')
+            plt.tight_layout()
+            plots.append({'label': 'Confusion Matrix', 'image': fig_to_base64(fig)})
         else:
-            axes[0, 0].scatter(y_test, y_pred, alpha=0.5, color='#3b82f6')
+            fig, ax = plt.subplots(figsize=(7, 5.5))
+            ax.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6')
             lo, hi = float(min(min(y_test), min(y_pred))), float(max(max(y_test), max(y_pred)))
-            axes[0, 0].plot([lo, hi], [lo, hi], 'r--', linewidth=2)
-            axes[0, 0].set_xlabel('Actual')
-            axes[0, 0].set_ylabel('Predicted')
-            axes[0, 0].set_title('Actual vs Predicted (Tuned Model)')
+            ax.plot([lo, hi], [lo, hi], 'r--', linewidth=2)
+            ax.set_xlabel('Actual')
+            ax.set_ylabel('Predicted')
+            ax.set_title('Actual vs Predicted (Tuned Model)')
+            plt.tight_layout()
+            plots.append({'label': 'Actual vs Predicted', 'image': fig_to_base64(fig)})
 
-        score_label = 'Accuracy' if task_type == 'classification' else scoring.upper()
-        axes[0, 1].bar(['Baseline', 'Tuned'], [baseline_score, tuned_score], color=['steelblue', 'darkorange'])
-        axes[0, 1].set_ylabel(f'Test {score_label}')
-        axes[0, 1].set_title(f'Baseline vs. Tuned Model {score_label}')
+        # 2. Baseline vs. tuned test score comparison
+        fig, ax = plt.subplots(figsize=(7, 5.5))
+        ax.bar(['Baseline', 'Tuned'], [baseline_score, tuned_score], color=['steelblue', 'darkorange'])
+        ax.set_ylabel(f'Test {score_label}')
+        ax.set_title(f'Baseline vs. Tuned Model {score_label}')
         for i, v in enumerate([baseline_score, tuned_score]):
-            axes[0, 1].text(i, v + 0.01 * (1 if v >= 0 else -1), f"{v:.3f}", ha='center')
-        axes[0, 1].grid(True, axis='y', alpha=0.3)
+            ax.text(i, v + 0.01 * (1 if v >= 0 else -1), f"{v:.3f}", ha='center')
+        ax.grid(True, axis='y', alpha=0.3)
+        plt.tight_layout()
+        plots.append({'label': 'Baseline vs. Tuned', 'image': fig_to_base64(fig)})
 
+        # 3. Top candidate CV scores (with std error bars)
         top_scores = cv_results_df.sort_values('rank_test_score').head(15)
-        axes[1, 0].barh(range(len(top_scores)), top_scores['mean_test_score'], xerr=top_scores['std_test_score'], color='seagreen')
-        axes[1, 0].set_yticks(range(len(top_scores)))
-        axes[1, 0].set_yticklabels([f"#{r}" for r in top_scores['rank_test_score']])
-        axes[1, 0].set_xlabel(f'Mean CV Score ({scoring})')
-        axes[1, 0].set_ylabel('Candidate Rank')
-        axes[1, 0].set_title('Top Candidate CV Scores (with std)')
-        axes[1, 0].invert_yaxis()
-        axes[1, 0].grid(True, axis='x', alpha=0.3)
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.barh(range(len(top_scores)), top_scores['mean_test_score'], xerr=top_scores['std_test_score'], color='seagreen')
+        ax.set_yticks(range(len(top_scores)))
+        ax.set_yticklabels([f"#{r}" for r in top_scores['rank_test_score']])
+        ax.set_xlabel(f'Mean CV Score ({scoring})')
+        ax.set_ylabel('Candidate Rank')
+        ax.set_title('Top Candidate CV Scores (with std)')
+        ax.invert_yaxis()
+        ax.grid(True, axis='x', alpha=0.3)
+        plt.tight_layout()
+        plots.append({'label': 'Top Candidate CV Scores', 'image': fig_to_base64(fig)})
 
-        axes[1, 1].axis('off')
+        # 4. Tuning summary (best params, CV score, tuned test score)
+        fig, ax = plt.subplots(figsize=(7, 5.5))
+        ax.axis('off')
         summary_text = (
             f"Model: {model_name} ({task_type})\n"
             f"Search Method: {search_method}\n"
@@ -356,11 +372,13 @@ def main():
             f"\n\nBest CV Score: {search.best_score_:.4f}\n"
             f"Test {score_label} (Tuned): {tuned_score:.4f}"
         )
-        axes[1, 1].text(0.02, 0.98, summary_text, transform=axes[1, 1].transAxes, fontsize=11,
-                         verticalalignment='top', bbox=dict(boxstyle='round,pad=0.5', fc='wheat', alpha=0.3))
+        ax.text(0.02, 0.98, summary_text, transform=ax.transAxes, fontsize=11,
+                verticalalignment='top', bbox=dict(boxstyle='round,pad=0.5', fc='wheat', alpha=0.3))
+        ax.set_title(f'Hyperparameter Tuning Summary — {model_name} ({search_method.title()} Search)')
+        plt.tight_layout()
+        plots.append({'label': 'Tuning Summary', 'image': fig_to_base64(fig)})
 
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        response['tuning_plot'] = fig_to_base64(fig)
+        response['plots'] = plots
 
         print(json.dumps(response, default=_to_native_type))
 

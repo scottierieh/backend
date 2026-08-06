@@ -210,15 +210,22 @@ class HierarchicalClusterAnalysis:
 
         return interpretations
 
+    def _fig_to_data_url(self, fig):
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
     def plot_results(self):
         # Ensure seaborn style is applied
         sns.set_theme(style="darkgrid")
         sns.set_context("notebook", font_scale=1.1)
-        
-        fig, axes = plt.subplots(3, 2, figsize=(15, 18))
+
+        plots = []
 
         # 1. Dendrogram
-        ax1 = plt.subplot2grid((3, 2), (0, 0), colspan=2, fig=fig)
+        fig1, ax1 = plt.subplots(figsize=(10, 5.5))
         cut_height = 0
         if self.n_clusters > 1 and len(self.linkage_matrix) >= self.n_clusters - 1:
             cut_height = self.linkage_matrix[-(self.n_clusters - 1), 2]
@@ -229,35 +236,39 @@ class HierarchicalClusterAnalysis:
         ax1.set_ylabel('Distance', fontsize=12)
         ax1.legend()
         ax1.grid(False)
-        
+        plt.tight_layout()
+        plots.append({'label': 'Dendrogram', 'image': self._fig_to_data_url(fig1)})
+
         # 2. PCA Plot
-        ax2 = axes[1, 0]
         if self.n_features > 1:
+            fig2, ax2 = plt.subplots(figsize=(7, 5.5))
             pca = PCA(n_components=2)
             pca_data = pca.fit_transform(self.cluster_data_scaled)
-            
+
             # Use crest palette
             n_clusters = len(np.unique(self.cluster_labels))
             palette = sns.color_palette('crest', n_colors=n_clusters)
-            
+
             for i, label in enumerate(np.unique(self.cluster_labels)):
                 mask = self.cluster_labels == label
-                ax2.scatter(pca_data[mask, 0], pca_data[mask, 1], 
-                          c=[palette[i]], label=f'Cluster {label}', 
+                ax2.scatter(pca_data[mask, 0], pca_data[mask, 1],
+                          c=[palette[i]], label=f'Cluster {label}',
                           alpha=0.6, s=50, edgecolors='black', linewidth=0.5)
-            
+
             ax2.set_title('Clusters in PCA Space', fontsize=12, fontweight='bold')
             ax2.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})', fontsize=12)
             ax2.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%})', fontsize=12)
             ax2.legend(title='Cluster')
             ax2.grid(True, alpha=0.3)
             ax2.tick_params(axis='both', which='major', width=1.5)
+            plt.tight_layout()
+            plots.append({'label': 'Clusters in PCA Space', 'image': self._fig_to_data_url(fig2)})
 
         # 3. Silhouette Score Plot
-        ax3 = axes[1, 1]
         if 'validation_scores' in self.results:
+            fig3, ax3 = plt.subplots(figsize=(7, 5.5))
             opt_k_res = self.results['validation_scores']
-            ax3.plot(opt_k_res['k_range'], opt_k_res['silhouette'], 'o-', 
+            ax3.plot(opt_k_res['k_range'], opt_k_res['silhouette'], 'o-',
                     color='#5B9BD5', linewidth=2, markersize=8)
             ax3.set_title('Silhouette Scores by Number of Clusters', fontsize=12, fontweight='bold')
             ax3.set_xlabel('Number of Clusters (k)', fontsize=12)
@@ -268,15 +279,17 @@ class HierarchicalClusterAnalysis:
                 rec_k = self.results['optimal_k_recommendation']['silhouette']
                 ax3.axvline(x=rec_k, color='red', linestyle='--', linewidth=2, label=f'Recommended k = {rec_k}')
                 ax3.legend()
+            plt.tight_layout()
+            plots.append({'label': 'Silhouette Scores by Number of Clusters', 'image': self._fig_to_data_url(fig3)})
 
         # 4. Cluster Size Distribution
-        ax4 = axes[2, 0]
+        fig4, ax4 = plt.subplots(figsize=(7, 5.5))
         cluster_sizes = pd.Series(self.cluster_labels).value_counts().sort_index()
-        
+
         # Use crest palette for bars
         colors = sns.color_palette('crest', n_colors=len(cluster_sizes))
-        
-        ax4.bar(range(len(cluster_sizes)), cluster_sizes.values, 
+
+        ax4.bar(range(len(cluster_sizes)), cluster_sizes.values,
                color=colors, alpha=0.7, edgecolor='black')
         ax4.set_title('Cluster Size Distribution', fontsize=12, fontweight='bold')
         ax4.set_xlabel('Cluster', fontsize=12)
@@ -285,9 +298,10 @@ class HierarchicalClusterAnalysis:
         ax4.set_xticklabels(cluster_sizes.index)
         ax4.grid(True, alpha=0.3)
         ax4.tick_params(axis='both', which='major', width=1.5)
+        plt.tight_layout()
+        plots.append({'label': 'Cluster Size Distribution', 'image': self._fig_to_data_url(fig4)})
 
         # 5. Centroid Heatmap
-        ax5 = axes[2, 1]
         if 'profiles' in self.results:
             centroids_scaled = []
             cluster_names = []
@@ -297,19 +311,16 @@ class HierarchicalClusterAnalysis:
                 cluster_names.append(name)
 
             if centroids_scaled:
+                fig5, ax5 = plt.subplots(figsize=(7, 5.5))
                 centroid_df = pd.DataFrame(centroids_scaled, columns=self.feature_cols, index=cluster_names)
                 sns.heatmap(centroid_df, annot=True, cmap='crest', ax=ax5, fmt='.2f')
                 ax5.set_title('Scaled Centroid Heatmap', fontsize=12, fontweight='bold')
                 ax5.tick_params(axis='x', rotation=45)
                 ax5.tick_params(axis='both', which='major', width=1.5)
-        
-        plt.tight_layout()
-        
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
-        plt.close(fig)
-        buf.seek(0)
-        return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+                plt.tight_layout()
+                plots.append({'label': 'Scaled Centroid Heatmap', 'image': self._fig_to_data_url(fig5)})
+
+        return plots
 
 def main():
     try:
@@ -328,11 +339,11 @@ def main():
         hca.analyze_clusters()
         hca.stability_analysis()
         
-        plot_image = hca.plot_results()
+        plots = hca.plot_results()
 
         response = {
             'results': hca.results,
-            'plot': plot_image
+            'plots': plots
         }
         
         print(json.dumps(response, default=_to_native_type))

@@ -148,80 +148,111 @@ def main():
         results['prediction_examples'] = prediction_examples
 
         # --- Plotting ---
-        plot_image = None
+        def _fig_to_data_url(fig):
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', bbox_inches='tight')
+            plt.close(fig)
+            buf.seek(0)
+            return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
+        plots = []
         if problem_type == 'regression':
-            fig, axes = plt.subplots(3, 3, figsize=(18, 15))
-            fig.suptitle('GBM Regression Analysis', fontsize=20, fontweight='bold')
             residuals = y_test - y_pred
 
-            # 1. Actual vs Predicted
-            sns.scatterplot(x=y_test, y=y_pred, ax=axes[0, 0], alpha=0.6)
-            axes[0, 0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
-            axes[0, 0].set_xlabel('Actual Values')
-            axes[0, 0].set_ylabel('Predicted Values')
-            axes[0, 0].set_title(f"Actual vs Predicted (R² = {results['metrics']['r2_score']:.3f})")
-            axes[0,0].grid(True, alpha=0.3)
-
-            # 2. Feature Importance
             importance_df = pd.DataFrame({
                 'feature': feature_names,
                 'importance': model.feature_importances_
             }).sort_values('importance', ascending=False)
-            sns.barplot(x='importance', y='feature', data=importance_df.head(10), ax=axes[0, 1], palette='viridis')
-            axes[0, 1].set_title('Top 10 Feature Importance')
-            axes[0,1].grid(True, alpha=0.3)
+
+            # 1. Actual vs Predicted
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.scatterplot(x=y_test, y=y_pred, ax=ax, alpha=0.6)
+            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
+            ax.set_xlabel('Actual Values')
+            ax.set_ylabel('Predicted Values')
+            ax.set_title(f"Actual vs Predicted (R² = {results['metrics']['r2_score']:.3f})")
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Actual vs Predicted', 'image': _fig_to_data_url(fig)})
+
+            # 2. Feature Importance
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.barplot(x='importance', y='feature', data=importance_df.head(10), ax=ax, palette='viridis')
+            ax.set_title('Top 10 Feature Importance')
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Feature Importance', 'image': _fig_to_data_url(fig)})
 
             # 3. Residuals vs Predicted
-            sns.scatterplot(x=y_pred, y=residuals, ax=axes[0, 2], alpha=0.6)
-            axes[0, 2].axhline(y=0, color='r', linestyle='--')
-            axes[0, 2].set_xlabel('Predicted Values')
-            axes[0, 2].set_ylabel('Residuals')
-            axes[0, 2].set_title('Residuals vs. Predicted')
-            axes[0,2].grid(True, alpha=0.3)
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.scatterplot(x=y_pred, y=residuals, ax=ax, alpha=0.6)
+            ax.axhline(y=0, color='r', linestyle='--')
+            ax.set_xlabel('Predicted Values')
+            ax.set_ylabel('Residuals')
+            ax.set_title('Residuals vs. Predicted')
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Residuals vs Predicted', 'image': _fig_to_data_url(fig)})
 
             # 4. Residual Distribution
-            sns.histplot(residuals, kde=True, ax=axes[1, 0], bins=15)
-            axes[1, 0].set_title('Residuals Distribution')
-            axes[1,0].grid(True, alpha=0.3)
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.histplot(residuals, kde=True, ax=ax, bins=15)
+            ax.set_title('Residuals Distribution')
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Residuals Distribution', 'image': _fig_to_data_url(fig)})
 
             # 5. Q-Q Plot
-            stats.probplot(residuals, dist="norm", plot=axes[1, 1])
-            axes[1, 1].set_title('Q-Q Plot of Residuals')
-            axes[1,1].grid(True, alpha=0.3)
-            
+            fig, ax = plt.subplots(figsize=(7, 6))
+            stats.probplot(residuals, dist="norm", plot=ax)
+            ax.set_title('Q-Q Plot of Residuals')
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Q-Q Plot of Residuals', 'image': _fig_to_data_url(fig)})
+
             # 6. Learning Curve
             train_scores = np.zeros(n_estimators)
             for i, y_pred_train in enumerate(model.staged_predict(X_train)):
                 train_scores[i] = mean_squared_error(y_train, y_pred_train)
-            
+
             test_scores = np.zeros(n_estimators)
             for i, y_pred_test in enumerate(model.staged_predict(X_test)):
                 test_scores[i] = mean_squared_error(y_test, y_pred_test)
 
-            axes[1, 2].plot(train_scores, 'b-', label='Train MSE')
-            axes[1, 2].plot(test_scores, 'r-', label='Test MSE')
-            axes[1, 2].set_xlabel('Boosting Iterations')
-            axes[1, 2].set_ylabel('Mean Squared Error')
-            axes[1, 2].set_title('Learning Curve')
-            axes[1, 2].legend()
-            axes[1,2].grid(True, alpha=0.3)
+            fig, ax = plt.subplots(figsize=(7, 6))
+            ax.plot(train_scores, 'b-', label='Train MSE')
+            ax.plot(test_scores, 'r-', label='Test MSE')
+            ax.set_xlabel('Boosting Iterations')
+            ax.set_ylabel('Mean Squared Error')
+            ax.set_title('Learning Curve')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Learning Curve', 'image': _fig_to_data_url(fig)})
 
             # 7. Prediction Error Distribution
             errors = np.abs(residuals)
-            sns.histplot(errors, kde=False, ax=axes[2, 0], bins=15)
-            axes[2, 0].set_title(f'Prediction Error Distribution (MAE={errors.mean():.2f})')
-            axes[2,0].grid(True, alpha=0.3)
-            
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.histplot(errors, kde=False, ax=ax, bins=15)
+            ax.set_title(f'Prediction Error Distribution (MAE={errors.mean():.2f})')
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Prediction Error Distribution', 'image': _fig_to_data_url(fig)})
+
             # 8. Top Feature vs Target
             top_feature = importance_df.iloc[0]['feature']
-            sns.scatterplot(x=X_test[top_feature], y=y_test, ax=axes[2, 1], alpha=0.6, label='Actual')
-            sns.scatterplot(x=X_test[top_feature], y=y_pred, ax=axes[2, 1], alpha=0.6, label='Predicted')
-            axes[2, 1].set_title(f'Top Feature ({top_feature}) vs Target')
-            axes[2,1].legend()
-            axes[2,1].grid(True, alpha=0.3)
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.scatterplot(x=X_test[top_feature], y=y_test, ax=ax, alpha=0.6, label='Actual')
+            sns.scatterplot(x=X_test[top_feature], y=y_pred, ax=ax, alpha=0.6, label='Predicted')
+            ax.set_title(f'Top Feature ({top_feature}) vs Target')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'Top Feature vs Target', 'image': _fig_to_data_url(fig)})
 
             # 9. Summary Text
-            axes[2, 2].axis('off')
+            fig, ax = plt.subplots(figsize=(7, 6))
+            ax.axis('off')
             summary_text = (
                 f"Model Performance:\n"
                 f"  R² Score: {results['metrics']['r2_score']:.4f}\n"
@@ -234,33 +265,34 @@ def main():
                 f"  Min: {residuals.min():,.2f}\n"
                 f"  Max: {residuals.max():,.2f}"
             )
-            axes[2, 2].text(0.05, 0.95, summary_text, transform=axes[2, 2].transAxes, fontsize=12,
-                            verticalalignment='top', bbox=dict(boxstyle='round,pad=0.5', fc='wheat', alpha=0.3))
+            ax.text(0.05, 0.95, summary_text, transform=ax.transAxes, fontsize=12,
+                    verticalalignment='top', bbox=dict(boxstyle='round,pad=0.5', fc='wheat', alpha=0.3))
+            plots.append({'label': 'Model Performance Summary', 'image': _fig_to_data_url(fig)})
 
         else: # Classification
-            fig, axes = plt.subplots(1, 2, figsize=(14, 6))
             importance_df = pd.DataFrame({
                 'feature': feature_names,
                 'importance': model.feature_importances_
             }).sort_values('importance', ascending=False).head(15)
-            
-            sns.barplot(x='importance', y='feature', data=importance_df, ax=axes[0], palette='viridis')
-            axes[0].set_title('Feature Importance')
 
+            # 1. Feature Importance
+            fig, ax = plt.subplots(figsize=(8, 6))
+            sns.barplot(x='importance', y='feature', data=importance_df, ax=ax, palette='viridis')
+            ax.set_title('Feature Importance')
+            plt.tight_layout()
+            plots.append({'label': 'Feature Importance', 'image': _fig_to_data_url(fig)})
+
+            # 2. Confusion Matrix
             cm = confusion_matrix(y_test, y_pred)
             class_names = sorted(y.unique())
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[1], xticklabels=class_names, yticklabels=class_names)
-            axes[1].set_xlabel('Predicted')
-            axes[1].set_ylabel('Actual')
-            axes[1].set_title('Confusion Matrix')
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names)
+            ax.set_xlabel('Predicted')
+            ax.set_ylabel('Actual')
+            ax.set_title('Confusion Matrix')
+            plt.tight_layout()
+            plots.append({'label': 'Confusion Matrix', 'image': _fig_to_data_url(fig)})
 
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        plt.close(fig)
-        buf.seek(0)
-        plot_image = base64.b64encode(buf.read()).decode('utf-8')
-        
         try:
             from guardrails import compute_guardrails
             _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2_score')}
@@ -271,7 +303,7 @@ def main():
         response = {
             'results': results,
             'guardrails': guardrails,
-            'plot': f"data:image/png;base64,{plot_image}"
+            'plots': plots
         }
 
         print(json.dumps(response, default=_to_native_type))

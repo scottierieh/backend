@@ -69,6 +69,14 @@ def _fig_to_base64(fig) -> str:
     return image_base64
 
 
+def _fig_to_data_url(fig) -> str:
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    buf.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
+
 def detect_task_type(y: pd.Series) -> str:
     unique_ratio = len(y.unique()) / len(y)
     if y.dtype == 'object' or y.dtype.name == 'category':
@@ -533,31 +541,34 @@ def generate_learning_curve_plot(train_history: Dict, task_type: str) -> str:
     return _fig_to_base64(fig)
 
 
-def generate_regression_plot(y_test, y_pred) -> str:
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+def generate_regression_plot(y_test, y_pred) -> List[Dict[str, str]]:
+    plots = []
 
-    ax1 = axes[0]
-    ax1.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6', s=30)
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    ax.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6', s=30)
     min_val = min(min(y_test), min(y_pred))
     max_val = max(max(y_test), max(y_pred))
-    ax1.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
-    ax1.set_xlabel('Actual', fontsize=11)
-    ax1.set_ylabel('Predicted', fontsize=11)
-    ax1.set_title('Actual vs Predicted', fontsize=12, fontweight='bold')
-    ax1.legend()
-    ax1.grid(True, linestyle='--', alpha=0.3)
-
-    ax2 = axes[1]
-    residuals = y_test - y_pred
-    ax2.scatter(y_pred, residuals, alpha=0.5, color='#22c55e', s=30)
-    ax2.axhline(y=0, color='red', linestyle='--', linewidth=2)
-    ax2.set_xlabel('Predicted', fontsize=11)
-    ax2.set_ylabel('Residuals', fontsize=11)
-    ax2.set_title('Residual Plot', fontsize=12, fontweight='bold')
-    ax2.grid(True, linestyle='--', alpha=0.3)
-
+    ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
+    ax.set_xlabel('Actual', fontsize=11)
+    ax.set_ylabel('Predicted', fontsize=11)
+    ax.set_title('Actual vs Predicted', fontsize=12, fontweight='bold')
+    ax.legend()
+    ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    plots.append({'label': 'Actual vs Predicted', 'image': _fig_to_data_url(fig)})
+
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    residuals = y_test - y_pred
+    ax.scatter(y_pred, residuals, alpha=0.5, color='#22c55e', s=30)
+    ax.axhline(y=0, color='red', linestyle='--', linewidth=2)
+    ax.set_xlabel('Predicted', fontsize=11)
+    ax.set_ylabel('Residuals', fontsize=11)
+    ax.set_title('Residual Plot', fontsize=12, fontweight='bold')
+    ax.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    plots.append({'label': 'Residual Plot', 'image': _fig_to_data_url(fig)})
+
+    return plots
 
 
 def generate_interpretation(result: Dict, task_type: str, feature_importance: List[Dict], language: str = 'en') -> Dict[str, Any]:

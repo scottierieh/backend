@@ -379,11 +379,10 @@ def generate_class_prior_plot(class_priors: Dict) -> str:
     return _fig_to_base64(fig)
 
 
-def generate_probability_distribution_plot(model, feature_names: List[str], nb_type: str, class_labels: List[str]) -> str:
-    """Generate probability distribution plot for features"""
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    axes = axes.flatten()
-
+def generate_probability_distribution_plots(model, feature_names: List[str], nb_type: str, class_labels: List[str]) -> List[Dict[str, str]]:
+    """Generate one probability/distribution panel per feature (up to 4), each as its own image
+    (previously a single combined 2x2 subplot figure) so the frontend can show them as separate tabs."""
+    plots: List[Dict[str, str]] = []
     n_features_to_show = min(4, len(feature_names))
 
     if nb_type == 'gaussian':
@@ -392,7 +391,7 @@ def generate_probability_distribution_plot(model, feature_names: List[str], nb_t
         vars_ = model.var_
 
         for idx in range(n_features_to_show):
-            ax = axes[idx]
+            fig, ax = plt.subplots(figsize=(7, 5.5))
             x_range = np.linspace(
                 means[:, idx].min() - 3 * np.sqrt(vars_[:, idx].max()),
                 means[:, idx].max() + 3 * np.sqrt(vars_[:, idx].max()),
@@ -407,33 +406,36 @@ def generate_probability_distribution_plot(model, feature_names: List[str], nb_t
                 ax.plot(x_range, pdf, linewidth=2, label=f'{cls}')
                 ax.fill_between(x_range, pdf, alpha=0.3)
 
-            ax.set_xlabel(feature_names[idx], fontsize=10)
-            ax.set_ylabel('Density', fontsize=10)
-            ax.set_title(f'Distribution: {feature_names[idx]}', fontsize=11, fontweight='bold')
+            label = f'Distribution: {feature_names[idx]}'
+            ax.set_xlabel(feature_names[idx], fontsize=11)
+            ax.set_ylabel('Density', fontsize=11)
+            ax.set_title(label, fontsize=13, fontweight='bold')
             ax.legend()
             ax.grid(True, linestyle='--', alpha=0.3)
+
+            plt.tight_layout()
+            plots.append({'label': label, 'image': _fig_to_base64(fig)})
     else:
         # For multinomial/bernoulli, show feature log probabilities
         log_probs = model.feature_log_prob_
 
         for idx in range(n_features_to_show):
-            ax = axes[idx]
+            fig, ax = plt.subplots(figsize=(7, 5.5))
             probs = np.exp(log_probs[:, idx])
 
             colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(class_labels)))
             bars = ax.bar(class_labels, probs, color=colors, edgecolor='black', alpha=0.8)
 
-            ax.set_xlabel('Class', fontsize=10)
-            ax.set_ylabel('Probability', fontsize=10)
-            ax.set_title(f'P({feature_names[idx]} | Class)', fontsize=11, fontweight='bold')
+            label = f'P({feature_names[idx]} | Class)'
+            ax.set_xlabel('Class', fontsize=11)
+            ax.set_ylabel('Probability', fontsize=11)
+            ax.set_title(label, fontsize=13, fontweight='bold')
             ax.grid(True, linestyle='--', alpha=0.3, axis='y')
 
-    # Hide unused subplots
-    for idx in range(n_features_to_show, 4):
-        axes[idx].set_visible(False)
+            plt.tight_layout()
+            plots.append({'label': label, 'image': _fig_to_base64(fig)})
 
-    plt.tight_layout()
-    return _fig_to_base64(fig)
+    return plots
 
 
 def generate_prediction_examples(result: Dict, n_examples: int = 15) -> List[Dict]:
@@ -677,7 +679,7 @@ def main():
         cm_plot          = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
         roc_plot         = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
         prior_plot       = generate_class_prior_plot(result['class_priors'])
-        prob_dist_plot   = generate_probability_distribution_plot(
+        prob_dist_plots  = generate_probability_distribution_plots(
             model, feature_cols, nb_type, result['class_labels']
         )
 
@@ -711,7 +713,7 @@ def main():
             'cm_plot':             cm_plot,
             'roc_plot':            roc_plot,
             'prior_plot':          prior_plot,
-            'prob_dist_plot':      prob_dist_plot,
+            'prob_dist_plots':     prob_dist_plots,
             'interpretation':      interpretation,
             'prediction_examples': prediction_examples
         }

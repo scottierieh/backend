@@ -756,16 +756,31 @@ def main():
         importance_plot = generate_feature_importance_plot(feature_importance)
         tree_count_plot = generate_tree_count_plot(model, X_test, y_test_encoded, task_type)
 
+        plots = []
+        if importance_plot:
+            plots.append({'label': 'Feature Importance', 'image': importance_plot})
+        if tree_count_plot:
+            plots.append({'label': 'Performance vs Number of Trees', 'image': tree_count_plot})
+
         if task_type == 'classification':
             cm_plot = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
             roc_plot = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
-            actual_vs_predicted_plot = None
-            residual_plot = None
+            if cm_plot:
+                plots.append({'label': 'Confusion Matrix', 'image': cm_plot})
+            if roc_plot:
+                plots.append({'label': 'ROC Curve', 'image': roc_plot})
         else:
-            cm_plot = None
-            roc_plot = None
             actual_vs_predicted_plot = generate_actual_vs_predicted_plot(result['y_test'], result['y_pred'])
             residual_plot = generate_residual_plot(result['y_test'], result['y_pred'])
+            if actual_vs_predicted_plot:
+                plots.append({'label': 'Actual vs Predicted', 'image': actual_vs_predicted_plot})
+            if residual_plot:
+                plots.append({'label': 'Residual Plot', 'image': residual_plot})
+
+        if shap_result.get('shap_plot'):
+            plots.append({'label': 'SHAP Feature Importance', 'image': shap_result.get('shap_plot')})
+        if pdp_plot:
+            plots.append({'label': 'Partial Dependence Plots', 'image': pdp_plot})
 
         interpretation = generate_interpretation(result, task_type, feature_importance, params)
 
@@ -795,12 +810,9 @@ def main():
             'feature_importance': feature_importance,
             'perm_importance': perm_importance,
             'cv_results': cv_result,
-            'importance_plot': importance_plot,
-            'tree_count_plot': tree_count_plot,
-            'shap_plot': shap_result.get('shap_plot'),
+            'plots': plots,
             'shap_importance': shap_result.get('shap_importance'),
             'shap_error': shap_result.get('error'),
-            'pdp_plot': pdp_plot,
             'tree_rules': tree_rules,
             'interpretation': interpretation
         }
@@ -809,11 +821,6 @@ def main():
             response['per_class_metrics'] = result['per_class_metrics']
             response['confusion_matrix'] = result['confusion_matrix']
             response['class_labels'] = result['class_labels']
-            response['cm_plot'] = cm_plot
-            response['roc_plot'] = roc_plot
-        else:
-            response['actual_vs_predicted_plot'] = actual_vs_predicted_plot
-            response['residual_plot'] = residual_plot
 
         print(json.dumps(response, default=_to_native_type))
 

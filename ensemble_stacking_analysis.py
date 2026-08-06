@@ -374,23 +374,26 @@ def generate_roc_plot(roc_data: Dict) -> Optional[str]:
     return _fig_to_base64(fig)
 
 
-def generate_regression_plot(y_test, y_pred) -> str:
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    ax1 = axes[0]
-    ax1.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6', s=30)
+def generate_regression_actual_vs_predicted_plot(y_test, y_pred) -> str:
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    ax.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6', s=30)
     min_val = min(min(y_test), min(y_pred)); max_val = max(max(y_test), max(y_pred))
-    ax1.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
-    ax1.set_xlabel('Actual', fontsize=11); ax1.set_ylabel('Predicted', fontsize=11)
-    ax1.set_title('Actual vs Predicted', fontsize=12, fontweight='bold')
-    ax1.legend(); ax1.grid(True, linestyle='--', alpha=0.3)
+    ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
+    ax.set_xlabel('Actual', fontsize=11); ax.set_ylabel('Predicted', fontsize=11)
+    ax.set_title('Actual vs Predicted', fontsize=13, fontweight='bold')
+    ax.legend(); ax.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    return _fig_to_base64(fig)
 
-    ax2 = axes[1]
+
+def generate_regression_residual_plot(y_test, y_pred) -> str:
+    fig, ax = plt.subplots(figsize=(7, 5.5))
     residuals = np.array(y_test) - np.array(y_pred)
-    ax2.scatter(y_pred, residuals, alpha=0.5, color='#22c55e', s=30)
-    ax2.axhline(y=0, color='red', linestyle='--', linewidth=2)
-    ax2.set_xlabel('Predicted', fontsize=11); ax2.set_ylabel('Residuals', fontsize=11)
-    ax2.set_title('Residual Plot', fontsize=12, fontweight='bold')
-    ax2.grid(True, linestyle='--', alpha=0.3)
+    ax.scatter(y_pred, residuals, alpha=0.5, color='#22c55e', s=30)
+    ax.axhline(y=0, color='red', linestyle='--', linewidth=2)
+    ax.set_xlabel('Predicted', fontsize=11); ax.set_ylabel('Residuals', fontsize=11)
+    ax.set_title('Residual Plot', fontsize=13, fontweight='bold')
+    ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
     return _fig_to_base64(fig)
 
@@ -578,7 +581,8 @@ def main():
         else:
             cm_plot = None
             roc_plot = None
-            regression_plot = generate_regression_plot(result['y_test'], result['y_pred'])
+            regression_plot = generate_regression_actual_vs_predicted_plot(result['y_test'], result['y_pred'])
+            regression_residual_plot = generate_regression_residual_plot(result['y_test'], result['y_pred'])
 
         interpretation = generate_interpretation(result, task_type, params)
         prediction_examples = generate_prediction_examples(result, task_type)
@@ -620,6 +624,7 @@ def main():
             response['roc_plot'] = roc_plot
         else:
             response['regression_plot'] = regression_plot
+            response['regression_residual_plot'] = regression_residual_plot
 
         print(json.dumps(response, default=_to_native_type))
 

@@ -15,6 +15,13 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+def _fig_to_data_url(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
         return int(obj)
@@ -82,20 +89,20 @@ def main():
         }
 
         # --- Plotting ---
-        plot_image = None
+        plots = []
         if df.shape[1] >= 2:
             pca = PCA(n_components=2)
             X_pca = pca.fit_transform(X_scaled)
-            
+
             plot_df = pd.DataFrame(X_pca, columns=['PC1', 'PC2'])
             plot_df['cluster'] = labels
 
-            plt.figure(figsize=(8, 6))
-            
+            fig, ax = plt.subplots(figsize=(7, 5.5))
+
             # Use a categorical palette, handle noise points separately
             unique_labels = sorted(list(set(labels)))
             palette = sns.color_palette("viridis", n_colors=len(unique_labels) - (1 if -1 in unique_labels else 0))
-            
+
             for i, label in enumerate(unique_labels):
                 if label == -1:
                     # Noise points
@@ -105,7 +112,8 @@ def main():
                         color='gray',
                         marker='x',
                         s=50,
-                        label='Noise'
+                        label='Noise',
+                        ax=ax
                     )
                 else:
                     sns.scatterplot(
@@ -114,25 +122,22 @@ def main():
                         color=palette[i - (1 if -1 in unique_labels else 0)],
                         label=f'Cluster {label}',
                         s=80,
-                        alpha=0.7
+                        alpha=0.7,
+                        ax=ax
                     )
 
-            plt.title('DBSCAN Clustering (PCA Projection)')
-            plt.xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
-            plt.ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
-            plt.legend(title='Cluster')
-            plt.grid(True, linestyle='--', alpha=0.6)
-            plt.tight_layout()
+            ax.set_title('DBSCAN Clustering (PCA Projection)')
+            ax.set_xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
+            ax.set_ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
+            ax.legend(title='Cluster')
+            ax.grid(True, linestyle='--', alpha=0.6)
+            fig.tight_layout()
 
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png')
-            plt.close()
-            buf.seek(0)
-            plot_image = base64.b64encode(buf.read()).decode('utf-8')
+            plots.append({'label': 'Cluster Scatter (PCA Projection)', 'image': _fig_to_data_url(fig)})
 
         response = {
             'results': summary,
-            'plot': f"data:image/png;base64,{plot_image}" if plot_image else None
+            'plots': plots
         }
 
         print(json.dumps(response, default=_to_native_type))

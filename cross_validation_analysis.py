@@ -52,14 +52,13 @@ def _to_native_type(obj):
     return obj
 
 
-def _fig_to_base64(fig) -> str:
-    """Convert matplotlib figure to base64 string"""
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format='png', dpi=120, bbox_inches='tight', facecolor='white')
-    buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode()
+def _fig_to_data_url(fig) -> str:
+    """Convert matplotlib figure to a base64 data URL"""
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
     plt.close(fig)
-    return image_base64
+    buf.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
 
 
 def detect_task_type(y: pd.Series) -> str:
@@ -204,15 +203,14 @@ def calculate_additional_metrics(y_true, y_pred, task_type: str) -> Dict[str, An
         }
 
 
-def generate_cv_scores_plot(cv_results: Dict) -> str:
-    """Generate CV scores distribution plot"""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
+def generate_cv_scores_plot(cv_results: Dict) -> List[Dict[str, str]]:
+    """Generate CV scores distribution plots (bar chart + box plot) as separate images"""
+    plots = []
     scores = cv_results['scores']
+    folds = list(range(1, len(scores) + 1))
 
     # Bar plot of fold scores
-    ax1 = axes[0]
-    folds = list(range(1, len(scores) + 1))
+    fig, ax1 = plt.subplots(figsize=(7, 5.5))
     colors = ['#22c55e' if s >= cv_results['mean'] else '#f59e0b' for s in scores]
     bars = ax1.bar(folds, scores, color=colors, edgecolor='black', alpha=0.8)
     ax1.axhline(y=cv_results['mean'], color='#ef4444', linestyle='--', linewidth=2, label=f'Mean: {cv_results["mean"]:.4f}')
@@ -232,8 +230,11 @@ def generate_cv_scores_plot(cv_results: Dict) -> str:
         ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
                 f'{score:.3f}', ha='center', va='bottom', fontsize=9)
 
+    plt.tight_layout()
+    plots.append({'label': 'Scores by Fold', 'image': _fig_to_data_url(fig)})
+
     # Box plot
-    ax2 = axes[1]
+    fig, ax2 = plt.subplots(figsize=(7, 5.5))
     bp = ax2.boxplot(scores, patch_artist=True)
     bp['boxes'][0].set_facecolor('#22c55e')
     bp['boxes'][0].set_alpha(0.7)
@@ -254,12 +255,14 @@ def generate_cv_scores_plot(cv_results: Dict) -> str:
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    plots.append({'label': 'Score Distribution', 'image': _fig_to_data_url(fig)})
+
+    return plots
 
 
-def generate_learning_stability_plot(cv_results: Dict) -> str:
+def generate_learning_stability_plot(cv_results: Dict) -> List[Dict[str, str]]:
     """Generate learning stability visualization"""
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(7, 5.5))
 
     scores = cv_results['scores']
     n_folds = len(scores)
@@ -286,12 +289,12 @@ def generate_learning_stability_plot(cv_results: Dict) -> str:
     ax.grid(True, linestyle='--', alpha=0.3)
 
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return [{'label': 'Learning Stability', 'image': _fig_to_data_url(fig)}]
 
 
-def generate_confusion_matrix_plot(y_true, y_pred, class_labels: List[str]) -> str:
+def generate_confusion_matrix_plot(y_true, y_pred, class_labels: List[str]) -> List[Dict[str, str]]:
     """Generate confusion matrix from CV predictions"""
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(7, 5.5))
 
     cm = confusion_matrix(y_true, y_pred)
     sns.heatmap(cm, annot=True, fmt='d', cmap='Greens',
@@ -302,15 +305,15 @@ def generate_confusion_matrix_plot(y_true, y_pred, class_labels: List[str]) -> s
     ax.set_title('Confusion Matrix (Cross-Validated)', fontsize=13, fontweight='bold')
 
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return [{'label': 'Confusion Matrix', 'image': _fig_to_data_url(fig)}]
 
 
-def generate_regression_plot(y_true, y_pred) -> str:
-    """Generate actual vs predicted plot for regression"""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+def generate_regression_plot(y_true, y_pred) -> List[Dict[str, str]]:
+    """Generate actual-vs-predicted and residual plots for regression as separate images"""
+    plots = []
 
     # Actual vs Predicted
-    ax1 = axes[0]
+    fig, ax1 = plt.subplots(figsize=(7, 5.5))
     ax1.scatter(y_true, y_pred, alpha=0.5, color='#22c55e', s=30)
     min_val = min(min(y_true), min(y_pred))
     max_val = max(max(y_true), max(y_pred))
@@ -320,9 +323,11 @@ def generate_regression_plot(y_true, y_pred) -> str:
     ax1.set_title('Actual vs Predicted (Cross-Validated)', fontsize=12, fontweight='bold')
     ax1.legend()
     ax1.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    plots.append({'label': 'Actual vs Predicted', 'image': _fig_to_data_url(fig)})
 
     # Residuals
-    ax2 = axes[1]
+    fig, ax2 = plt.subplots(figsize=(7, 5.5))
     residuals = np.array(y_true) - np.array(y_pred)
     ax2.scatter(y_pred, residuals, alpha=0.5, color='#16a34a', s=30)
     ax2.axhline(y=0, color='red', linestyle='--', linewidth=2)
@@ -330,9 +335,10 @@ def generate_regression_plot(y_true, y_pred) -> str:
     ax2.set_ylabel('Residuals', fontsize=11)
     ax2.set_title('Residual Plot', fontsize=12, fontweight='bold')
     ax2.grid(True, linestyle='--', alpha=0.3)
-
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    plots.append({'label': 'Residual Plot', 'image': _fig_to_data_url(fig)})
+
+    return plots
 
 
 def generate_interpretation(cv_results: Dict, task_type: str, additional_metrics: Dict, model_name: str, cv_method: str) -> Dict[str, Any]:
@@ -525,18 +531,14 @@ def main():
             additional_metrics = calculate_additional_metrics(y_encoded, cv_results['y_pred'], task_type)
 
         # Generate visualizations
-        scores_plot = generate_cv_scores_plot(cv_results)
-        stability_plot = generate_learning_stability_plot(cv_results)
+        plots = []
+        plots += generate_cv_scores_plot(cv_results)
+        plots += generate_learning_stability_plot(cv_results)
 
         if task_type == 'classification' and cv_results['y_pred'] is not None:
-            cm_plot = generate_confusion_matrix_plot(y_encoded, cv_results['y_pred'], class_labels)
-            regression_plot = None
+            plots += generate_confusion_matrix_plot(y_encoded, cv_results['y_pred'], class_labels)
         elif task_type == 'regression' and cv_results['y_pred'] is not None:
-            cm_plot = None
-            regression_plot = generate_regression_plot(y_encoded, cv_results['y_pred'])
-        else:
-            cm_plot = None
-            regression_plot = None
+            plots += generate_regression_plot(y_encoded, cv_results['y_pred'])
 
         # Generate interpretation
         interpretation = generate_interpretation(cv_results, task_type, additional_metrics, model_name, cv_method)
@@ -560,16 +562,12 @@ def main():
             'parameters': parameters,
             'cv_results': cv_results,
             'additional_metrics': additional_metrics,
-            'scores_plot': scores_plot,
-            'stability_plot': stability_plot,
+            'plots': plots,
             'interpretation': interpretation
         }
 
         if task_type == 'classification':
             response['class_labels'] = class_labels
-            response['cm_plot'] = cm_plot
-        else:
-            response['regression_plot'] = regression_plot
 
         print(json.dumps(response, default=_to_native_type))
 

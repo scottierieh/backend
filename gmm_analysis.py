@@ -272,6 +272,14 @@ def _feature_drivers(cluster_data: pd.DataFrame, labels: np.ndarray, items: List
         return None
 
 
+def _fig_to_data_url(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    buf.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
+
 def draw_convex_hull(ax, points, color, alpha=0.15):
     if len(points) < 3:
         return
@@ -463,10 +471,10 @@ def main():
             dist_desc = "Single component detected."
 
         # ── 11. Visualization ──────────────────────────────────────────────
-        fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+        plots = []
         colors = sns.color_palette('husl', n_colors=n_components)
 
-        ax1 = axes[0, 0]
+        fig1, ax1 = plt.subplots(figsize=(7, 5.5))
         ax1.set_facecolor('#f5f5f5')
         ax1.plot(k_range, bic_scores, 'o-', color='#2E86AB', linewidth=2.5, markersize=8,
                  markerfacecolor='white', markeredgewidth=2, label='BIC')
@@ -478,8 +486,9 @@ def main():
         ax1.set_title('BIC/AIC for Optimal k', fontsize=13, fontweight='bold')
         ax1.legend(loc='best', frameon=True, facecolor='white')
         ax1.grid(True, alpha=0.4, linestyle='--')
+        plots.append({'label': 'BIC/AIC for Optimal k', 'image': _fig_to_data_url(fig1)})
 
-        ax2 = axes[0, 1]
+        fig2, ax2 = plt.subplots(figsize=(7, 5.5))
         ax2.set_facecolor('#f5f5f5')
         bar_colors = ['#E8505B' if s == max(silhouette_scores) else '#5B9BD5' for s in silhouette_scores]
         ax2.bar(range(len(k_range)), silhouette_scores, color=bar_colors, alpha=0.85,
@@ -490,8 +499,9 @@ def main():
         ax2.set_xticks(range(len(k_range)))
         ax2.set_xticklabels(k_range)
         ax2.grid(True, alpha=0.4, axis='y', linestyle='--')
+        plots.append({'label': 'Silhouette Scores by k', 'image': _fig_to_data_url(fig2)})
 
-        ax3 = axes[1, 0]
+        fig3, ax3 = plt.subplots(figsize=(7, 5.5))
         ax3.set_facecolor('#f0f0f0')
 
         if n_features >= 2:
@@ -536,8 +546,11 @@ def main():
             handles.append(mean_marker)
             ax3.legend(handles=handles, loc='best', frameon=True, facecolor='white', edgecolor='gray')
             ax3.grid(True, alpha=0.3, linestyle='--')
+            plots.append({'label': 'Components with Gaussian Ellipses (PCA)', 'image': _fig_to_data_url(fig3)})
+        else:
+            plt.close(fig3)
 
-        ax4 = axes[1, 1]
+        fig4, ax4 = plt.subplots(figsize=(7, 5.5))
         ax4.set_facecolor('white')
         sizes = [p['size'] for p in profiles.values()]
         labels_pie = list(profiles.keys())
@@ -551,13 +564,7 @@ def main():
             autotext.set_fontweight('bold')
         ax4.text(0, 0, f'n={sum(sizes)}', ha='center', va='center', fontsize=14, fontweight='bold')
         ax4.set_title('Component Distribution', fontsize=13, fontweight='bold')
-
-        plt.tight_layout()
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
-        plt.close(fig)
-        buf.seek(0)
-        plot = f"data:image/png;base64,{base64.b64encode(buf.read()).decode()}"
+        plots.append({'label': 'Component Distribution', 'image': _fig_to_data_url(fig4)})
 
         # ── 12. Response ───────────────────────────────────────────────────
         response = _to_native({
@@ -602,7 +609,7 @@ def main():
                     'quality': quality_warnings,
                 },
             },
-            'plot': plot,
+            'plots': plots,
         })
 
         print(json.dumps(response))

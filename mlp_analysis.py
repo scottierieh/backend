@@ -60,13 +60,12 @@ def _to_native_type(obj):
     return obj
 
 
-def _fig_to_base64(fig) -> str:
+def _fig_to_data_url(fig) -> str:
     buffer = io.BytesIO()
     fig.savefig(buffer, format='png', dpi=120, bbox_inches='tight', facecolor='white')
-    buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode()
     plt.close(fig)
-    return image_base64
+    buffer.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buffer.read()).decode('utf-8')}"
 
 
 def detect_task_type(y: pd.Series) -> str:
@@ -238,7 +237,7 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type:
         ax.set_title('SHAP Feature Importance', fontsize=13, fontweight='bold')
         ax.grid(True, linestyle='--', alpha=0.3, axis='x')
         fig.subplots_adjust(left=0.20)
-        shap_plot = _fig_to_base64(fig)
+        shap_plot = _fig_to_data_url(fig)
 
         return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
     except Exception as e:
@@ -278,7 +277,7 @@ def generate_loss_curve_plot(model) -> str:
     ax.set_title('Training Loss Curve', fontsize=13, fontweight='bold')
     ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_confusion_matrix_plot(cm: List[List[int]], class_labels: List[str]) -> str:
@@ -297,7 +296,7 @@ def generate_confusion_matrix_plot(cm: List[List[int]], class_labels: List[str])
     ax.set_xlabel('Predicted', fontsize=11); ax.set_ylabel('Actual', fontsize=11)
     ax.set_title('Confusion Matrix', fontsize=13, fontweight='bold')
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_roc_plot(roc_data: Dict) -> Optional[str]:
@@ -313,7 +312,7 @@ def generate_roc_plot(roc_data: Dict) -> Optional[str]:
     ax.set_title('ROC Curve', fontsize=13, fontweight='bold')
     ax.legend(loc='lower right'); ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 15) -> str:
@@ -329,28 +328,31 @@ def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 1
     ax.set_title('MLP Feature Importance (Permutation)', fontsize=13, fontweight='bold')
     ax.grid(True, linestyle='--', alpha=0.3, axis='x')
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
-def generate_regression_plot(y_test, y_pred) -> str:
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    ax1 = axes[0]
-    ax1.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6', s=30)
+def generate_actual_vs_predicted_plot(y_test, y_pred) -> str:
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    ax.scatter(y_test, y_pred, alpha=0.5, color='#3b82f6', s=30)
     min_val = min(min(y_test), min(y_pred)); max_val = max(max(y_test), max(y_pred))
-    ax1.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
-    ax1.set_xlabel('Actual', fontsize=11); ax1.set_ylabel('Predicted', fontsize=11)
-    ax1.set_title('Actual vs Predicted', fontsize=12, fontweight='bold')
-    ax1.legend(); ax1.grid(True, linestyle='--', alpha=0.3)
-
-    ax2 = axes[1]
-    residuals = np.array(y_test) - np.array(y_pred)
-    ax2.scatter(y_pred, residuals, alpha=0.5, color='#22c55e', s=30)
-    ax2.axhline(y=0, color='red', linestyle='--', linewidth=2)
-    ax2.set_xlabel('Predicted', fontsize=11); ax2.set_ylabel('Residuals', fontsize=11)
-    ax2.set_title('Residual Plot', fontsize=12, fontweight='bold')
-    ax2.grid(True, linestyle='--', alpha=0.3)
+    ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
+    ax.set_xlabel('Actual', fontsize=11); ax.set_ylabel('Predicted', fontsize=11)
+    ax.set_title('Actual vs Predicted', fontsize=13, fontweight='bold')
+    ax.legend(); ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
+
+
+def generate_residual_plot(y_test, y_pred) -> str:
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    residuals = np.array(y_test) - np.array(y_pred)
+    ax.scatter(y_pred, residuals, alpha=0.5, color='#22c55e', s=30)
+    ax.axhline(y=0, color='red', linestyle='--', linewidth=2)
+    ax.set_xlabel('Predicted', fontsize=11); ax.set_ylabel('Residuals', fontsize=11)
+    ax.set_title('Residual Plot', fontsize=13, fontweight='bold')
+    ax.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    return _fig_to_data_url(fig)
 
 
 def generate_interpretation(result: Dict, task_type: str, model, params: dict, n_obs: int, n_features: int) -> Dict[str, Any]:
@@ -543,17 +545,21 @@ def main():
 
         cv_result = perform_cross_validation(X_array, y, params, task_type, cv_folds)
 
-        loss_plot = generate_loss_curve_plot(model)
-        importance_plot = generate_feature_importance_plot(perm_importance)
+        plots = [{'label': 'Training Loss Curve', 'image': generate_loss_curve_plot(model)}]
 
         if task_type == 'classification':
-            cm_plot = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
+            plots.append({'label': 'Confusion Matrix', 'image': generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])})
             roc_plot = generate_roc_plot(result['roc_data'])
-            regression_plot = None
+            if roc_plot:
+                plots.append({'label': 'ROC Curve', 'image': roc_plot})
         else:
-            cm_plot = None
-            roc_plot = None
-            regression_plot = generate_regression_plot(result['y_test'], result['y_pred'])
+            plots.append({'label': 'Actual vs Predicted', 'image': generate_actual_vs_predicted_plot(result['y_test'], result['y_pred'])})
+            plots.append({'label': 'Residual Plot', 'image': generate_residual_plot(result['y_test'], result['y_pred'])})
+
+        plots.append({'label': 'MLP Feature Importance (Permutation)', 'image': generate_feature_importance_plot(perm_importance)})
+
+        if shap_result.get('shap_plot'):
+            plots.append({'label': 'SHAP Feature Importance', 'image': shap_result['shap_plot']})
 
         interpretation = generate_interpretation(result, task_type, model, params, len(X), len(feature_cols))
         prediction_examples = generate_prediction_examples(result, task_type)
@@ -578,11 +584,9 @@ def main():
             'perm_importance': perm_importance,
             'feature_importance': _perm_to_feature_importance(perm_importance),
             'shap_importance': shap_result.get('shap_importance'),
-            'shap_plot': shap_result.get('shap_plot'),
             'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
-            'loss_plot': loss_plot,
-            'importance_plot': importance_plot,
+            'plots': plots,
             'interpretation': interpretation,
             'prediction_examples': prediction_examples
         }
@@ -591,10 +595,6 @@ def main():
             response['per_class_metrics'] = result['per_class_metrics']
             response['confusion_matrix'] = result['confusion_matrix']
             response['class_labels'] = result['class_labels']
-            response['cm_plot'] = cm_plot
-            response['roc_plot'] = roc_plot
-        else:
-            response['regression_plot'] = regression_plot
 
         print(json.dumps(response, default=_to_native_type))
 

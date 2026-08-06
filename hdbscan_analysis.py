@@ -23,6 +23,13 @@ except ImportError:
     HAS_HDBSCAN = False
     print("Warning: hdbscan not installed, using DBSCAN approximation", file=sys.stderr)
 
+def _fig_to_data_url(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
         return int(obj)
@@ -150,35 +157,35 @@ def main():
         }
 
         # --- Plotting ---
-        plot_image = None
+        plots = []
         if df.shape[1] >= 2:
             pca = PCA(n_components=2)
             X_pca = pca.fit_transform(X_scaled)
-            
+
             plot_df = pd.DataFrame(X_pca, columns=['PC1', 'PC2'])
             plot_df['cluster'] = labels
             plot_df['probability'] = probabilities
 
-            plt.figure(figsize=(10, 8))
-            
+            fig, ax = plt.subplots(figsize=(10, 8))
+
             # Use a categorical palette, handle noise points separately
             unique_labels = sorted(list(set(labels)))
             if -1 in unique_labels:
                 unique_labels.remove(-1)
-            
+
             if len(unique_labels) > 0:
                 palette = sns.color_palette("viridis", n_colors=len(unique_labels))
-                
+
                 # Plot non-noise points with size based on probability
                 clustered_points = plot_df[plot_df['cluster'] != -1]
                 if not clustered_points.empty:
                     # Create sizes based on probability
                     sizes = clustered_points['probability'] * 150 + 20
-                    
+
                     for i, label in enumerate(unique_labels):
                         cluster_data = clustered_points[clustered_points['cluster'] == label]
                         if not cluster_data.empty:
-                            plt.scatter(
+                            ax.scatter(
                                 cluster_data['PC1'],
                                 cluster_data['PC2'],
                                 s=sizes[clustered_points['cluster'] == label],
@@ -190,7 +197,7 @@ def main():
             # Plot noise points
             noise_points = plot_df[plot_df['cluster'] == -1]
             if not noise_points.empty:
-                plt.scatter(
+                ax.scatter(
                     noise_points['PC1'],
                     noise_points['PC2'],
                     color='gray',
@@ -201,22 +208,18 @@ def main():
                 )
 
             title = 'HDBSCAN Clustering (PCA Projection)' if HAS_HDBSCAN else 'Hierarchical Clustering Approximation (PCA Projection)'
-            plt.title(title)
-            plt.xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
-            plt.ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
-            plt.legend(title='Cluster', bbox_to_anchor=(1.05, 1), loc='upper left')
-            plt.grid(True, linestyle='--', alpha=0.6)
-            plt.tight_layout()
+            ax.set_title(title)
+            ax.set_xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
+            ax.set_ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
+            ax.legend(title='Cluster', bbox_to_anchor=(1.05, 1), loc='upper left')
+            ax.grid(True, linestyle='--', alpha=0.6)
+            fig.tight_layout()
 
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
-            plt.close()
-            buf.seek(0)
-            plot_image = base64.b64encode(buf.read()).decode('utf-8')
+            plots.append({'label': 'PCA Cluster Projection', 'image': _fig_to_data_url(fig)})
 
         response = {
             'results': summary,
-            'plot': f"data:image/png;base64,{plot_image}" if plot_image else None
+            'plots': plots
         }
 
         print(json.dumps(response, default=_to_native_type))

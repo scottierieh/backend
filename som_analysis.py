@@ -592,28 +592,31 @@ def main():
         results['variable_correlation_highlights'] = variable_correlation_highlights
         results['quality_metrics'] = quality_metrics
 
-        fig, axes = plt.subplots(1, 2, figsize=(16, 7))
-        fig.suptitle('Self-Organizing Map (SOM) Analysis', fontsize=16)
+        plots = []
 
-        sns.heatmap(u_matrix, cmap='bone_r', ax=axes[0], cbar_kws={'label': 'Avg. Distance to Neighbors'})
-        axes[0].set_title('U-Matrix (Node Distance Map)')
-        axes[0].set_xlabel('Grid Y')
-        axes[0].set_ylabel('Grid X')
+        fig_u, ax_u = plt.subplots(figsize=(7, 6))
+        sns.heatmap(u_matrix, cmap='bone_r', ax=ax_u, cbar_kws={'label': 'Avg. Distance to Neighbors'})
+        ax_u.set_title('U-Matrix (Node Distance Map)')
+        ax_u.set_xlabel('Grid Y')
+        ax_u.set_ylabel('Grid X')
+        plt.tight_layout()
+        plots.append({'label': 'U-Matrix (Node Distance Map)', 'image': fig_to_base64(fig_u)})
 
-        sns.heatmap(hit_map, annot=True, fmt='.0f', cmap='viridis', ax=axes[1], cbar_kws={'label': 'Hit Count'})
-        axes[1].set_title('Hit Map (Samples per Node)')
-        axes[1].set_xlabel('Grid Y')
-        axes[1].set_ylabel('Grid X')
+        fig_hit, ax_hit = plt.subplots(figsize=(7, 6))
+        sns.heatmap(hit_map, annot=True, fmt='.0f', cmap='viridis', ax=ax_hit, cbar_kws={'label': 'Hit Count'})
+        ax_hit.set_title('Hit Map (Samples per Node)')
+        ax_hit.set_xlabel('Grid Y')
+        ax_hit.set_ylabel('Grid X')
+        plt.tight_layout()
+        plots.append({'label': 'Hit Map (Samples per Node)', 'image': fig_to_base64(fig_hit)})
 
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        plot_image = fig_to_base64(fig)
+        if component_planes_plot is not None:
+            plots.append({'label': 'Component Planes', 'image': component_planes_plot})
 
         response = {
             'results': results,
-            'plot': plot_image
+            'plots': plots
         }
-        if component_planes_plot is not None:
-            response['component_planes_plot'] = component_planes_plot
 
         print(json.dumps(response, default=_to_native_type))
 

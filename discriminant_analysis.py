@@ -65,13 +65,13 @@ def _parse_shrinkage(shrinkage_val):
         return None
 
 
-def _fig_to_base64(fig) -> str:
+def _fig_to_data_url(fig) -> str:
     buffer = io.BytesIO()
     fig.savefig(buffer, format='png', dpi=120, bbox_inches='tight', facecolor='white')
     buffer.seek(0)
     image_base64 = base64.b64encode(buffer.read()).decode()
     plt.close(fig)
-    return image_base64
+    return f"data:image/png;base64,{image_base64}"
 
 
 def _normalize_importance(scores: np.ndarray) -> np.ndarray:
@@ -596,7 +596,7 @@ def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 2
         ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height() / 2,
                 f'{imp:.3f}', va='center', fontsize=9)
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_confusion_matrix_plot(cm: List[List[int]], class_labels: List[str]) -> str:
@@ -608,7 +608,7 @@ def generate_confusion_matrix_plot(cm: List[List[int]], class_labels: List[str])
     ax.set_ylabel('Actual', fontsize=11)
     ax.set_title('Confusion Matrix', fontsize=13, fontweight='bold')
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_roc_plot(roc_data: Dict) -> Optional[str]:
@@ -632,7 +632,7 @@ def generate_roc_plot(roc_data: Dict) -> Optional[str]:
     ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout(pad=1.5)
     fig.subplots_adjust(left=0.15)
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_lda_projection_plot(lda_transform: Dict, random_state: int = 42) -> str:
@@ -662,7 +662,7 @@ def generate_lda_projection_plot(lda_transform: Dict, random_state: int = 42) ->
     ax.legend()
     ax.grid(True, linestyle='--', alpha=0.3)
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_class_separation_plot(info: Dict, class_labels: List[str], feature_names: List[str]) -> Optional[str]:
@@ -691,7 +691,7 @@ def generate_class_separation_plot(info: Dict, class_labels: List[str], feature_
     ax.legend()
     ax.grid(True, linestyle='--', alpha=0.3, axis='y')
     plt.tight_layout()
-    return _fig_to_base64(fig)
+    return _fig_to_data_url(fig)
 
 
 def generate_interpretation(result: Dict, method: str, feature_importance: List[Dict], language: str = 'en') -> Dict[str, Any]:
@@ -916,9 +916,10 @@ def main():
 
         cv_result = perform_cross_validation(np.array(X), y, params, method, cv_folds)
 
+        plots = []
+
         importance_plot = generate_feature_importance_plot(result['feature_importance'])
-        cm_plot = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
-        roc_plot = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
+        plots.append({'label': 'Feature Importance', 'image': importance_plot})
 
         lda_projection_plot = None
         class_separation_plot = None
@@ -927,15 +928,27 @@ def main():
                 lda_projection_plot = generate_lda_projection_plot(
                     result['lda_transform'], random_state=random_state
                 )
+                plots.append({'label': 'LDA Projection', 'image': lda_projection_plot})
             if result.get('lda_info'):
                 class_separation_plot = generate_class_separation_plot(
                     result['lda_info'], result['class_labels'], feature_cols
                 )
+                if class_separation_plot:
+                    plots.append({'label': 'Class Means by Feature', 'image': class_separation_plot})
         elif method == 'qda':
             if result.get('qda_info'):
                 class_separation_plot = generate_class_separation_plot(
                     result['qda_info'], result['class_labels'], feature_cols
                 )
+                if class_separation_plot:
+                    plots.append({'label': 'Class Means by Feature', 'image': class_separation_plot})
+
+        cm_plot = generate_confusion_matrix_plot(result['confusion_matrix'], result['class_labels'])
+        plots.append({'label': 'Confusion Matrix', 'image': cm_plot})
+
+        roc_plot = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
+        if roc_plot:
+            plots.append({'label': 'ROC Curve', 'image': roc_plot})
 
         interpretation = generate_interpretation(result, method, result['feature_importance'], language=language)
 
@@ -969,11 +982,7 @@ def main():
             'metrics': result['metrics'],
             'feature_importance': result['feature_importance'],
             'cv_results': cv_result,
-            'importance_plot': importance_plot,
-            'cm_plot': cm_plot,
-            'roc_plot': roc_plot,
-            'lda_projection_plot': lda_projection_plot,
-            'class_separation_plot': class_separation_plot,
+            'plots': plots,
             'per_class_metrics': result['per_class_metrics'],
             'confusion_matrix': result['confusion_matrix'],
             'class_labels': result['class_labels'],

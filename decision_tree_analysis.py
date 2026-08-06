@@ -77,6 +77,14 @@ def _fig_to_b64(fig) -> str:
     return b64
 
 
+def _fig_to_data_url(fig) -> str:
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    buf.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
+
 def detect_task_type(y: pd.Series) -> str:
     if y.dtype == 'object' or y.dtype.name == 'category':
         return 'classification'
@@ -350,6 +358,35 @@ def generate_regression_plot(y_test, y_pred) -> str:
 
     plt.tight_layout()
     return _fig_to_b64(fig)
+
+
+def generate_regression_plots(y_test, y_pred) -> List[Dict[str, str]]:
+    """Same diagnostics as generate_regression_plot, but as separate
+    single-panel figures so the frontend can show each as its own tab."""
+    y_test = np.array(y_test); y_pred = np.array(y_pred)
+    plots = []
+
+    fig1, ax1 = plt.subplots(figsize=(7, 6))
+    ax1.scatter(y_test, y_pred, alpha=0.5, color='#22c55e', s=30)
+    lo = min(y_test.min(), y_pred.min()); hi = max(y_test.max(), y_pred.max())
+    ax1.plot([lo, hi], [lo, hi], 'r--', linewidth=2, label='Perfect Prediction')
+    ax1.set_xlabel('Actual', fontsize=11); ax1.set_ylabel('Predicted', fontsize=11)
+    ax1.set_title('Actual vs Predicted', fontsize=13, fontweight='bold')
+    ax1.legend(); ax1.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    plots.append({'label': 'Actual vs Predicted', 'image': _fig_to_data_url(fig1)})
+
+    fig2, ax2 = plt.subplots(figsize=(7, 6))
+    residuals = y_test - y_pred
+    ax2.scatter(y_pred, residuals, alpha=0.5, color='#16a34a', s=30)
+    ax2.axhline(y=0, color='red', linestyle='--', linewidth=2)
+    ax2.set_xlabel('Predicted', fontsize=11); ax2.set_ylabel('Residuals', fontsize=11)
+    ax2.set_title('Residual Plot', fontsize=13, fontweight='bold')
+    ax2.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    plots.append({'label': 'Residual Plot', 'image': _fig_to_data_url(fig2)})
+
+    return plots
 
 
 # ─────────────────────────────────────────────
@@ -736,14 +773,16 @@ def main():
         tree_plot       = generate_tree_plot(model, feature_cols, class_names, max_depth=4)
 
         if task_type == 'classification':
-            cm_plot         = generate_confusion_matrix_plot(
+            cm_plot          = generate_confusion_matrix_plot(
                 result['confusion_matrix'], result['class_labels'])
-            roc_plot        = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
-            regression_plot = None
+            roc_plot         = generate_roc_plot(result['roc_data']) if result['roc_data'] else None
+            regression_plot  = None
+            regression_plots = None
         else:
-            cm_plot         = None
-            roc_plot        = None
-            regression_plot = generate_regression_plot(result['y_test'], result['y_pred'])
+            cm_plot          = None
+            roc_plot         = None
+            regression_plot  = generate_regression_plot(result['y_test'], result['y_pred'])
+            regression_plots = generate_regression_plots(result['y_test'], result['y_pred'])
 
         # ── Interpretation ──
         interpretation = generate_interpretation(
@@ -790,7 +829,8 @@ def main():
             response['cm_plot']           = cm_plot
             response['roc_plot']          = roc_plot
         else:
-            response['regression_plot'] = regression_plot
+            response['regression_plot']  = regression_plot
+            response['regression_plots'] = regression_plots
 
         print(json.dumps(response, default=_to_native))
 

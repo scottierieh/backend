@@ -137,27 +137,38 @@ class KMedoidsAnalysis:
 
         return interpretations
 
+    def _fig_to_data_url(self, fig):
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
     def plot_results(self):
-        fig, axes = plt.subplots(1, 2, figsize=(15, 6))
-        fig.suptitle('K-Medoids Clustering Results', fontsize=16, fontweight='bold')
+        plots = []
 
         # 1. Cluster Scatter Plot (PCA)
         if self.n_features >= 2:
+            fig, ax = plt.subplots(figsize=(7, 5.5))
+
             pca = PCA(n_components=2)
             pca_data = pca.fit_transform(self.cluster_data_scaled)
-            
-            sns.scatterplot(x=pca_data[:, 0], y=pca_data[:, 1], hue=self.cluster_labels, 
-                            palette='viridis', ax=axes[0], legend='full', s=50, alpha=0.7)
-            
+
+            sns.scatterplot(x=pca_data[:, 0], y=pca_data[:, 1], hue=self.cluster_labels,
+                            palette='viridis', ax=ax, legend='full', s=50, alpha=0.7)
+
             medoids_pca = pca.transform(self.cluster_data_scaled.iloc[self.results['clustering_summary']['medoid_indices']])
-            
-            axes[0].scatter(medoids_pca[:, 0], medoids_pca[:, 1], s=250, c='red', marker='X', label='Medoids', edgecolors='black')
-            
-            axes[0].set_title('Clusters in 2D PCA Space')
-            axes[0].set_xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
-            axes[0].set_ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
-            axes[0].legend()
-            axes[0].grid(True, alpha=0.3)
+
+            ax.scatter(medoids_pca[:, 0], medoids_pca[:, 1], s=250, c='red', marker='X', label='Medoids', edgecolors='black')
+
+            ax.set_title('Clusters in 2D PCA Space')
+            ax.set_xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.1%})')
+            ax.set_ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.1%})')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+
+            plt.tight_layout()
+            plots.append({'label': 'Clusters (PCA)', 'image': self._fig_to_data_url(fig)})
 
         # 2. Radar Chart of Medoids
         if 'profiles' in self.results:
@@ -167,31 +178,29 @@ class KMedoidsAnalysis:
                 max_vals = self.cluster_data[self.feature_cols].max()
                 range_vals = max_vals - min_vals
                 range_vals[range_vals == 0] = 1 # Avoid division by zero
-                
+
                 medoids_norm = (medoids_df[self.feature_cols] - min_vals) / range_vals
-                
+
                 angles = np.linspace(0, 2 * np.pi, len(self.feature_cols), endpoint=False).tolist()
                 angles += angles[:1]
-                
-                ax_radar = fig.add_subplot(122, polar=True)
+
+                fig = plt.figure(figsize=(7, 5.5))
+                ax_radar = fig.add_subplot(111, polar=True)
                 for i, (idx, row) in enumerate(medoids_norm.iterrows()):
                     values = row.tolist()
                     values += values[:1]
                     ax_radar.plot(angles, values, label=f'Cluster {i+1}')
                     ax_radar.fill(angles, values, alpha=0.25)
-                
+
                 ax_radar.set_xticks(angles[:-1])
                 ax_radar.set_xticklabels(self.feature_cols)
                 ax_radar.set_title('Cluster Medoids (Normalized)', size=12)
                 ax_radar.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
 
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')
-        plt.close(fig)
-        buf.seek(0)
-        return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+                plt.tight_layout()
+                plots.append({'label': 'Cluster Medoids (Radar Chart)', 'image': self._fig_to_data_url(fig)})
+
+        return plots
 
 def main():
     try:
@@ -206,11 +215,11 @@ def main():
         kma = KMedoidsAnalysis(data=data, feature_cols=items)
         kma.perform_clustering(n_clusters=n_clusters)
         
-        plot_image = kma.plot_results()
+        plots = kma.plot_results()
 
         response = {
             'results': kma.results,
-            'plot': plot_image
+            'plots': plots
         }
         
         print(json.dumps(response, default=_to_native_type))

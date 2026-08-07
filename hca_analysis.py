@@ -4,13 +4,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
+from scipy.cluster.hierarchy import dendrogram, linkage, fcluster, cophenet
 from scipy.spatial.distance import pdist, squareform
 from scipy.spatial import ConvexHull
 from mpl_toolkits.mplot3d import Axes3D
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score, adjusted_rand_score
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import f_classif
 import warnings
 import io
 import base64
@@ -21,6 +22,14 @@ warnings.filterwarnings('ignore')
 # Set seaborn style globally
 sns.set_theme(style="darkgrid")
 sns.set_context("notebook", font_scale=1.1)
+
+# Above this many observations, computing the full O(n^2) pairwise-distance matrix
+# for linkage becomes prohibitively slow/memory-heavy. Instead we build the
+# dendrogram from a random subsample and assign the remaining points to the
+# nearest subsample-cluster centroid (see `is_large_data` in clustering_summary).
+LARGE_DATA_THRESHOLD = 5000
+SUBSAMPLE_SIZE = 2000
+
 
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
@@ -35,53 +44,158 @@ def _to_native_type(obj):
         return bool(obj)
     return obj
 
+
+def _safe_float(val, default=0.0):
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return default
+        return f
+    except (TypeError, ValueError):
+        return default
+
+
+def _feature_drivers(cluster_data_raw, labels, feature_cols):
+    """One-way ANOVA (F-test) of each raw feature across the final cluster
+    labels, with eta-squared effect size. Mirrors gmm_analysis.py's
+    _feature_drivers so the methodology (and Cohen thresholds) is identical
+    across the clustering scripts in this codebase."""
+    labels = np.asarray(labels)
+    if len(np.unique(labels)) < 2:
+        return None
+
+    try:
+        X = cluster_data_raw[feature_cols].values
+        f_stats, p_values = f_classif(X, labels)
+
+        features = []
+        for i, col in enumerate(feature_cols):
+            f = _safe_float(f_stats[i])
+            p = _safe_float(p_values[i], default=1.0)
+
+            groups = [X[labels == k, i] for k in np.unique(labels)]
+            grand_mean = X[:, i].mean()
+            ss_between = sum(len(g) * (g.mean() - grand_mean) ** 2 for g in groups if len(g) > 0)
+            ss_total = ((X[:, i] - grand_mean) ** 2).sum()
+            eta_sq = _safe_float(ss_between / ss_total) if ss_total > 0 else 0.0
+
+            effect = 'large' if eta_sq >= 0.14 else 'medium' if eta_sq >= 0.06 else 'small'
+            features.append({
+                'feature': col,
+                'f_stat': f,
+                'p_value': p,
+                'eta_squared': eta_sq,
+                'effect_size': effect,
+                'is_significant': bool(p < 0.05),
+                'rank': 0,
+            })
+
+        features.sort(key=lambda x: x['eta_squared'], reverse=True)
+        for rank, feat in enumerate(features, 1):
+            feat['rank'] = rank
+
+        top_driver = features[0]['feature'] if features else None
+
+        return {
+            'features': features,
+            'top_driver': top_driver,
+            'note': 'ANOVA F-test: measures how well each variable separates the hierarchical clusters.',
+        }
+    except Exception:
+        return None
+
 class HierarchicalClusterAnalysis:
-    def __init__(self, data, feature_cols=None, standardize=True):
+    def __init__(self, data, feature_cols=None, scaler_type='standard'):
         self.data = pd.DataFrame(data)
-        self.standardize = standardize
+        self.scaler_type = (scaler_type or 'standard').lower()
+        if self.scaler_type not in ('standard', 'robust', 'minmax'):
+            self.scaler_type = 'standard'
         self.feature_cols = feature_cols if feature_cols is not None else self.data.select_dtypes(include=np.number).columns.tolist()
-        
+
         self.cluster_data = self.data[self.feature_cols].copy().dropna()
-        
-        if self.standardize:
-            scaler = StandardScaler()
-            self.cluster_data_scaled = pd.DataFrame(scaler.fit_transform(self.cluster_data), columns=self.feature_cols, index=self.cluster_data.index)
+
+        if self.scaler_type == 'robust':
+            scaler = RobustScaler()
+        elif self.scaler_type == 'minmax':
+            scaler = MinMaxScaler()
         else:
-            self.cluster_data_scaled = self.cluster_data.copy()
-            
+            scaler = StandardScaler()
+        self.cluster_data_scaled = pd.DataFrame(scaler.fit_transform(self.cluster_data), columns=self.feature_cols, index=self.cluster_data.index)
+
         self.n_samples, self.n_features = self.cluster_data_scaled.shape
+        self.is_large_data = self.n_samples > LARGE_DATA_THRESHOLD
+        self.subsample_index = None
+        self._basis_data = None
         self.results = {}
 
     def perform_clustering(self, linkage_method='ward', distance_metric='euclidean', n_clusters=None):
         self.linkage_method = linkage_method
         self.distance_metric = distance_metric
-        
+
+        # ── Large-data guard: build the linkage/dendrogram from a bounded random
+        # subsample instead of the full O(n^2) pairwise-distance matrix. ────────
+        if self.is_large_data:
+            rng = np.random.RandomState(42)
+            subsample_n = min(SUBSAMPLE_SIZE, self.n_samples)
+            sub_positions = rng.choice(self.n_samples, size=subsample_n, replace=False)
+            self.subsample_index = self.cluster_data_scaled.index[sub_positions]
+            basis = self.cluster_data_scaled.loc[self.subsample_index]
+        else:
+            basis = self.cluster_data_scaled
+        self._basis_data = basis
+
         if linkage_method == 'ward' and distance_metric != 'euclidean':
             warnings.warn("Ward linkage requires euclidean distance. Overriding distance_metric to 'euclidean'.")
             self.distance_metric = 'euclidean'
-            distances = pdist(self.cluster_data_scaled, metric='euclidean')
+            distances = pdist(basis, metric='euclidean')
             self.linkage_matrix = linkage(distances, method='ward')
         elif linkage_method == 'ward':
-            distances = pdist(self.cluster_data_scaled, metric='euclidean')
+            distances = pdist(basis, metric='euclidean')
             self.linkage_matrix = linkage(distances, method='ward')
         else:
-            distances = pdist(self.cluster_data_scaled, metric=self.distance_metric)
+            distances = pdist(basis, metric=self.distance_metric)
             self.linkage_matrix = linkage(distances, method=linkage_method)
-        
+
         if n_clusters is None:
-            recommendations = self._find_optimal_clusters()
+            recommendations = self._find_optimal_clusters(basis)
             n_clusters = recommendations.get('silhouette', 3) # Default to 3 if silhouette fails
-        
+
         self.n_clusters = n_clusters
-        self.cluster_labels = fcluster(self.linkage_matrix, t=n_clusters, criterion='maxclust')
-        
+        basis_labels = fcluster(self.linkage_matrix, t=n_clusters, criterion='maxclust')
+
+        if self.is_large_data:
+            # Assign every observation (including the basis points themselves, for
+            # consistency) to the nearest basis-cluster centroid in scaled space.
+            unique_basis_labels = sorted(np.unique(basis_labels).tolist())
+            centroid_matrix = np.array([
+                basis.values[basis_labels == lbl].mean(axis=0) for lbl in unique_basis_labels
+            ])
+            all_points = self.cluster_data_scaled.values
+            dists = np.linalg.norm(all_points[:, np.newaxis, :] - centroid_matrix[np.newaxis, :, :], axis=2)
+            nearest = np.argmin(dists, axis=1)
+            self.cluster_labels = np.array([unique_basis_labels[i] for i in nearest])
+        else:
+            self.cluster_labels = basis_labels
+
         self.results['linkage_method'] = linkage_method
         self.results['distance_metric'] = self.distance_metric
         self.results['n_clusters'] = n_clusters
         self.results['cluster_labels'] = self.cluster_labels.tolist()
-        
-    def _find_optimal_clusters(self, max_k=10):
-        k_range = range(2, min(max_k + 1, self.n_samples - 1))
+        self.results['clustering_summary'] = {
+            'n_clusters': n_clusters,
+            'linkage': linkage_method,
+            'metric': self.distance_metric,
+            'scaler': self.scaler_type,
+            'n_samples': self.n_samples,
+            'is_large_data': self.is_large_data,
+            'subsample_size': int(len(basis)) if self.is_large_data else None,
+        }
+
+    def _find_optimal_clusters(self, basis=None, max_k=10):
+        if basis is None:
+            basis = self._basis_data if self._basis_data is not None else self.cluster_data_scaled
+        n_basis = len(basis)
+        k_range = range(2, min(max_k + 1, n_basis - 1))
         silhouette_scores = []
         calinski_scores = []
         davies_bouldin_scores = []
@@ -89,14 +203,14 @@ class HierarchicalClusterAnalysis:
         for k in k_range:
             labels = fcluster(self.linkage_matrix, k, criterion='maxclust')
             if len(np.unique(labels)) > 1:
-                silhouette_scores.append(silhouette_score(self.cluster_data_scaled, labels))
-                calinski_scores.append(calinski_harabasz_score(self.cluster_data_scaled, labels))
-                davies_bouldin_scores.append(davies_bouldin_score(self.cluster_data_scaled, labels))
+                silhouette_scores.append(silhouette_score(basis, labels))
+                calinski_scores.append(calinski_harabasz_score(basis, labels))
+                davies_bouldin_scores.append(davies_bouldin_score(basis, labels))
             else:
                 silhouette_scores.append(-1)
                 calinski_scores.append(0)
                 davies_bouldin_scores.append(np.inf)
-        
+
         recommendations = {}
         if silhouette_scores:
             recommendations['silhouette'] = k_range[np.argmax(silhouette_scores)]
@@ -133,34 +247,64 @@ class HierarchicalClusterAnalysis:
                 'silhouette': silhouette_score(self.cluster_data_scaled, self.cluster_labels),
                 'calinski_harabasz': calinski_harabasz_score(self.cluster_data_scaled, self.cluster_labels),
                 'davies_bouldin': davies_bouldin_score(self.cluster_data_scaled, self.cluster_labels),
+                'note': 'Silhouette: higher better. Calinski-Harabasz: higher better. Davies-Bouldin: lower better.',
             }
-        
+
+        self.results['feature_drivers'] = _feature_drivers(self.cluster_data, self.cluster_labels, self.feature_cols)
+
         self.results['interpretations'] = self.generate_interpretations()
 
-    def stability_analysis(self, n_bootstrap=50, sample_ratio=0.8):
-        stability_scores = []
-        for _ in range(n_bootstrap):
-            sample_indices = np.random.choice(self.n_samples, int(self.n_samples * sample_ratio), replace=True)
-            bootstrap_data = self.cluster_data_scaled.iloc[sample_indices]
-            
-            if self.linkage_method == 'ward':
-                bootstrap_linkage = linkage(bootstrap_data.values, method='ward')
-            else:
-                bootstrap_distances = pdist(bootstrap_data.values, metric=self.distance_metric)
-                bootstrap_linkage = linkage(bootstrap_distances, method=self.linkage_method)
+    def stability_analysis(self, n_bootstrap=None, sample_ratio=0.8):
+        # Fewer bootstrap resamples when already operating on the (up to 2000-row)
+        # large-data subsample, since each resample re-runs an O(n^2) linkage —
+        # keeps runtime bounded without materially changing the stability estimate.
+        if n_bootstrap is None:
+            n_bootstrap = 12 if self.is_large_data else 30
 
-            bootstrap_labels = fcluster(bootstrap_linkage, self.n_clusters, criterion='maxclust')
-            
-            if len(np.unique(bootstrap_labels)) > 1:
-                stability_scores.append(silhouette_score(bootstrap_data, bootstrap_labels))
-        
-        if stability_scores:
-            mean_stability = np.mean(stability_scores)
-            std_stability = np.std(stability_scores)
-            self.results['stability'] = {
-                'mean': mean_stability,
-                'std': std_stability
-            }
+        # Basis used to build self.linkage_matrix (full data, or the random
+        # subsample when is_large_data). Cophenetic correlation and the
+        # bootstrap-ARI stability score are both computed against this basis,
+        # since it's what the dendrogram actually reflects.
+        basis = self._basis_data if self._basis_data is not None else self.cluster_data_scaled
+        basis_values = basis.values
+        n_basis = len(basis_values)
+
+        # ── Cophenetic correlation: how faithfully the dendrogram preserves the
+        # basis's original pairwise distances (1.0 = perfect fidelity). ────────
+        cophenetic_r = None
+        try:
+            basis_distances = pdist(basis_values, metric='euclidean' if self.linkage_method == 'ward' else self.distance_metric)
+            coph_corr, _ = cophenet(self.linkage_matrix, basis_distances)
+            cophenetic_r = _safe_float(coph_corr, default=None)
+        except Exception:
+            pass
+
+        # ── Bootstrap stability: mean Adjusted Rand Index between the basis
+        # clustering and re-clustered bootstrap resamples of the basis. ───────
+        basis_labels = fcluster(self.linkage_matrix, t=self.n_clusters, criterion='maxclust')
+        rng = np.random.RandomState(123)
+        aris = []
+        for _ in range(n_bootstrap):
+            idx = rng.choice(n_basis, n_basis, replace=True)
+            try:
+                if self.linkage_method == 'ward':
+                    bootstrap_linkage = linkage(basis_values[idx], method='ward')
+                else:
+                    bootstrap_distances = pdist(basis_values[idx], metric=self.distance_metric)
+                    bootstrap_linkage = linkage(bootstrap_distances, method=self.linkage_method)
+                bootstrap_labels = fcluster(bootstrap_linkage, self.n_clusters, criterion='maxclust')
+                aris.append(adjusted_rand_score(basis_labels[idx], bootstrap_labels))
+            except Exception:
+                continue
+
+        stability_score = float(np.mean(aris)) if aris else None
+        self.results['stability'] = {
+            'cophenetic_r': cophenetic_r,
+            'stability_score': stability_score,
+            'note': ('Cophenetic correlation measures how faithfully the dendrogram represents the original '
+                     'pairwise distances (closer to 1 is better). Stability score is the mean Adjusted Rand '
+                     'Index between the clustering and bootstrap resamples (0-1, higher = more reproducible).'),
+        }
 
     def generate_interpretations(self):
         if 'profiles' not in self.results:
@@ -231,9 +375,17 @@ class HierarchicalClusterAnalysis:
         cut_height = 0
         if self.n_clusters > 1 and len(self.linkage_matrix) >= self.n_clusters - 1:
             cut_height = self.linkage_matrix[-(self.n_clusters - 1), 2]
-        dendrogram(self.linkage_matrix, ax=ax1, color_threshold=cut_height, above_threshold_color='gray')
+        # Per-leaf text tick labels are both unreadable and extremely slow to
+        # lay out once the linkage has more than a couple hundred leaves
+        # (matplotlib text-layout cost dominates runtime) — drop them past that.
+        n_leaves = len(self.linkage_matrix) + 1
+        dendrogram(self.linkage_matrix, ax=ax1, color_threshold=cut_height, above_threshold_color='gray',
+                   no_labels=n_leaves > 200)
         ax1.axhline(y=cut_height, c='red', linestyle='--', linewidth=2, label=f'Cut for {self.n_clusters} clusters')
-        ax1.set_title('Hierarchical Clustering Dendrogram', fontsize=12, fontweight='bold')
+        dendrogram_title = 'Hierarchical Clustering Dendrogram'
+        if self.is_large_data:
+            dendrogram_title += f' (subsample n={len(self._basis_data)})'
+        ax1.set_title(dendrogram_title, fontsize=12, fontweight='bold')
         ax1.set_xlabel('Sample Index', fontsize=12)
         ax1.set_ylabel('Distance', fontsize=12)
         ax1.legend()
@@ -372,11 +524,12 @@ def main():
         linkage_method = payload.get('linkageMethod', 'ward')
         distance_metric = payload.get('distanceMetric', 'euclidean')
         n_clusters = payload.get('nClusters') # Can be None
+        scaler_type = payload.get('scalerType') or 'standard'
 
         if not data or not items:
             raise ValueError("Missing 'data' or 'items'")
 
-        hca = HierarchicalClusterAnalysis(data=data, feature_cols=items, standardize=True)
+        hca = HierarchicalClusterAnalysis(data=data, feature_cols=items, scaler_type=scaler_type)
         hca.perform_clustering(linkage_method, distance_metric, n_clusters)
         hca.analyze_clusters()
         hca.stability_analysis()

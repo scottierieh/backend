@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
 from sklearn.cluster import KMeans, kmeans_plusplus
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
+from sklearn.feature_selection import f_classif
 from sklearn.decomposition import PCA
 from scipy.spatial import ConvexHull
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the '3d' projection)
@@ -37,63 +37,105 @@ class KMeansAnalysis:
         self.data = pd.DataFrame(data)
         self.feature_cols = feature_cols
         self.cluster_data_raw = self.data[self.feature_cols].copy().dropna()
-        
+        self.standardize = standardize
+
         if standardize:
-            scaler = StandardScaler()
-            self.cluster_data_scaled = pd.DataFrame(scaler.fit_transform(self.cluster_data_raw), columns=self.feature_cols, index=self.cluster_data_raw.index)
+            # Standardize using sample SD (ddof=1) to match R's scale() exactly, rather than
+            # sklearn's StandardScaler default of population SD (ddof=0). This rescales every
+            # feature by the same constant factor sqrt(n/(n-1)), so it does NOT change cluster
+            # assignments or the Silhouette / Davies-Bouldin / Calinski-Harabasz scores (all
+            # scale-invariant under a uniform rescale) — only the Inertia (WCSS) magnitude shifts.
+            means = self.cluster_data_raw.mean()
+            stds = self.cluster_data_raw.std(ddof=1).replace(0, 1)
+            self.cluster_data_scaled = (self.cluster_data_raw - means) / stds
         else:
             self.cluster_data_scaled = self.cluster_data_raw.copy()
-            
+
         self.n_samples, self.n_features = self.cluster_data_scaled.shape
         self.results = {}
 
     def find_optimal_k(self, max_k=10):
-        k_range = range(2, min(max_k + 1, self.n_samples))
+        k_range = list(range(2, min(max_k + 1, self.n_samples)))
         inertias = []
         silhouette_scores = []
-        
+        ch_scores = []
+
         for k in k_range:
             kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=42)
             kmeans.fit(self.cluster_data_scaled)
             inertias.append(kmeans.inertia_)
             if len(np.unique(kmeans.labels_)) > 1:
                 silhouette_scores.append(silhouette_score(self.cluster_data_scaled, kmeans.labels_))
+                ch_scores.append(calinski_harabasz_score(self.cluster_data_scaled, kmeans.labels_))
             else:
                 silhouette_scores.append(-1)
-        
+                ch_scores.append(-1)
+
         self.results['optimal_k'] = {
-            'k_range': list(k_range),
+            'k_range': k_range,
             'inertias': inertias,
-            'silhouette_scores': silhouette_scores
+            'silhouette_scores': silhouette_scores,
+            'ch_scores': ch_scores,
         }
-        
-        if silhouette_scores:
-            best_k_silhouette = k_range[np.argmax(silhouette_scores)]
-            self.results['optimal_k']['recommended_k'] = best_k_silhouette
+
+        if k_range:
+            # Recommended k = majority vote across three independent criteria: silhouette
+            # maximum, Calinski-Harabasz maximum, and the elbow point (max perpendicular
+            # distance of the inertia curve from the line joining its first/last points).
+            # Mirrors public/submission-code/kmeans.py exactly so the reference script and
+            # this handler always agree on how k is recommended.
+            silhouette_k = k_range[int(np.argmax(silhouette_scores))]
+            ch_k = k_range[int(np.argmax(ch_scores))]
+            x = np.array(k_range, dtype=float)
+            y = np.array(inertias, dtype=float)
+            x0, y0, x1, y1 = x[0], y[0], x[-1], y[-1]
+            num = np.abs((y1 - y0) * x - (x1 - x0) * y + x1 * y0 - y1 * x0)
+            den = np.hypot(y1 - y0, x1 - x0)
+            elbow_k = int(x[int(np.argmax(num / den))]) if den > 0 else k_range[0]
+            votes = [silhouette_k, ch_k, elbow_k]
+            recommended_k = max(set(votes), key=votes.count)
+            self.results['optimal_k']['recommended_k'] = recommended_k
         else:
             self.results['optimal_k']['recommended_k'] = 3
-        
+
         return self.results['optimal_k']
 
-    def perform_clustering(self, n_clusters, init_method='k-means++', n_init=10):
+    def perform_clustering(self, n_clusters, init_method='k-means++', n_init=10, algorithm='lloyd'):
         self.n_clusters = n_clusters
-        kmeans = KMeans(n_clusters=n_clusters, init=init_method, n_init=n_init, random_state=42)
+        kmeans = KMeans(n_clusters=n_clusters, init=init_method, n_init=n_init, random_state=42, algorithm=algorithm)
         self.cluster_labels = kmeans.fit_predict(self.cluster_data_scaled)
-        
+
         self.results['clustering_summary'] = {
             'n_clusters': n_clusters,
             'inertia': kmeans.inertia_,
             'centroids': kmeans.cluster_centers_.tolist(),
-            'labels': self.cluster_labels.tolist()
+            'labels': self.cluster_labels.tolist(),
+            'algorithm': kmeans.algorithm,
+            'init': init_method,
+            'scaler': 'StandardScaler' if self.standardize else 'None',
+            'scaler_note': (
+                "Standardized using sample SD (ddof=1), matching R's scale() exactly — "
+                "sklearn's StandardScaler defaults to population SD (ddof=0) instead. This is "
+                "a uniform rescale of every feature, so it does not change cluster assignments "
+                "or the Silhouette / Davies-Bouldin / Calinski-Harabasz scores — only the "
+                "Inertia (WCSS) magnitude."
+            ) if self.standardize else None,
+            'algorithm_note': (
+                "This backend uses Lloyd's algorithm (sklearn KMeans default) — a batch, "
+                "coordinate-descent-style update. R's kmeans() defaults to Hartigan-Wong, a "
+                "different local-search heuristic that moves individual points between clusters "
+                "when it reduces WCSS. The two families can converge to different local optima, "
+                "especially near ambiguous cluster boundaries."
+            ),
         }
-        
+
         self.analyze_clusters()
         return self.results
 
     def analyze_clusters(self):
         profiles = {}
         unique_labels, counts = np.unique(self.cluster_labels, return_counts=True)
-        
+
         for i, label in enumerate(unique_labels):
             mask = (self.cluster_labels == label)
             cluster_data = self.cluster_data_raw[mask]
@@ -101,6 +143,7 @@ class KMeansAnalysis:
                 'size': int(counts[i]),
                 'percentage': float(counts[i] / self.n_samples * 100),
                 'centroid': cluster_data.mean().to_dict(),
+                'centroid_scaled': self.cluster_data_scaled[mask].mean().to_dict(),
             }
         self.results['profiles'] = profiles
 
@@ -111,7 +154,146 @@ class KMeansAnalysis:
                 'calinski_harabasz': calinski_harabasz_score(self.cluster_data_scaled, self.cluster_labels),
             }
 
+            sil_samples = silhouette_samples(self.cluster_data_scaled, self.cluster_labels)
+            per_cluster_sil = []
+            for i, label in enumerate(unique_labels):
+                mask = (self.cluster_labels == label)
+                s = sil_samples[mask]
+                per_cluster_sil.append({
+                    'cluster': f'Cluster {label + 1}',
+                    'n': int(counts[i]),
+                    'avg_sil': float(s.mean()),
+                    'min_sil': float(s.min()),
+                    'max_sil': float(s.max()),
+                    'negative_sil': int((s < 0).sum()),
+                })
+            self.results['per_cluster_silhouette'] = per_cluster_sil
+
+        self.results['feature_drivers'] = self._compute_feature_drivers()
+        self.results['warnings'] = self._generate_warnings()
         self.results['interpretations'] = self.generate_interpretations()
+
+    def _compute_feature_drivers(self):
+        """One-way ANOVA F-test per feature across the fitted clusters: how strongly does
+        each variable separate the clusters? Mirrors gmm_analysis.py's _feature_drivers and
+        public/submission-code/kmeans.py's ANOVA block so the three agree on methodology."""
+        if len(np.unique(self.cluster_labels)) < 2:
+            return None
+        try:
+            X = self.cluster_data_raw[self.feature_cols].to_numpy()
+            f_stats, p_values = f_classif(X, self.cluster_labels)
+
+            features = []
+            grand_mean = X.mean(axis=0)
+            for i, col in enumerate(self.feature_cols):
+                f = float(f_stats[i]) if np.isfinite(f_stats[i]) else 0.0
+                p = float(p_values[i]) if np.isfinite(p_values[i]) else 1.0
+
+                groups = [X[self.cluster_labels == k, i] for k in np.unique(self.cluster_labels)]
+                ss_between = sum(len(g) * (g.mean() - grand_mean[i]) ** 2 for g in groups if len(g) > 0)
+                ss_total = ((X[:, i] - grand_mean[i]) ** 2).sum()
+                eta_sq = float(ss_between / ss_total) if ss_total > 0 else 0.0
+
+                effect = 'large' if eta_sq >= 0.14 else 'medium' if eta_sq >= 0.06 else 'small'
+                features.append({
+                    'feature': col,
+                    'f_stat': f,
+                    'p_value': p,
+                    'eta_squared': eta_sq,
+                    'effect_size': effect,
+                    'is_significant': bool(p < 0.05),
+                    'rank': 0,
+                })
+
+            features.sort(key=lambda x: x['eta_squared'], reverse=True)
+            for rank, feat in enumerate(features, 1):
+                feat['rank'] = rank
+
+            top_driver = features[0]['feature'] if features else None
+            return {
+                'features': features,
+                'top_driver': top_driver,
+                'note': 'ANOVA F-test: measures how well each variable separates the k clusters. Higher F / eta-squared = stronger driver.',
+            }
+        except Exception:
+            return None
+
+    def _generate_warnings(self):
+        input_warnings = []
+        quality_warnings = []
+
+        n = self.n_samples
+        if n < 30:
+            input_warnings.append(
+                f"Small sample size (n={n}). Cluster centroids may be unstable and not generalize well."
+            )
+
+        n_dupes = n - self.cluster_data_raw.drop_duplicates().shape[0]
+        if n > 0 and n_dupes / n > 0.10:
+            input_warnings.append(
+                f"{n_dupes} duplicate rows ({n_dupes / n * 100:.1f}%) detected. "
+                "Duplicates can distort centroids and inflate apparent cluster density."
+            )
+
+        for col in self.feature_cols:
+            col_vals = self.cluster_data_raw[col]
+            sd = col_vals.std(ddof=1)
+            if sd and sd > 0:
+                z = np.abs((col_vals - col_vals.mean()) / sd)
+                extreme = int((z > 5).sum())
+                if extreme > 0:
+                    input_warnings.append(
+                        f"'{col}' has {extreme} extreme outlier(s) (|z| > 5). "
+                        "K-Means is distance-based and sensitive to outliers pulling centroids."
+                    )
+
+        if n < self.n_features * 10:
+            quality_warnings.append(
+                f"{self.n_features} feature(s) relative to n={n} observations is high-dimensional "
+                "for clustering — distances become less meaningful (curse of dimensionality). "
+                "Consider dimensionality reduction (e.g. PCA) first."
+            )
+
+        if 'profiles' in self.results:
+            for name, p in self.results['profiles'].items():
+                if p['percentage'] < 5.0:
+                    quality_warnings.append(
+                        f"{name} is very small ({p['percentage']:.1f}% of data, n={p['size']}). "
+                        "May be unstable or driven by outliers."
+                    )
+            percentages = [p['percentage'] for p in self.results['profiles'].values()]
+            if len(percentages) > 1 and min(percentages) > 0 and max(percentages) / min(percentages) > 3:
+                quality_warnings.append(
+                    "Cluster sizes are highly imbalanced (largest is >3x the smallest). "
+                    "Consider whether k is appropriate or whether outliers are forming tiny clusters."
+                )
+
+        if 'final_metrics' in self.results and 0 < self.results['final_metrics']['silhouette'] < 0.25:
+            quality_warnings.append(
+                f"Silhouette score ({self.results['final_metrics']['silhouette']:.3f}) is low. "
+                "Clusters may overlap substantially — treat cluster assignments with caution."
+            )
+
+        pca_note = None
+        if self.n_features > 2:
+            try:
+                pca = PCA(n_components=2)
+                pca.fit(self.cluster_data_scaled)
+                var_explained = float(pca.explained_variance_ratio_.sum())
+                pca_note = (
+                    f"Clustering was performed in the full {self.n_features}-dimensional feature "
+                    f"space. The 2D scatter plot is a PCA projection explaining {var_explained:.1%} "
+                    "of total variance — visual overlap there does not necessarily mean overlap in "
+                    "the original feature space."
+                )
+            except Exception:
+                pca_note = None
+
+        return {
+            'input': input_warnings,
+            'quality': quality_warnings,
+            'pca_note': pca_note,
+        }
 
     def generate_interpretations(self):
         if 'profiles' not in self.results or 'final_metrics' not in self.results:

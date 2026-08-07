@@ -6,8 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
+from sklearn.feature_selection import f_classif
 from sklearn.decomposition import PCA
 from sklearn.cluster import kmeans_plusplus
 from sklearn_extra.cluster import KMedoids
@@ -32,49 +33,130 @@ def _to_native_type(obj):
         return bool(obj)
     return obj
 
+_SCALER_CLASSES = {
+    'standard': ('StandardScaler', StandardScaler),
+    'robust': ('RobustScaler', RobustScaler),
+    'minmax': ('MinMaxScaler', MinMaxScaler),
+}
+
+
 class KMedoidsAnalysis:
-    def __init__(self, data, feature_cols, standardize=True):
+    def __init__(self, data, feature_cols, standardize=True, scaler_type='standard', distance_metric='euclidean'):
         self.data = pd.DataFrame(data)
         self.feature_cols = feature_cols
         self.cluster_data = self.data[self.feature_cols].copy().dropna()
-        
+        self.standardize = standardize
+        # Actually honor the frontend's scaler/metric selectors (scalerType, distanceMetric)
+        # instead of silently hardcoding StandardScaler + euclidean regardless of user choice.
+        self.scaler_name, scaler_cls = _SCALER_CLASSES.get(scaler_type, _SCALER_CLASSES['standard'])
+        self.distance_metric = distance_metric or 'euclidean'
+
         if standardize:
-            scaler = StandardScaler()
+            scaler = scaler_cls()
             self.cluster_data_scaled = pd.DataFrame(scaler.fit_transform(self.cluster_data), columns=self.feature_cols, index=self.cluster_data.index)
         else:
             self.cluster_data_scaled = self.cluster_data.copy()
-            
+
         self.n_samples, self.n_features = self.cluster_data_scaled.shape
         self.results = {}
 
+    def find_optimal_k(self, max_k=10):
+        """Elbow (PAM cost) + Silhouette + Calinski-Harabasz curves across candidate k,
+        mirroring KMeansAnalysis.find_optimal_k exactly (same shape, same 3-way vote for
+        recommended_k) so the app's claim that K-Medoids offers the same k-selection tools
+        as K-Means is actually true."""
+        k_range = list(range(2, min(max_k + 1, self.n_samples)))
+        inertias = []
+        silhouette_scores = []
+        ch_scores = []
+
+        for k in k_range:
+            model = KMedoids(n_clusters=k, method='pam', init='k-medoids++', max_iter=300, random_state=42, metric=self.distance_metric)
+            model.fit(self.cluster_data_scaled)
+            inertias.append(model.inertia_)
+            if len(np.unique(model.labels_)) > 1:
+                silhouette_scores.append(silhouette_score(self.cluster_data_scaled, model.labels_))
+                ch_scores.append(calinski_harabasz_score(self.cluster_data_scaled, model.labels_))
+            else:
+                silhouette_scores.append(-1)
+                ch_scores.append(-1)
+
+        self.results['optimal_k'] = {
+            'k_range': k_range,
+            'inertias': inertias,
+            'silhouette_scores': silhouette_scores,
+            'ch_scores': ch_scores,
+        }
+
+        if k_range:
+            silhouette_k = k_range[int(np.argmax(silhouette_scores))]
+            ch_k = k_range[int(np.argmax(ch_scores))]
+            x = np.array(k_range, dtype=float)
+            y = np.array(inertias, dtype=float)
+            x0, y0, x1, y1 = x[0], y[0], x[-1], y[-1]
+            num = np.abs((y1 - y0) * x - (x1 - x0) * y + x1 * y0 - y1 * x0)
+            den = np.hypot(y1 - y0, x1 - x0)
+            elbow_k = int(x[int(np.argmax(num / den))]) if den > 0 else k_range[0]
+            votes = [silhouette_k, ch_k, elbow_k]
+            recommended_k = max(set(votes), key=votes.count)
+            self.results['optimal_k']['recommended_k'] = recommended_k
+            self.results['optimal_k']['recommendation_detail'] = {
+                'recommended_k': recommended_k,
+                'votes': {
+                    'silhouette_k': silhouette_k,
+                    'calinski_harabasz_k': ch_k,
+                    'elbow_k': elbow_k,
+                },
+                'note': (
+                    f"k={recommended_k} chosen by majority vote across three criteria: "
+                    f"silhouette maximum (k={silhouette_k}), Calinski-Harabasz maximum (k={ch_k}), "
+                    f"and the elbow point of the PAM cost curve (k={elbow_k})."
+                ),
+            }
+        else:
+            self.results['optimal_k']['recommended_k'] = 3
+
+        return self.results['optimal_k']
+
     def perform_clustering(self, n_clusters, init_method='k-medoids++', max_iter=300):
         self.n_clusters = n_clusters
-        
-        kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method, max_iter=max_iter, random_state=42)
+
+        kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method, max_iter=max_iter, random_state=42, metric=self.distance_metric)
         self.cluster_labels = kmedoids.fit_predict(self.cluster_data_scaled)
-        
+        self.medoid_indices_ = kmedoids.medoid_indices_
+
         self.results['clustering_summary'] = {
             'n_clusters': n_clusters,
             'inertia': kmedoids.inertia_,
             'medoids': self.cluster_data.iloc[kmedoids.medoid_indices_].to_dict('records'),
             'medoid_indices': kmedoids.medoid_indices_.tolist(),
-            'labels': self.cluster_labels.tolist()
+            'labels': self.cluster_labels.tolist(),
+            'algorithm': 'PAM',
+            'scaler': self.scaler_name if self.standardize else 'None',
+            'metric': kmedoids.metric,
         }
-        
+
         self.analyze_clusters()
         return self.results
 
     def analyze_clusters(self):
         profiles = {}
         unique_labels, counts = np.unique(self.cluster_labels, return_counts=True)
-        
+
         for i, label in enumerate(unique_labels):
             mask = (self.cluster_labels == label)
             cluster_data = self.cluster_data[mask]
+            medoid_idx = (
+                int(self.medoid_indices_[label])
+                if hasattr(self, 'medoid_indices_') and label < len(self.medoid_indices_)
+                else None
+            )
             profiles[f'Cluster {label + 1}'] = {
                 'size': int(counts[i]),
                 'percentage': float(counts[i] / self.n_samples * 100),
                 'centroid': cluster_data.mean().to_dict(), # Using mean as centroid for profile summary
+                'medoid_scaled': self.cluster_data_scaled.iloc[medoid_idx].to_dict() if medoid_idx is not None else None,
+                'medoid_index': medoid_idx,
             }
         self.results['profiles'] = profiles
 
@@ -84,8 +166,147 @@ class KMedoidsAnalysis:
                 'davies_bouldin': davies_bouldin_score(self.cluster_data_scaled, self.cluster_labels),
                 'calinski_harabasz': calinski_harabasz_score(self.cluster_data_scaled, self.cluster_labels),
             }
-            
+
+            sil_samples = silhouette_samples(self.cluster_data_scaled, self.cluster_labels)
+            per_cluster_sil = []
+            for i, label in enumerate(unique_labels):
+                mask = (self.cluster_labels == label)
+                s = sil_samples[mask]
+                per_cluster_sil.append({
+                    'cluster': f'Cluster {label + 1}',
+                    'n': int(counts[i]),
+                    'avg_sil': float(s.mean()),
+                    'min_sil': float(s.min()),
+                    'max_sil': float(s.max()),
+                    'negative_sil': int((s < 0).sum()),
+                })
+            self.results['per_cluster_silhouette'] = per_cluster_sil
+
+        self.results['feature_drivers'] = self._compute_feature_drivers()
+        self.results['warnings'] = self._generate_warnings()
         self.results['interpretations'] = self.generate_interpretations()
+
+    def _compute_feature_drivers(self):
+        """One-way ANOVA F-test per feature across the fitted clusters — identical
+        methodology to KMeansAnalysis._compute_feature_drivers and
+        public/submission-code/kmedoids.py's ANOVA block."""
+        if len(np.unique(self.cluster_labels)) < 2:
+            return None
+        try:
+            X = self.cluster_data[self.feature_cols].to_numpy()
+            f_stats, p_values = f_classif(X, self.cluster_labels)
+
+            features = []
+            grand_mean = X.mean(axis=0)
+            for i, col in enumerate(self.feature_cols):
+                f = float(f_stats[i]) if np.isfinite(f_stats[i]) else 0.0
+                p = float(p_values[i]) if np.isfinite(p_values[i]) else 1.0
+
+                groups = [X[self.cluster_labels == k, i] for k in np.unique(self.cluster_labels)]
+                ss_between = sum(len(g) * (g.mean() - grand_mean[i]) ** 2 for g in groups if len(g) > 0)
+                ss_total = ((X[:, i] - grand_mean[i]) ** 2).sum()
+                eta_sq = float(ss_between / ss_total) if ss_total > 0 else 0.0
+
+                effect = 'large' if eta_sq >= 0.14 else 'medium' if eta_sq >= 0.06 else 'small'
+                features.append({
+                    'feature': col,
+                    'f_stat': f,
+                    'p_value': p,
+                    'eta_squared': eta_sq,
+                    'effect_size': effect,
+                    'is_significant': bool(p < 0.05),
+                    'rank': 0,
+                })
+
+            features.sort(key=lambda x: x['eta_squared'], reverse=True)
+            for rank, feat in enumerate(features, 1):
+                feat['rank'] = rank
+
+            top_driver = features[0]['feature'] if features else None
+            return {
+                'features': features,
+                'top_driver': top_driver,
+                'note': 'ANOVA F-test: measures how well each variable separates the k clusters. Higher F / eta-squared = stronger driver.',
+            }
+        except Exception:
+            return None
+
+    def _generate_warnings(self):
+        input_warnings = []
+        quality_warnings = []
+
+        n = self.n_samples
+        if n < 30:
+            input_warnings.append(
+                f"Small sample size (n={n}). Medoid selection may be unstable and not generalize well."
+            )
+
+        n_dupes = n - self.cluster_data.drop_duplicates().shape[0]
+        if n > 0 and n_dupes / n > 0.10:
+            input_warnings.append(
+                f"{n_dupes} duplicate rows ({n_dupes / n * 100:.1f}%) detected. "
+                "Duplicates can bias which point ends up selected as the medoid."
+            )
+
+        for col in self.feature_cols:
+            col_vals = self.cluster_data[col]
+            sd = col_vals.std(ddof=1)
+            if sd and sd > 0:
+                z = np.abs((col_vals - col_vals.mean()) / sd)
+                extreme = int((z > 5).sum())
+                if extreme > 0:
+                    input_warnings.append(
+                        f"'{col}' has {extreme} extreme outlier(s) (|z| > 5). K-Medoids is more "
+                        "robust than K-Means here, but extreme values can still become medoids."
+                    )
+
+        if n < self.n_features * 10:
+            quality_warnings.append(
+                f"{self.n_features} feature(s) relative to n={n} observations is high-dimensional "
+                "for clustering — distances become less meaningful (curse of dimensionality). "
+                "Consider dimensionality reduction (e.g. PCA) first."
+            )
+
+        if 'profiles' in self.results:
+            for name, p in self.results['profiles'].items():
+                if p['percentage'] < 5.0:
+                    quality_warnings.append(
+                        f"{name} is very small ({p['percentage']:.1f}% of data, n={p['size']}). "
+                        "May be unstable or represent an outlier acting as its own medoid."
+                    )
+            percentages = [p['percentage'] for p in self.results['profiles'].values()]
+            if len(percentages) > 1 and min(percentages) > 0 and max(percentages) / min(percentages) > 3:
+                quality_warnings.append(
+                    "Cluster sizes are highly imbalanced (largest is >3x the smallest). "
+                    "Consider whether k is appropriate or whether outliers are forming tiny clusters."
+                )
+
+        if 'final_metrics' in self.results and 0 < self.results['final_metrics']['silhouette'] < 0.25:
+            quality_warnings.append(
+                f"Silhouette score ({self.results['final_metrics']['silhouette']:.3f}) is low. "
+                "Clusters may overlap substantially — treat cluster assignments with caution."
+            )
+
+        pca_note = None
+        if self.n_features > 2:
+            try:
+                pca = PCA(n_components=2)
+                pca.fit(self.cluster_data_scaled)
+                var_explained = float(pca.explained_variance_ratio_.sum())
+                pca_note = (
+                    f"Clustering was performed in the full {self.n_features}-dimensional feature "
+                    f"space. The 2D scatter plot is a PCA projection explaining {var_explained:.1%} "
+                    "of total variance — visual overlap there does not necessarily mean overlap in "
+                    "the original feature space."
+                )
+            except Exception:
+                pca_note = None
+
+        return {
+            'input': input_warnings,
+            'quality': quality_warnings,
+            'pca_note': pca_note,
+        }
 
     def generate_interpretations(self):
         if 'profiles' not in self.results or 'final_metrics' not in self.results:
@@ -234,6 +455,28 @@ class KMedoidsAnalysis:
     def plot_results(self):
         plots = []
 
+        # 0a. Elbow Plot (PAM cost vs k)
+        if 'optimal_k' in self.results:
+            opt_k_res = self.results['optimal_k']
+            fig, ax = plt.subplots(figsize=(7, 5.5))
+            ax.plot(opt_k_res['k_range'], opt_k_res['inertias'], 'bo-')
+            ax.set_xlabel('Number of Clusters (k)')
+            ax.set_ylabel('Total Cost (Inertia)')
+            ax.set_title('Elbow Method for Optimal k')
+            ax.grid(True, alpha=0.3)
+            plots.append({'label': 'Elbow Method', 'image': self._fig_to_data_url(fig)})
+
+        # 0b. Silhouette Plot
+        if 'optimal_k' in self.results and self.results['optimal_k']['silhouette_scores']:
+            opt_k_res = self.results['optimal_k']
+            fig, ax = plt.subplots(figsize=(7, 5.5))
+            sns.barplot(x=opt_k_res['k_range'], y=opt_k_res['silhouette_scores'], ax=ax, color='skyblue')
+            ax.set_xlabel('Number of Clusters (k)')
+            ax.set_ylabel('Average Silhouette Score')
+            ax.set_title('Silhouette Scores for Optimal k')
+            ax.grid(True, alpha=0.3)
+            plots.append({'label': 'Silhouette Scores', 'image': self._fig_to_data_url(fig)})
+
         pca_2d = None
         pca_2d_data = None
 
@@ -348,11 +591,14 @@ def main():
         data = payload.get('data')
         items = payload.get('items')
         n_clusters = payload.get('nClusters')
+        scaler_type = payload.get('scalerType') or 'standard'
+        distance_metric = payload.get('distanceMetric') or 'euclidean'
 
         if not data or not items or n_clusters is None:
             raise ValueError("Missing 'data', 'items', or 'nClusters'")
 
-        kma = KMedoidsAnalysis(data=data, feature_cols=items)
+        kma = KMedoidsAnalysis(data=data, feature_cols=items, scaler_type=scaler_type, distance_metric=distance_metric)
+        kma.find_optimal_k()  # Always run this to provide elbow/silhouette/CH suggestions, mirroring K-Means
         kma.perform_clustering(n_clusters=n_clusters)
         
         plots = kma.plot_results()

@@ -273,6 +273,60 @@ def _feature_drivers(cluster_data: pd.DataFrame, labels: np.ndarray, items: List
         return None
 
 
+def _n_free_params(n_components: int, n_features: int, covariance_type: str) -> int:
+    """Number of free parameters in a fitted GaussianMixture, following the
+    standard formula (same convention sklearn's own internal `_n_parameters`
+    uses, and what BIC/AIC penalize by):
+      - means:      n_components * n_features
+      - weights:    n_components - 1   (mixing proportions sum to 1)
+      - covariance: depends on covariance_type
+          full:      n_components * n_features * (n_features + 1) / 2
+          tied:      n_features * (n_features + 1) / 2          (one shared matrix)
+          diag:      n_components * n_features
+          spherical: n_components                                (one scalar each)
+    """
+    k, d = n_components, n_features
+    if covariance_type == 'full':
+        cov_params = k * d * (d + 1) / 2
+    elif covariance_type == 'tied':
+        cov_params = d * (d + 1) / 2
+    elif covariance_type == 'diag':
+        cov_params = k * d
+    elif covariance_type == 'spherical':
+        cov_params = k
+    else:
+        cov_params = k * d * (d + 1) / 2  # fall back to 'full'
+    mean_params = k * d
+    weight_params = k - 1
+    return int(mean_params + cov_params + weight_params)
+
+
+def _covariance_model_note(covariance_type: str) -> str:
+    mclust_map = {
+        'full': 'VVV', 'tied': 'EEE', 'diag': 'VVI', 'spherical': 'VII',
+    }
+    equivalent = mclust_map.get(covariance_type, 'VVV')
+    return (
+        f"sklearn '{covariance_type}' covariance is equivalent to R mclust's '{equivalent}' model. "
+        "sklearn supports 4 covariance types; R mclust supports 14 Banfield-Raftery models — "
+        "only these 4 have direct sklearn equivalents."
+    )
+
+
+def _scaler_note(scaler_type: str) -> str:
+    if scaler_type == 'robust':
+        return (
+            "Robust scaling here uses sklearn's default (median / IQR). R's mad() default "
+            "(median absolute deviation x 1.4826, Hampel 1974) is a different robust-scale "
+            "estimator — values will not match R's scale(x, center=median, scale=mad(x)) exactly."
+        )
+    elif scaler_type == 'minmax':
+        return "Min-Max scaling to [0, 1] has no direct equivalent in R mclust's standard workflow."
+    return (
+        "Standard scaling uses sample standard deviation (ddof=1), matching R's scale() exactly."
+    )
+
+
 def _fig_to_data_url(fig):
     buf = io.BytesIO()
     fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
@@ -661,6 +715,21 @@ def main():
         except Exception:
             pass
 
+        # ── 11d. Model bookkeeping: free-parameter count, mclust-convention BIC,
+        #         and algorithm/init/covariance/scaler notes for the UI glossary ──
+        n_free_params = _n_free_params(n_components, n_features, covariance_type)
+        bic_mclust_convention = safe_float(-bic)
+        gmm_algorithm = 'EM (Expectation-Maximization, Dempster et al. 1977)'
+        gmm_init_method = f"{gmm.get_params().get('init_params', 'kmeans')} (sklearn default)"
+        gmm_init_note = (
+            "sklearn initializes components via k-means (stochastic, seeded by random_state). "
+            "R mclust initializes via agglomerative hierarchical clustering (deterministic). "
+            "For well-separated data both converge to equivalent solutions; for ambiguous cluster "
+            "boundaries the two libraries may land on different local optima — a known difference, not an error."
+        )
+        gmm_covariance_model_note = _covariance_model_note(covariance_type)
+        gmm_scaler_note = _scaler_note(scaler_type)
+
         # ── 12. Response ───────────────────────────────────────────────────
         response = _to_native({
             'results': {
@@ -681,6 +750,12 @@ def main():
                     'converged': gmm.converged_,
                     'n_iter': gmm.n_iter_,
                     'n_samples': n_samples,
+                    'algorithm': gmm_algorithm,
+                    'init_method': gmm_init_method,
+                    'init_note': gmm_init_note,
+                    'covariance_model_note': gmm_covariance_model_note,
+                    'scaler_note': gmm_scaler_note,
+                    'n_free_params': n_free_params,
                 },
                 'profiles': profiles,
                 'soft_diagnostics': soft_diagnostics,
@@ -692,7 +767,8 @@ def main():
                     'bic': bic,
                     'aic': aic,
                     'log_likelihood': log_likelihood,
-                    'note': 'Silhouette: higher better. Davies-Bouldin: lower better. BIC/AIC: lower better.',
+                    'bic_mclust_convention': bic_mclust_convention,
+                    'note': 'Silhouette: higher better. Davies-Bouldin: lower better. BIC/AIC: lower better (sklearn convention).',
                 },
                 'interpretations': {
                     'overall_quality': overall_quality,

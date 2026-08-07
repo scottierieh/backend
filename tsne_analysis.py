@@ -68,14 +68,70 @@ class TsneAnalysis:
         self.results['embedding'] = self.embedding
         self.results['kl_divergence'] = tsne.kl_divergence_
         self.results['n_iterations_run'] = tsne.n_iter_
+        self.results['perplexity_requested'] = self.perplexity
         self.results['perplexity_used'] = effective_perplexity
         self.results['n_components'] = self.n_components
         self.results['variables'] = self.variables
+        self.results['n_features'] = len(self.variables)
         self.results['n_samples'] = n_samples
+
+        # Silhouette score w.r.t. the optional label column — only meaningful (and only
+        # computed) when there are at least 2 distinct non-null classes among the rows
+        # that actually made it into the embedding.
+        self.results['silhouette_score'] = None
+        if self.labels is not None:
+            n_classes = self.labels.dropna().nunique()
+            if n_classes >= 2:
+                try:
+                    self.results['silhouette_score'] = float(silhouette_score(self.embedding, self.labels))
+                except Exception:
+                    self.results['silhouette_score'] = None
 
         self.results['interpretation'] = self._generate_interpretation(n_samples)
 
     def _generate_interpretation(self, n_samples):
+        sil = self.results.get('silhouette_score')
+        clamped = self.perplexity != self.results['perplexity_used']
+        kl = self.results['kl_divergence']
+
+        key_insights = []
+        key_insights.append({
+            'title': 'Embedding overview',
+            'description': (
+                f"t-SNE embedded {n_samples} observations across {len(self.variables)} input variables "
+                f"into {self.n_components} dimensions using perplexity = {self.results['perplexity_used']:.1f} "
+                f"(ran {self.results['n_iterations_run']} of {self.n_iter} max iterations)."
+            ),
+            'status': 'neutral',
+        })
+        if clamped:
+            key_insights.append({
+                'title': 'Perplexity was clamped',
+                'description': (
+                    f"Requested perplexity ({self.perplexity:.1f}) was reduced to "
+                    f"{self.results['perplexity_used']:.1f} because it must stay well below the sample size."
+                ),
+                'status': 'warning',
+            })
+        key_insights.append({
+            'title': 'KL divergence',
+            'description': (
+                f"Final KL divergence = {kl:.3f} (lower indicates the low-dimensional embedding better "
+                "preserves local neighborhood structure from the original space; not comparable across datasets)."
+            ),
+            'status': 'neutral',
+        })
+        if sil is not None:
+            sil_desc = "well separated" if sil >= 0.5 else "moderately separated" if sil >= 0.25 else "overlapping"
+            key_insights.append({
+                'title': 'Group separation',
+                'description': (
+                    f"Silhouette score of the embedding w.r.t. '{self.label_col}' = {sil:.3f} — groups "
+                    f"appear {sil_desc} in the 2D projection."
+                ),
+                'status': 'positive' if sil >= 0.5 else 'neutral' if sil >= 0.25 else 'warning',
+            })
+
         parts = []
         parts.append("**Overall Assessment**")
         parts.append(
@@ -83,7 +139,7 @@ class TsneAnalysis:
             f"into {self.n_components} dimensions using perplexity = {self.results['perplexity_used']:.1f} "
             f"(ran {self.results['n_iterations_run']} of {self.n_iter} max iterations)."
         )
-        if self.perplexity != self.results['perplexity_used']:
+        if clamped:
             parts.append(
                 f"→ Requested perplexity ({self.perplexity:.1f}) was reduced to "
                 f"{self.results['perplexity_used']:.1f} because it must stay well below the sample size."
@@ -91,21 +147,16 @@ class TsneAnalysis:
 
         parts.append("")
         parts.append("**Statistical Insights**")
-        kl = self.results['kl_divergence']
         parts.append(
             f"→ Final KL divergence = {kl:.3f} (lower indicates the low-dimensional embedding better "
             "preserves local neighborhood structure from the original space; not comparable across datasets)."
         )
-        if self.labels is not None:
-            try:
-                sil = silhouette_score(self.embedding, self.labels)
-                sil_desc = "well separated" if sil >= 0.5 else "moderately separated" if sil >= 0.25 else "overlapping"
-                parts.append(
-                    f"→ Silhouette score of the embedding w.r.t. '{self.label_col}' = {sil:.3f} — groups "
-                    f"appear {sil_desc} in the 2D projection."
-                )
-            except Exception:
-                pass
+        if sil is not None:
+            sil_desc = "well separated" if sil >= 0.5 else "moderately separated" if sil >= 0.25 else "overlapping"
+            parts.append(
+                f"→ Silhouette score of the embedding w.r.t. '{self.label_col}' = {sil:.3f} — groups "
+                f"appear {sil_desc} in the 2D projection."
+            )
 
         parts.append("")
         parts.append("**Recommendations**")
@@ -119,7 +170,10 @@ class TsneAnalysis:
         )
         parts.append("→ For a globally faithful (and reproducible) alternative to compare against, consider UMAP or PCA.")
 
-        return "\n".join(parts)
+        return {
+            'key_insights': key_insights,
+            'recommendation': "\n".join(parts),
+        }
 
     def plot_results(self):
         fig, ax = plt.subplots(figsize=(9, 8))
@@ -170,9 +224,14 @@ def main():
         analysis.run_analysis()
         plot_image = analysis.plot_results()
 
+        # Flattened response: the frontend's TSNEResponse type expects every field
+        # (n_samples, embedding, kl_divergence, ...) at the top level, not nested
+        # under "results". `plot` is kept for backward compatibility; `embedding_plot`
+        # is the field name the frontend actually reads.
         response = {
-            'results': analysis.results,
-            'plot': plot_image
+            **analysis.results,
+            'plot': plot_image,
+            'embedding_plot': plot_image,
         }
 
         print(json.dumps(response, default=_to_native_type))

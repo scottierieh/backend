@@ -467,7 +467,10 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'feature_importance': feature_importance,
         'lda_info': lda_info,
         'lda_statistics': lda_statistics,
-        'lda_transform': lda_transform
+        'lda_transform': lda_transform,
+        'y_test_encoded': y_test_encoded,
+        'y_pred': y_pred,
+        'y_pred_proba': y_pred_proba,
     }
 
 
@@ -627,7 +630,10 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'pr_data': pr_data,
         'label_encoder': le,
         'feature_importance': feature_importance,
-        'qda_info': qda_info
+        'qda_info': qda_info,
+        'y_test_encoded': y_test_encoded,
+        'y_pred': y_pred,
+        'y_pred_proba': y_pred_proba,
     }
 
 
@@ -680,6 +686,44 @@ def perform_cross_validation(X_raw, y, params: dict, method: str, cv_folds: int)
         'cv_std': _to_native_type(np.std(scores)),
         'cv_folds': cv_folds
     }
+
+
+def generate_prediction_examples(
+    result: Dict,
+    n_examples: int = 15,
+    random_state: int = 42,
+) -> List[Dict[str, Any]]:
+    """
+    Sample prediction examples from the test set (mirrors SVM/KNN/MLP implementations).
+    Discriminant Analysis is classification-only → actual (label), predicted (label),
+    correct, confidence.
+    """
+    try:
+        rng = np.random.RandomState(random_state)
+
+        le: LabelEncoder = result['label_encoder']
+        y_test_enc = np.array(result['y_test_encoded'])
+        y_pred_enc = np.array(result['y_pred'])
+        y_pred_proba = np.array(result['y_pred_proba'])
+
+        n = min(n_examples, len(y_test_enc))
+        idx = rng.choice(len(y_test_enc), size=n, replace=False)
+
+        examples = []
+        for i in idx:
+            actual_label = str(le.inverse_transform([y_test_enc[i]])[0])
+            predicted_label = str(le.inverse_transform([y_pred_enc[i]])[0])
+            confidence = _to_native_type(float(y_pred_proba[i].max()))
+            examples.append({
+                'actual': actual_label,
+                'predicted': predicted_label,
+                'correct': bool(y_test_enc[i] == y_pred_enc[i]),
+                'confidence': confidence,
+            })
+        return examples
+
+    except Exception:
+        return []
 
 
 # ──────────────────────────────────────────────
@@ -1049,6 +1093,8 @@ def main():
 
         cv_result = perform_cross_validation(np.array(X), y, params, method, cv_folds)
 
+        prediction_examples = generate_prediction_examples(result, n_examples=15)
+
         plots = []
 
         importance_plot = generate_feature_importance_plot(result['feature_importance'])
@@ -1124,6 +1170,7 @@ def main():
             'confusion_matrix': result['confusion_matrix'],
             'class_labels': result['class_labels'],
             'interpretation': interpretation,
+            'prediction_examples': prediction_examples,
         }
 
         if method == 'lda' and 'lda_info' in result:

@@ -364,7 +364,19 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
     }
 
 
-def generate_prediction_examples(result: Dict, task_type: str, n_examples: int = 15) -> List[Dict]:
+def _select_example_indices(n_total: int, n_examples: int = 15, random_state: int = 42) -> np.ndarray:
+    """Deterministically pick the same sample of test-set row positions every time it's
+    called with the same args — lets generate_prediction_examples and
+    generate_neighbor_details agree on which query points to show without threading
+    extra state through the pipeline. np.random.seed(x) followed by np.random.choice
+    reproduces RandomState(x).choice(...) exactly, so this matches the prior inline logic."""
+    rng = np.random.RandomState(random_state)
+    n = min(n_examples, n_total)
+    return rng.choice(n_total, size=n, replace=False)
+
+
+def generate_prediction_examples(result: Dict, task_type: str, n_examples: int = 15,
+                                  idx: Optional[np.ndarray] = None) -> List[Dict]:
     """Generate sample prediction examples (mirrors SVM implementation)."""
     examples = []
     try:
@@ -375,9 +387,7 @@ def generate_prediction_examples(result: Dict, task_type: str, n_examples: int =
             class_labels = result.get('class_labels', [])
             if y_test_enc is None or y_pred is None:
                 return []
-            indices = list(range(len(y_test_enc)))
-            np.random.seed(42)
-            chosen = np.random.choice(indices, size=min(n_examples, len(indices)), replace=False)
+            chosen = idx if idx is not None else _select_example_indices(len(y_test_enc), n_examples)
             for i in chosen:
                 conf = float(np.max(y_pred_proba[i])) if y_pred_proba is not None else None
                 examples.append({
@@ -392,9 +402,7 @@ def generate_prediction_examples(result: Dict, task_type: str, n_examples: int =
             if y_test is None or y_pred is None:
                 return []
             y_test_arr = np.array(y_test)
-            indices = list(range(len(y_test_arr)))
-            np.random.seed(42)
-            chosen = np.random.choice(indices, size=min(n_examples, len(indices)), replace=False)
+            chosen = idx if idx is not None else _select_example_indices(len(y_test_arr), n_examples)
             for i in chosen:
                 actual = float(y_test_arr[i])
                 predicted = float(y_pred[i])
@@ -409,6 +417,83 @@ def generate_prediction_examples(result: Dict, task_type: str, n_examples: int =
     except Exception:
         pass
     return examples
+
+
+def _select_neighbor_queries(idx_pool: np.ndarray, result: Dict, task_type: str,
+                              max_queries: int = 5) -> List[int]:
+    """Pick which of the prediction-examples query points to show full neighbor detail
+    for. Classification: prefer misclassified points first (most instructive — shows
+    why KNN got it wrong), then fill with correct ones. Regression: prefer the largest
+    absolute errors first."""
+    idx_list = [int(i) for i in idx_pool]
+    if task_type == 'classification':
+        y_test_enc = result.get('y_test_encoded')
+        y_pred = result.get('y_pred')
+        if y_test_enc is None or y_pred is None:
+            return idx_list[:max_queries]
+        wrong = [i for i in idx_list if y_test_enc[i] != y_pred[i]]
+        correct = [i for i in idx_list if y_test_enc[i] == y_pred[i]]
+        return (wrong + correct)[:max_queries]
+    else:
+        y_test = result.get('y_test')
+        y_pred = result.get('y_pred')
+        if y_test is None or y_pred is None:
+            return idx_list[:max_queries]
+        y_test_arr = np.array(y_test)
+        y_pred_arr = np.array(y_pred)
+        ordered = sorted(idx_list, key=lambda i: -abs(float(y_pred_arr[i]) - float(y_test_arr[i])))
+        return ordered[:max_queries]
+
+
+def generate_neighbor_details(model, X_test: np.ndarray, y_train_labels: np.ndarray,
+                               task_type: str, query_indices: List[int],
+                               result: Dict, class_labels: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """For a handful of test-set query points, show their actual K nearest training
+    neighbors (via the fitted model's .kneighbors()) — the neighbor's training-set
+    index, distance, and label/value — so it's directly visible *why* KNN predicted
+    what it did for that point. Pairs with generate_prediction_examples: pass the same
+    query point indices for a coherent story."""
+    details = []
+    try:
+        for i in query_indices:
+            distances, neighbor_pos = model.kneighbors(X_test[i:i + 1])
+            distances = distances[0]
+            neighbor_pos = neighbor_pos[0]
+
+            neighbors = []
+            for rank, (npos, dist) in enumerate(zip(neighbor_pos, distances)):
+                entry: Dict[str, Any] = {
+                    'rank': rank + 1,
+                    'train_index': int(npos),
+                    'distance': _to_native_type(float(dist)),
+                }
+                if task_type == 'classification':
+                    entry['label'] = str(y_train_labels[int(npos)])
+                else:
+                    entry['value'] = _to_native_type(float(y_train_labels[int(npos)]))
+                neighbors.append(entry)
+
+            entry: Dict[str, Any] = {
+                'query_index': int(i),
+                'neighbors': neighbors,
+            }
+            if task_type == 'classification':
+                y_test_enc = result.get('y_test_encoded')
+                y_pred = result.get('y_pred')
+                if y_test_enc is not None and y_pred is not None and class_labels:
+                    entry['actual'] = class_labels[int(y_test_enc[i])]
+                    entry['predicted'] = class_labels[int(y_pred[i])]
+                    entry['correct'] = bool(y_test_enc[i] == y_pred[i])
+            else:
+                y_test = result.get('y_test')
+                y_pred = result.get('y_pred')
+                if y_test is not None and y_pred is not None:
+                    entry['actual'] = _to_native_type(float(np.array(y_test)[i]))
+                    entry['predicted'] = _to_native_type(float(np.array(y_pred)[i]))
+            details.append(entry)
+    except Exception:
+        return []
+    return details
 
 
 def generate_k_selection_plot(k_search_result: Dict) -> str:
@@ -899,7 +984,15 @@ def main():
         cv_result = perform_cross_validation(X_array, y, params, task_type, cv_folds)
 
         # ── Prediction examples ─────────────────────────────────────
-        prediction_examples = generate_prediction_examples(result, task_type, n_examples=15)
+        example_idx = _select_example_indices(len(X_test), n_examples=15)
+        prediction_examples = generate_prediction_examples(result, task_type, n_examples=15, idx=example_idx)
+
+        # ── Nearest-neighbor detail (same query points as prediction_examples) ──
+        neighbor_query_idx = _select_neighbor_queries(example_idx, result, task_type, max_queries=5)
+        neighbor_details = generate_neighbor_details(
+            model, X_test, y_train.values, task_type, neighbor_query_idx, result,
+            class_labels=result.get('class_labels')
+        )
 
         # ── Visualizations ──────────────────────────────────────────
         importance_plot = generate_feature_importance_plot(result['feature_importance'])
@@ -954,7 +1047,8 @@ def main():
             'importance_plot': importance_plot,
             'k_plot': k_plot,
             'interpretation': interpretation,
-            'prediction_examples': prediction_examples
+            'prediction_examples': prediction_examples,
+            'neighbor_details': neighbor_details
         }
 
         if task_type == 'classification':

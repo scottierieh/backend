@@ -227,6 +227,24 @@ def train_adaboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> 
     }
 
 
+def get_per_round_split_features(model, feature_names: List[str]) -> List[Any]:
+    """For each weak learner (model.estimators_[i]), returns the feature name used at
+    the root-node split (estimator.tree_.feature[0]). With the classic base_max_depth=1
+    "decision stump" setup this root split IS the entire weak learner, so this directly
+    answers "which feature did round i's stump split on". For deeper base trees it's
+    just the top-level split (still informative, though not the whole learner). A
+    stump that ended up as a pure leaf (no split at all -- rare, only when a reweighted
+    sample subset was already perfectly separable) reports None."""
+    feats: List[Any] = []
+    for est in model.estimators_:
+        try:
+            idx = int(est.tree_.feature[0])
+            feats.append(feature_names[idx] if idx >= 0 and idx < len(feature_names) else None)
+        except Exception:
+            feats.append(None)
+    return feats
+
+
 def get_feature_importance(model, feature_names: List[str]) -> List[Dict[str, Any]]:
     importance = model.feature_importances_
     total = importance.sum() if importance.sum() > 0 else 1.0
@@ -660,6 +678,7 @@ def main():
 
         model = result['model']
         feature_importance = get_feature_importance(model, feature_cols)
+        split_features = get_per_round_split_features(model, feature_cols)
 
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else (y_test.values if hasattr(y_test, 'values') else y_test)
         X_test_arr = X_test.values if hasattr(X_test, 'values') else X_test
@@ -712,7 +731,7 @@ def main():
             'estimator_weights': result['estimator_weights'],
             'estimator_errors': result['estimator_errors'],
             'per_round_estimators': [
-                {'round': i + 1, 'weight': w, 'error': e}
+                {'round': i + 1, 'weight': w, 'error': e, 'feature': (split_features[i] if i < len(split_features) else None)}
                 for i, (w, e) in enumerate(zip(result['estimator_weights'], result['estimator_errors']))
             ],
             'importance_plot': importance_plot,

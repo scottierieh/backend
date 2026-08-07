@@ -248,6 +248,33 @@ def get_feature_importance(model, feature_names: List[str]) -> List[Dict[str, An
     return importance_data
 
 
+def get_gain_importance(model, feature_names: List[str]) -> List[Dict[str, Any]]:
+    """Gain-based importance: total reduction in the training loss contributed by each
+    feature across every split, summed over all trees. Pulled from the already-fitted
+    booster (model.booster_.feature_importance(importance_type='gain')) rather than
+    refitting with importance_type='gain' -- cheaper, and mathematically identical to a
+    refit since gain is tracked during training regardless of which importance_type the
+    sklearn wrapper defaults to. Unlike split-count importance (get_feature_importance,
+    default importance_type='split'), which just counts how often a feature was used to
+    split, gain reflects how much each split actually reduced loss -- so a feature that's
+    split on rarely but very effectively can rank higher here than in the split-count
+    table, while a feature split on often but with little effect ranks lower."""
+    importance = model.booster_.feature_importance(importance_type='gain')
+    total = importance.sum() if importance.sum() > 0 else 1.0
+    max_imp = importance.max() if importance.max() > 0 else 1.0
+    importance_data = []
+    for name, imp in zip(feature_names, importance):
+        importance_data.append({
+            'feature': name, 'importance': _to_native_type(imp),
+            'importance_pct': _to_native_type(imp / total * 100),
+            'normalized_importance': _to_native_type(imp / max_imp),
+        })
+    importance_data.sort(key=lambda x: x['importance'], reverse=True)
+    for i, item in enumerate(importance_data):
+        item['rank'] = i + 1
+    return importance_data
+
+
 def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
                                     n_repeats: int = 10, random_state: int = 42) -> List[Dict[str, Any]]:
     try:
@@ -622,6 +649,7 @@ def main():
 
         model = result['model']
         feature_importance = get_feature_importance(model, feature_cols)
+        gain_importance = get_gain_importance(model, feature_cols)
 
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else (y_test.values if hasattr(y_test, 'values') else y_test)
         perm_importance = compute_permutation_importance(model, X_test.values, y_test_for_perm, feature_cols)
@@ -662,6 +690,7 @@ def main():
             'parameters': params,
             'metrics': result['metrics'],
             'feature_importance': feature_importance,
+            'gain_importance': gain_importance,
             'perm_importance': perm_importance,
             'cv_results': cv_result,
             'best_iteration': result['best_iteration'],

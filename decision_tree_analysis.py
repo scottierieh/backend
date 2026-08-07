@@ -26,7 +26,7 @@ from sklearn.tree import (
     DecisionTreeClassifier, DecisionTreeRegressor,
     plot_tree, export_text
 )
-from sklearn.inspection import partial_dependence
+from sklearn.inspection import partial_dependence, permutation_importance
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
@@ -123,6 +123,97 @@ def get_feature_importance(model, feature_names: List[str]) -> List[Dict[str, An
     for rank, row in enumerate(data, 1):
         row['rank'] = rank
     return data
+
+
+# ─────────────────────────────────────────────
+# Permutation Importance (unbiased, handles high-cardinality
+# features — Gini/impurity importance above is biased toward
+# them). Mirrors random_forest_analysis.py's implementation and
+# response field shape (feature/importance_mean/importance_std/rank)
+# for consistency across the tree-based model pages.
+# ─────────────────────────────────────────────
+
+def compute_permutation_importance(
+    model, X_test: np.ndarray, y_test, feature_names: List[str],
+    n_repeats: int = 10, random_state: int = 42
+) -> List[Dict[str, Any]]:
+    try:
+        perm = permutation_importance(
+            model, X_test, y_test,
+            n_repeats=n_repeats, random_state=random_state, n_jobs=-1
+        )
+        result = []
+        for name, mean, std in zip(feature_names, perm.importances_mean, perm.importances_std):
+            result.append({
+                'feature': name,
+                'importance_mean': _to_native(mean),
+                'importance_std': _to_native(std),
+            })
+        result.sort(key=lambda x: x['importance_mean'], reverse=True)
+        for i, item in enumerate(result):
+            item['rank'] = i + 1
+        return result
+    except Exception:
+        return []
+
+
+# ─────────────────────────────────────────────
+# max_depth Validation Curve — train/test score at each candidate
+# depth, reusing the existing train/test split (no re-splitting).
+# ─────────────────────────────────────────────
+
+def compute_max_depth_validation_curve(X_train, X_test, y_train, y_test,
+                                        task_type: str, params: dict,
+                                        max_depth_cap: int = 15) -> Optional[Dict[str, Any]]:
+    try:
+        # Probe the tree's natural (unrestricted) depth so the sweep covers a
+        # sensible range instead of always going all the way to the cap.
+        probe = (DecisionTreeClassifier if task_type == 'classification' else DecisionTreeRegressor)(
+            min_samples_split=params['min_samples_split'],
+            min_samples_leaf=params['min_samples_leaf'],
+            random_state=params['random_state']
+        )
+        probe.fit(X_train, y_train)
+        natural_depth = probe.get_depth()
+        max_depth_sweep = min(max_depth_cap, max(natural_depth, 5))
+
+        depths = list(range(1, max_depth_sweep + 1))
+        train_scores, test_scores = [], []
+        for d in depths:
+            Model = DecisionTreeClassifier if task_type == 'classification' else DecisionTreeRegressor
+            m = Model(
+                max_depth=d,
+                min_samples_split=params['min_samples_split'],
+                min_samples_leaf=params['min_samples_leaf'],
+                max_features=params['max_features'],
+                criterion=params['criterion'],
+                splitter=params['splitter'],
+                random_state=params['random_state']
+            )
+            m.fit(X_train, y_train)
+            if task_type == 'classification':
+                train_scores.append(_to_native(accuracy_score(y_train, m.predict(X_train))))
+                test_scores.append(_to_native(accuracy_score(y_test, m.predict(X_test))))
+            else:
+                train_scores.append(_to_native(r2_score(y_train, m.predict(X_train))))
+                test_scores.append(_to_native(r2_score(y_test, m.predict(X_test))))
+
+        return {'depth': depths, 'train_score': train_scores, 'test_score': test_scores}
+    except Exception:
+        return None
+
+
+def generate_validation_curve_plot(vc: Dict[str, Any], task_type: str) -> str:
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(vc['depth'], vc['train_score'], color='#2563eb', linewidth=2, marker='o', markersize=4, label='Train')
+    ax.plot(vc['depth'], vc['test_score'], color='#dc2626', linewidth=2, marker='o', markersize=4, label='Test')
+    ax.set_xlabel('max_depth', fontsize=11)
+    ax.set_ylabel('Accuracy' if task_type == 'classification' else 'R² Score', fontsize=11)
+    ax.set_title('Validation Curve: max_depth', fontsize=13, fontweight='bold')
+    ax.legend()
+    ax.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    return _fig_to_b64(fig)
 
 
 # ─────────────────────────────────────────────
@@ -581,6 +672,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
         'pr_data': pr_data,
+        'label_encoder': le,
         'tree_info': {
             'n_nodes':          int(model.tree_.node_count),
             'max_depth_actual': int(model.get_depth()),
@@ -866,6 +958,19 @@ def main():
         # ── CV ──
         cv_result = perform_cv(X_arr, y, params, task_type, cv_folds)
 
+        # ── Permutation Importance (unbiased vs. Gini above) ──
+        if task_type == 'classification':
+            y_test_for_perm = result['label_encoder'].transform(y_test)
+        else:
+            y_test_for_perm = y_test.values if hasattr(y_test, 'values') else y_test
+        perm_importance = compute_permutation_importance(model, X_test, y_test_for_perm, feature_cols)
+
+        # ── max_depth Validation Curve (reuses the existing train/test split) ──
+        validation_curve = compute_max_depth_validation_curve(
+            X_train, X_test, y_train, y_test, task_type, params)
+        validation_curve_plot = (generate_validation_curve_plot(validation_curve, task_type)
+                                  if validation_curve else None)
+
         # ── SHAP ──
         shap_result = compute_shap(model, X_train, X_test, feature_cols, task_type)
         pdp_data = compute_pdp_json(model, X_train, feature_cols, top_n=6)
@@ -919,10 +1024,13 @@ def main():
             'parameters':         {k: _to_native(v) for k, v in params.items()},
             'metrics':            result['metrics'],
             'feature_importance': feature_importance,
+            'perm_importance':    perm_importance,
             'cv_results':         cv_result,
             'tree_info':          tree_info,
             'importance_plot':    importance_plot,
             'tree_plot':          tree_plot,
+            'validation_curve':      validation_curve,
+            'validation_curve_plot': validation_curve_plot,
             'shap_importance':    shap_result.get('shap_importance', []),
             'shap_plot':          shap_result.get('shap_plot'),
             'shap_samples':       shap_result.get('shap_samples'),

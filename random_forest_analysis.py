@@ -21,6 +21,7 @@ from sklearn.model_selection import train_test_split, cross_val_score, Stratifie
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.inspection import permutation_importance, partial_dependence
+from sklearn.calibration import calibration_curve
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
@@ -187,6 +188,8 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
                 'base_rate': float(np.mean(y_binary))
             }
 
+    calibration_data = _compute_calibration_curve(y_test_encoded, y_pred_proba, result_class_labels=[str(c) for c in le.classes_])
+
     return {
         'model': model,
         'metrics': metrics,
@@ -195,6 +198,7 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data,
         'pr_data': pr_data,
+        'calibration_data': calibration_data,
         'label_encoder': le
     }
 
@@ -287,6 +291,57 @@ def compute_permutation_importance(
         return result
     except Exception:
         return []
+
+
+def _compute_calibration_curve(y_test_encoded, y_pred_proba, result_class_labels: List[str],
+                                n_bins: int = 10) -> Optional[Dict[str, Any]]:
+    """Reliability diagram data: bins predicted probability and compares it to the
+    observed (actual) frequency in each bin, to reveal over/under-confidence.
+    Binary uses the positive-class probability; multiclass uses one-vs-rest per
+    class, mirroring the roc_data/pr_data binary-vs-multiclass convention already
+    used elsewhere in this file."""
+    try:
+        n_classes = y_pred_proba.shape[1]
+        result: Dict[str, Any] = {}
+        if n_classes == 2:
+            prob_true, prob_pred = calibration_curve(
+                y_test_encoded, y_pred_proba[:, 1], n_bins=n_bins, strategy='uniform')
+            result['binary'] = {
+                'prob_pred': [_to_native_type(x) for x in prob_pred],
+                'prob_true': [_to_native_type(x) for x in prob_true],
+            }
+        else:
+            for i, cls in enumerate(result_class_labels):
+                y_binary = (y_test_encoded == i).astype(int)
+                prob_true, prob_pred = calibration_curve(
+                    y_binary, y_pred_proba[:, i], n_bins=n_bins, strategy='uniform')
+                result[str(cls)] = {
+                    'prob_pred': [_to_native_type(x) for x in prob_pred],
+                    'prob_true': [_to_native_type(x) for x in prob_true],
+                }
+        return result if result else None
+    except Exception:
+        return None
+
+
+def generate_calibration_plot(calibration_data: Dict) -> str:
+    """Reliability diagram: predicted-probability bins vs. observed frequency,
+    with a diagonal reference line for perfect calibration."""
+    fig, ax = plt.subplots(figsize=(8, 6))
+    colors = sns.color_palette('husl', n_colors=len(calibration_data))
+    for (label, data), color in zip(calibration_data.items(), colors):
+        ax.plot(data['prob_pred'], data['prob_true'], color=color, linewidth=2,
+                marker='o', markersize=5, label=label)
+    ax.plot([0, 1], [0, 1], 'k--', linewidth=1, label='Perfectly calibrated')
+    ax.set_xlim([0, 1]); ax.set_ylim([0, 1.05])
+    ax.set_xlabel('Mean Predicted Probability', fontsize=11)
+    ax.set_ylabel('Observed Frequency', fontsize=11)
+    ax.set_title('Calibration Curve (Reliability Diagram)', fontsize=13, fontweight='bold')
+    ax.legend(loc='upper left')
+    ax.grid(False)
+    plt.tight_layout(pad=1.5)
+    fig.subplots_adjust(left=0.15)
+    return _fig_to_base64(fig)
 
 
 def _shap_samples_from_matrix(sv, X_arr, feature_names: List[str], expected_value, max_samples: int = 8):
@@ -882,6 +937,10 @@ def main():
                 plots.append({'label': 'ROC Curve', 'image': roc_plot})
             if pr_plot:
                 plots.append({'label': 'Precision-Recall Curve', 'image': pr_plot})
+            if result.get('calibration_data'):
+                calibration_plot = generate_calibration_plot(result['calibration_data'])
+                if calibration_plot:
+                    plots.append({'label': 'Calibration Curve', 'image': calibration_plot})
         else:
             actual_vs_predicted_plot = generate_actual_vs_predicted_plot(result['y_test'], result['y_pred'])
             residual_plot = generate_residual_plot(result['y_test'], result['y_pred'])

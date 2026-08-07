@@ -247,6 +247,31 @@ def get_feature_importance(model, feature_names: List[str], pool) -> List[Dict[s
     return importance_data
 
 
+def compute_interaction_importance(model, pool, feature_names: List[str], top_n: int = 20) -> List[Dict[str, Any]]:
+    """CatBoost's native pairwise feature-interaction strength (type='Interaction'),
+    computed on the same Pool already built for SHAP (result['test_pool']) rather than
+    rebuilding one. Complements the default PredictionValuesChange importance -- which
+    only tells you how much each feature matters on its own -- by showing which pairs of
+    features jointly drive predictions more than either would alone. Returns the top_n
+    strongest pairs, sorted descending."""
+    try:
+        raw = model.get_feature_importance(pool, type='Interaction')
+        rows = []
+        for item in raw:
+            i1, i2, score = int(item[0]), int(item[1]), float(item[2])
+            rows.append({
+                'feature_1': feature_names[i1] if 0 <= i1 < len(feature_names) else str(i1),
+                'feature_2': feature_names[i2] if 0 <= i2 < len(feature_names) else str(i2),
+                'score': _to_native_type(score),
+            })
+        rows.sort(key=lambda x: x['score'] or 0.0, reverse=True)
+        for i, row in enumerate(rows[:top_n]):
+            row['rank'] = i + 1
+        return rows[:top_n]
+    except Exception:
+        return []
+
+
 def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
                                     n_repeats: int = 10, random_state: int = 42) -> List[Dict[str, Any]]:
     try:
@@ -631,6 +656,7 @@ def main():
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else y_test
         perm_importance = compute_permutation_importance(model, X_test, y_test_for_perm, feature_cols)
         shap_result = compute_shap(model, result['test_pool'], feature_cols)
+        interaction_importance = compute_interaction_importance(model, result['test_pool'], feature_cols)
 
         cv_result = perform_cross_validation(X, y, params, task_type, cv_folds, cat_feature_indices)
 
@@ -670,6 +696,7 @@ def main():
             'metrics': result['metrics'],
             'feature_importance': feature_importance,
             'perm_importance': perm_importance,
+            'interaction_importance': interaction_importance,
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
             'shap_samples': shap_result.get('shap_samples'),

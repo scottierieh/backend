@@ -185,6 +185,72 @@ MODEL_REGISTRY = {
 }
 
 
+def compute_parameter_sensitivity(cv_results_df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """For each searched hyperparameter, group mean_test_score by that parameter's
+    distinct tested values (marginalizing over the other parameters) and measure how
+    much the score varies across those groups. A parameter whose group means barely
+    move is 'insensitive' (safe to fix at a default); a wide range/std means it's
+    'sensitive' (worth tuning carefully). Uses the FULL cv_results_ (all candidates),
+    not the top-N slice kept for display."""
+    params_df = pd.json_normalize(cv_results_df['params'])
+    params_df['__score__'] = cv_results_df['mean_test_score'].values
+
+    sensitivity = []
+    for param in params_df.columns:
+        if param == '__score__':
+            continue
+        try:
+            grouped = params_df.groupby(param, dropna=False)['__score__'].mean()
+        except TypeError:
+            # Unhashable values (e.g. tuples of tuples) -- stringify as a fallback
+            grouped = params_df.astype({param: str}).groupby(param, dropna=False)['__score__'].mean()
+
+        grouped = grouped.dropna()
+        if len(grouped) < 2:
+            continue  # only one distinct value tested -- sensitivity can't be assessed
+
+        score_range = float(grouped.max() - grouped.min())
+        score_std = float(grouped.std(ddof=0))
+        sensitivity.append({
+            'parameter': param,
+            'n_values_tested': int(len(grouped)),
+            'score_range': score_range,
+            'score_std': score_std,
+        })
+
+    sensitivity.sort(key=lambda d: d['score_range'], reverse=True)
+    for i, row in enumerate(sensitivity):
+        row['sensitivity_rank'] = i + 1
+
+    return sensitivity
+
+
+def generate_search_convergence_plot(cv_results_df: pd.DataFrame, scoring: str) -> List[Dict[str, str]]:
+    """Plot mean_test_score in ORIGINAL trial order (not sorted by rank) against trial
+    index. For random search this shows whether the score was still improving toward
+    the end (suggesting n_iter should be increased) or had plateaued (further search is
+    likely wasted). Only meaningful for random/randomized search -- grid search's
+    candidate order is just the arbitrary cartesian-product order of the grid, so the
+    caller should skip this for grid search."""
+    trial_idx = list(range(1, len(cv_results_df) + 1))
+    scores = cv_results_df['mean_test_score'].values.astype(float)
+
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    ax.plot(trial_idx, scores, 'o-', color='#8b5cf6', linewidth=1.5, markersize=4, alpha=0.7, label='Trial Score')
+
+    running_best = np.maximum.accumulate(np.nan_to_num(scores, nan=-np.inf))
+    ax.plot(trial_idx, running_best, '-', color='#ef4444', linewidth=2, label='Running Best')
+
+    ax.set_xlabel('Trial (Original Search Order)', fontsize=11)
+    ax.set_ylabel(f'Mean CV Score ({scoring})', fontsize=11)
+    ax.set_title('Search Progress / Convergence', fontsize=13, fontweight='bold')
+    ax.legend(loc='best')
+    ax.grid(True, linestyle='--', alpha=0.3)
+
+    plt.tight_layout()
+    return [{'label': 'Search Convergence', 'image': fig_to_base64(fig)}]
+
+
 def _detect_task_type(y: pd.Series) -> str:
     unique_ratio = len(y.unique()) / len(y)
     if not pd.api.types.is_numeric_dtype(y) or y.dtype.name == 'category':
@@ -273,7 +339,13 @@ def main():
         y_pred = best_model.predict(X_test)
         tuned_score = accuracy_score(y_test, y_pred) if task_type == 'classification' else r2_score(y_test, y_pred)
 
+        # Keep the FULL cv_results_ around (all candidates, original trial order) so the
+        # sensitivity ranking and convergence chart below see every trial, not just the
+        # top-N slice kept for display in cv_results_top20.
         cv_results_df = pd.DataFrame(search.cv_results_)
+
+        parameter_sensitivity = compute_parameter_sensitivity(cv_results_df)
+
         cv_results_summary = cv_results_df[['params', 'mean_test_score', 'std_test_score', 'rank_test_score']] \
             .sort_values('rank_test_score').head(20).to_dict('records')
 
@@ -294,6 +366,7 @@ def main():
             'improvement': tuned_score - baseline_score,
             'cv_results_top20': cv_results_summary,
             'n_candidates_evaluated': len(cv_results_df),
+            'parameter_sensitivity': parameter_sensitivity,
         }
 
         if task_type == 'classification':
@@ -415,6 +488,12 @@ def main():
         ax.set_title(f'Hyperparameter Tuning Summary — {model_name} ({search_method.title()} Search)')
         plt.tight_layout()
         plots.append({'label': 'Tuning Summary', 'image': fig_to_base64(fig)})
+
+        # 5. Search progress/convergence -- only meaningful for random search, where
+        # trial order reflects actual sampling progress. Grid search's candidate order
+        # is just the arbitrary cartesian-product order of the grid, so it's skipped.
+        if search_method == 'random':
+            plots += generate_search_convergence_plot(cv_results_df, scoring)
 
         response['plots'] = plots
 

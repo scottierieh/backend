@@ -7,7 +7,7 @@ contract used by src/backend/main.py's generic script runner.
 
 import sys
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -616,6 +616,60 @@ def generate_support_vectors_plot(support_per_class: List[Dict]) -> str:
     return _fig_to_base64(fig)
 
 
+def generate_support_vector_table(
+    model,
+    task_type: str,
+    y_train_labels: Optional[np.ndarray] = None,
+    top_n: int = 20,
+) -> List[Dict[str, Any]]:
+    """
+    Which training samples became support vectors, and how strongly each one
+    constrains the decision boundary (|dual coefficient|).
+
+    Classification (SVC): dual_coef_ has shape (n_classes-1, n_SV) — libsvm's
+    compact one-vs-one encoding. We sum |dual_coef| across that axis per SV as
+    an aggregate "influence" score, and report the class the SV was drawn from.
+
+    Regression (SVR): dual_coef_ has shape (1, n_SV); the signed value directly
+    indicates whether the sample pushes predictions up or down relative to the
+    epsilon-insensitive tube.
+
+    Capped at `top_n` rows (highest |dual_coef| first) since n_SV can be large.
+    """
+    try:
+        if not hasattr(model, 'support_') or not hasattr(model, 'dual_coef_'):
+            return []
+
+        support_idx = np.asarray(model.support_)
+        dual_coef = np.asarray(model.dual_coef_)
+        if support_idx.size == 0:
+            return []
+
+        if task_type == 'classification':
+            magnitude = np.abs(dual_coef).sum(axis=0)
+        else:
+            magnitude = np.abs(dual_coef).ravel()
+
+        order = np.argsort(-magnitude)[:top_n]
+
+        table = []
+        for rank, j in enumerate(order):
+            row: Dict[str, Any] = {
+                'rank': rank + 1,
+                'train_index': int(support_idx[j]),
+                'dual_coef_magnitude': _to_native_type(float(magnitude[j])),
+            }
+            if task_type == 'classification':
+                if y_train_labels is not None:
+                    row['class'] = str(y_train_labels[int(support_idx[j])])
+            else:
+                row['dual_coef'] = _to_native_type(float(dual_coef[0, j]))
+            table.append(row)
+        return table
+    except Exception:
+        return []
+
+
 def generate_interpretation(result: Dict, task_type: str, params: dict,
                             scale_features: bool = True) -> Dict[str, Any]:
     """Generate interpretation of SVM results"""
@@ -877,6 +931,12 @@ def main():
         # Prediction examples
         prediction_examples = generate_prediction_examples(result, task_type)
 
+        # Support vector detail table (which training samples constrain the boundary).
+        # y_train is the original (pre-encoding) label Series from train_test_split, so its
+        # row order matches X_train positionally — safe to index with model.support_.
+        y_train_labels = y_train.values if task_type == 'classification' else None
+        sv_table = generate_support_vector_table(model, task_type, y_train_labels, top_n=20)
+
         # Prepare response
         try:
             from guardrails import compute_guardrails
@@ -903,7 +963,8 @@ def main():
             'cv_results': cv_result,
             'importance_plot': importance_plot,
             'interpretation': interpretation,
-            'prediction_examples': prediction_examples
+            'prediction_examples': prediction_examples,
+            'sv_table': sv_table
         }
 
         if task_type == 'classification':

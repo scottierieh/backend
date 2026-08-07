@@ -17,7 +17,7 @@ import seaborn as sns
 sns.set_theme(style="darkgrid")
 import io
 import base64
-from sklearn.model_selection import cross_val_score, cross_val_predict, KFold, StratifiedKFold, LeaveOneOut, RepeatedKFold, RepeatedStratifiedKFold
+from sklearn.model_selection import cross_val_score, cross_val_predict, KFold, StratifiedKFold, LeaveOneOut, RepeatedKFold, RepeatedStratifiedKFold, learning_curve
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression, Ridge, Lasso, ElasticNet
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -301,6 +301,58 @@ def generate_learning_stability_plot(cv_results: Dict) -> List[Dict[str, str]]:
 
     plt.tight_layout()
     return [{'label': 'Learning Stability', 'image': _fig_to_data_url(fig)}]
+
+
+def compute_learning_curve(X, y, model, cv_splitter, scoring: str, random_state: int) -> Dict[str, Any]:
+    """Compute a learning curve: train/CV scores at increasing training set sizes,
+    using the same model and CV splitter as the main cross-validation run.
+    Diagnostic: a large, non-shrinking gap between train and CV curves indicates
+    high variance (more data would likely help); both curves plateauing at a low
+    score indicates high bias (more data won't help, a better model is needed)."""
+    train_sizes = np.linspace(0.1, 1.0, 8)
+    train_sizes_abs, train_scores, cv_scores = learning_curve(
+        model, X, y, cv=cv_splitter, train_sizes=train_sizes, scoring=scoring,
+        shuffle=True, random_state=random_state, n_jobs=-1
+    )
+
+    if scoring.startswith("neg_"):
+        train_scores = -train_scores
+        cv_scores = -cv_scores
+
+    return {
+        'train_sizes': [int(s) for s in train_sizes_abs],
+        'train_scores_mean': [_to_native_type(v) for v in np.mean(train_scores, axis=1)],
+        'train_scores_std': [_to_native_type(v) for v in np.std(train_scores, axis=1)],
+        'cv_scores_mean': [_to_native_type(v) for v in np.mean(cv_scores, axis=1)],
+        'cv_scores_std': [_to_native_type(v) for v in np.std(cv_scores, axis=1)],
+    }
+
+
+def generate_learning_curve_plot(lc: Dict) -> List[Dict[str, str]]:
+    """Generate the learning curve plot: training-set-size on x, train score and
+    CV score as two lines with shaded ±1 std bands."""
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+
+    train_sizes = lc['train_sizes']
+    train_mean = np.array(lc['train_scores_mean'])
+    train_std = np.array(lc['train_scores_std'])
+    cv_mean = np.array(lc['cv_scores_mean'])
+    cv_std = np.array(lc['cv_scores_std'])
+
+    ax.plot(train_sizes, train_mean, 'o-', color='#3b82f6', linewidth=2, markersize=6, label='Training Score')
+    ax.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, color='#3b82f6', alpha=0.15)
+
+    ax.plot(train_sizes, cv_mean, 'o-', color='#22c55e', linewidth=2, markersize=6, label='Cross-Validation Score')
+    ax.fill_between(train_sizes, cv_mean - cv_std, cv_mean + cv_std, color='#22c55e', alpha=0.15)
+
+    ax.set_xlabel('Training Set Size', fontsize=11)
+    ax.set_ylabel('Score', fontsize=11)
+    ax.set_title('Learning Curve', fontsize=13, fontweight='bold')
+    ax.legend(loc='best')
+    ax.grid(True, linestyle='--', alpha=0.3)
+
+    plt.tight_layout()
+    return [{'label': 'Learning Curve', 'image': _fig_to_data_url(fig)}]
 
 
 def generate_confusion_matrix_plot(y_true, y_pred, class_labels: List[str]) -> List[Dict[str, str]]:
@@ -594,10 +646,15 @@ def main():
             except Exception:
                 y_proba = None
 
+        # Learning curve: train/CV scores across increasing training set sizes,
+        # using the same model + CV splitter as the main run
+        learning_curve_results = compute_learning_curve(X_scaled, y_encoded, model, cv_splitter, scoring, random_state)
+
         # Generate visualizations
         plots = []
         plots += generate_cv_scores_plot(cv_results)
         plots += generate_learning_stability_plot(cv_results)
+        plots += generate_learning_curve_plot(learning_curve_results)
 
         if task_type == 'classification' and cv_results['y_pred'] is not None:
             plots += generate_confusion_matrix_plot(y_encoded, cv_results['y_pred'], class_labels)
@@ -628,6 +685,7 @@ def main():
             'parameters': parameters,
             'cv_results': cv_results,
             'additional_metrics': additional_metrics,
+            'learning_curve': learning_curve_results,
             'plots': plots,
             'interpretation': interpretation
         }

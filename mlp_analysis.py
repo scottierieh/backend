@@ -431,6 +431,47 @@ def generate_residual_plot(y_test, y_pred) -> str:
     return _fig_to_data_url(fig)
 
 
+def generate_hidden_weights_heatmap(model, feature_names: List[str], max_hidden: int = 30) -> Optional[str]:
+    """Heatmap of model.coefs_[0] — the input-layer-to-first-hidden-layer weight matrix
+    (n_features x n_hidden_units). Diverging colormap centered at 0: red/blue show the
+    sign, saturation shows magnitude, so a glance reveals which inputs each hidden unit
+    has learned to weight most heavily. Truncates to the first `max_hidden` units when
+    there are many, to keep the plot readable."""
+    try:
+        if not hasattr(model, 'coefs_') or not model.coefs_:
+            return None
+        W = np.asarray(model.coefs_[0])
+        n_features, n_hidden = W.shape
+        truncated = n_hidden > max_hidden
+        if truncated:
+            W = W[:, :max_hidden]
+
+        vmax = float(np.abs(W).max()) or 1.0
+        fig_w = max(8, W.shape[1] * 0.4)
+        fig_h = max(6, n_features * 0.3)
+        fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+        im = ax.imshow(W, cmap='RdBu_r', vmin=-vmax, vmax=vmax, aspect='auto')
+
+        ax.set_yticks(range(n_features))
+        ax.set_yticklabels(feature_names, fontsize=8)
+        ax.set_xticks(range(W.shape[1]))
+        ax.set_xticklabels([f'H{i + 1}' for i in range(W.shape[1])], fontsize=7, rotation=90)
+
+        x_label = 'Hidden Unit'
+        title = 'Input → Hidden Layer 1 Weights'
+        if truncated:
+            x_label += f' (first {W.shape[1]} of {n_hidden} shown)'
+            title += ' (truncated)'
+        ax.set_xlabel(x_label, fontsize=11)
+        ax.set_ylabel('Input Feature', fontsize=11)
+        ax.set_title(title, fontsize=13, fontweight='bold')
+        fig.colorbar(im, ax=ax, label='Weight')
+        plt.tight_layout()
+        return _fig_to_data_url(fig)
+    except Exception:
+        return None
+
+
 def generate_interpretation(result: Dict, task_type: str, model, params: dict, n_obs: int, n_features: int) -> Dict[str, Any]:
     key_insights = []
 
@@ -636,6 +677,10 @@ def main():
             plots.append({'label': 'Residual Plot', 'image': generate_residual_plot(result['y_test'], result['y_pred'])})
 
         plots.append({'label': 'MLP Feature Importance (Permutation)', 'image': generate_feature_importance_plot(perm_importance)})
+
+        hidden_weights_plot = generate_hidden_weights_heatmap(model, feature_cols)
+        if hidden_weights_plot:
+            plots.append({'label': 'Input–Hidden Weights', 'image': hidden_weights_plot})
 
         if shap_result.get('shap_plot'):
             plots.append({'label': 'SHAP Feature Importance', 'image': shap_result['shap_plot']})

@@ -102,6 +102,12 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         objective = 'multi:softprob'
         eval_metric = 'mlogloss'
 
+    # Early stopping: reuse the test split as the eval_set (already built below) and
+    # halt once the validation metric stalls for `early_stopping_rounds` rounds, rather
+    # than always training the full requested n_estimators. Guarded so a small requested
+    # n_estimators can't produce an invalid (>=n_estimators) early_stopping_rounds.
+    early_stopping_rounds = max(1, min(10, params['n_estimators'] - 1))
+
     model = xgb.XGBClassifier(
         n_estimators=params['n_estimators'],
         max_depth=params['max_depth'],
@@ -114,6 +120,7 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         reg_lambda=params['reg_lambda'],
         objective=objective,
         eval_metric=eval_metric,
+        early_stopping_rounds=early_stopping_rounds,
         random_state=params['random_state'],
         n_jobs=-1
     )
@@ -124,6 +131,13 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         eval_set=eval_set,
         verbose=False
     )
+
+    best_iteration = getattr(model, 'best_iteration', None)
+    if best_iteration is None:
+        try:
+            best_iteration = model.get_booster().best_iteration
+        except Exception:
+            best_iteration = None
 
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
@@ -210,11 +224,14 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         'roc_data': roc_data,
         'pr_data': pr_data,
         'train_history': train_history,
+        'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
         'label_encoder': le
     }
 
 
 def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> Dict[str, Any]:
+    early_stopping_rounds = max(1, min(10, params['n_estimators'] - 1))
+
     model = xgb.XGBRegressor(
         n_estimators=params['n_estimators'],
         max_depth=params['max_depth'],
@@ -226,6 +243,8 @@ def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> D
         reg_alpha=params['reg_alpha'],
         reg_lambda=params['reg_lambda'],
         objective='reg:squarederror',
+        eval_metric='rmse',
+        early_stopping_rounds=early_stopping_rounds,
         random_state=params['random_state'],
         n_jobs=-1
     )
@@ -236,6 +255,13 @@ def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> D
         eval_set=eval_set,
         verbose=False
     )
+
+    best_iteration = getattr(model, 'best_iteration', None)
+    if best_iteration is None:
+        try:
+            best_iteration = model.get_booster().best_iteration
+        except Exception:
+            best_iteration = None
 
     y_pred = model.predict(X_test)
     y_train_pred = model.predict(X_train)
@@ -259,7 +285,8 @@ def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> D
         'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred,
-        'train_history': train_history
+        'train_history': train_history,
+        'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
     }
 
 
@@ -955,6 +982,8 @@ def main():
             'pdp': pdp_data,
             'tree_rules': tree_rules,
             'interpretation': interpretation,
+            'best_iteration': result.get('best_iteration'),
+            'n_estimators_requested': params['n_estimators'],
         }
 
         if task_type == 'classification':

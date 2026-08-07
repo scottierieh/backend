@@ -240,6 +240,74 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
     return result
 
 
+def compute_meta_learner_weights(model, base_estimator_names: List[str]) -> List[Dict[str, Any]]:
+    """For a StackingClassifier/Regressor whose final_estimator_ is linear (has .coef_ --
+    the typical default: LogisticRegression for classification, Ridge for regression),
+    extracts one weight per base model showing how much the meta-learner relies on it.
+    sklearn's stacking concatenates each base estimator's contribution (in `estimators`
+    order) into contiguous column blocks: regression and binary classification contribute
+    1 column per base model (so the sign is meaningful), while multiclass classification
+    contributes n_classes columns per base model (so only a magnitude summary is
+    meaningful there). Returns [] for a non-stacking model, a non-linear final_estimator_
+    (e.g. another tree ensemble), or any shape mismatch."""
+    try:
+        final_est = getattr(model, 'final_estimator_', None)
+        if final_est is None or not hasattr(final_est, 'coef_'):
+            return []
+        coef = np.asarray(final_est.coef_, dtype=float)
+        coef2d = coef.reshape(1, -1) if coef.ndim == 1 else coef
+        n_base = len(base_estimator_names)
+        if n_base == 0 or coef2d.shape[1] % n_base != 0:
+            return []
+        cols_per_base = coef2d.shape[1] // n_base
+        signed = cols_per_base == 1 and coef2d.shape[0] == 1
+        weights = []
+        for i, name in enumerate(base_estimator_names):
+            block = coef2d[:, i * cols_per_base:(i + 1) * cols_per_base]
+            weights.append({
+                'base_model': name,
+                'weight': _to_native_type(float(block[0, 0]) if signed else float(np.mean(np.abs(block)))),
+                'is_signed': signed,
+            })
+        return weights
+    except Exception:
+        return []
+
+
+def compute_base_model_correlations(X_train, y_train, task_type: str, estimators: List[Any], cv_folds: int = 3) -> Dict[str, Any]:
+    """Out-of-fold prediction correlation matrix across base models, via cross_val_predict
+    for each base estimator independently (not the stacking/voting model's internal CV --
+    that only exposes each base model's contribution already mixed into the meta-features,
+    not standalone predictions to correlate). Classification uses the positive-class
+    probability for binary targets (a continuous, correlatable signal) and the predicted
+    class index for multiclass (predict_proba's shape differs in ways that don't reduce to
+    one comparable column); regression uses raw predictions. High correlation between two
+    base models means they're making the same calls -- i.e. one is redundant for ensembling
+    purposes; low correlation means they're genuinely complementary. cv_folds is capped low
+    (default 3) since this refits every base estimator cv_folds times purely for diagnostics,
+    on top of the cross-validation the pipeline already runs elsewhere."""
+    try:
+        from sklearn.model_selection import cross_val_predict
+        n_classes = len(np.unique(y_train)) if task_type == 'classification' else None
+        preds: Dict[str, np.ndarray] = {}
+        for name, est in estimators:
+            if task_type == 'classification' and hasattr(est, 'predict_proba'):
+                proba = cross_val_predict(est, X_train, y_train, cv=cv_folds, method='predict_proba', n_jobs=-1)
+                preds[name] = proba[:, -1].astype(float) if n_classes == 2 else np.argmax(proba, axis=1).astype(float)
+            else:
+                preds[name] = cross_val_predict(est, X_train, y_train, cv=cv_folds, n_jobs=-1).astype(float)
+        names = list(preds.keys())
+        if len(names) < 2:
+            return {'models': names, 'correlation': []}
+        mat = np.vstack([preds[n] for n in names])
+        with np.errstate(invalid='ignore'):
+            corr = np.corrcoef(mat)
+        corr = np.nan_to_num(corr, nan=0.0)
+        return {'models': names, 'correlation': [[_to_native_type(v) for v in row] for row in corr]}
+    except Exception:
+        return {'models': [], 'correlation': []}
+
+
 def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
                                     n_repeats: int = 10, random_state: int = 42) -> List[Dict[str, Any]]:
     try:
@@ -650,6 +718,10 @@ def main():
         shap_result = compute_shap(result['model'], X_test, feature_cols, task_type)
         cv_result = perform_cross_validation(X_array, y, task_type, params, cv_folds)
 
+        meta_learner_weights = compute_meta_learner_weights(result['model'], result['base_estimator_names']) if ensemble_method == 'stacking' else []
+        fresh_estimators = build_estimators(task_type, base_estimators, random_state)
+        base_model_correlations = compute_base_model_correlations(X_train, y_train, task_type, fresh_estimators, cv_folds=min(3, cv_folds))
+
         comparison_plot = generate_comparison_plot(result['individual_scores'], result['model_label'], task_type)
 
         if task_type == 'classification':
@@ -686,6 +758,8 @@ def main():
             'metrics': result['metrics'],
             'perm_importance': perm_importance,
             'feature_importance': _perm_to_feature_importance(perm_importance),
+            'meta_learner_weights': meta_learner_weights,
+            'base_model_correlations': base_model_correlations,
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
             'shap_samples': shap_result.get('shap_samples'),

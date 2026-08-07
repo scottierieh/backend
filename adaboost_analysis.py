@@ -674,6 +674,10 @@ def main():
             'staged_test_scores': result['staged_test_scores'],
             'estimator_weights': result['estimator_weights'],
             'estimator_errors': result['estimator_errors'],
+            'per_round_estimators': [
+                {'round': i + 1, 'weight': w, 'error': e}
+                for i, (w, e) in enumerate(zip(result['estimator_weights'], result['estimator_errors']))
+            ],
             'importance_plot': importance_plot,
             'staged_plot': staged_plot,
             'interpretation': interpretation,

@@ -138,7 +138,7 @@ def get_scoring_metric(scoring: str, task_type: str) -> str:
     return scoring_map.get(scoring, "accuracy" if task_type == "classification" else "r2")
 
 
-def perform_cross_validation(X, y, model, cv_splitter, scoring: str, task_type: str) -> Dict[str, Any]:
+def perform_cross_validation(X, y, model, cv_splitter, scoring: str, task_type: str, cv_method: str, n_folds: int) -> Dict[str, Any]:
     """Perform cross-validation and return detailed results"""
     # Get scores
     scores = cross_val_score(model, X, y, cv=cv_splitter, scoring=scoring)
@@ -154,15 +154,25 @@ def perform_cross_validation(X, y, model, cv_splitter, scoring: str, task_type: 
         y_pred = None
 
     # Calculate per-fold details
+    is_repeated = cv_method in ('repeated_kfold', 'repeated_stratified')
+
     fold_details = []
     fold_idx = 0
     for train_idx, test_idx in cv_splitter.split(X, y):
-        fold_details.append({
+        detail = {
             'fold': fold_idx + 1,
             'train_size': len(train_idx),
             'test_size': len(test_idx),
             'score': _to_native_type(scores[fold_idx]) if fold_idx < len(scores) else None
-        })
+        }
+        if is_repeated:
+            # RepeatedKFold/RepeatedStratifiedKFold.split() yields folds in order:
+            # n_repeats blocks of n_folds folds each. 1-indexed to match the
+            # existing 'fold' field convention and the frontend, which renders
+            # fd.repeat / fd.fold_in_repeat directly without any +1 offset.
+            detail['repeat'] = (fold_idx // n_folds) + 1
+            detail['fold_in_repeat'] = (fold_idx % n_folds) + 1
+        fold_details.append(detail)
         fold_idx += 1
         if fold_idx >= len(scores):
             break
@@ -568,7 +578,7 @@ def main():
         scoring = get_scoring_metric(scoring, task_type)
 
         # Perform cross-validation
-        cv_results = perform_cross_validation(X_scaled, y_encoded, model, cv_splitter, scoring, task_type)
+        cv_results = perform_cross_validation(X_scaled, y_encoded, model, cv_splitter, scoring, task_type, cv_method, n_folds)
 
         # Calculate additional metrics from predictions
         additional_metrics = {}

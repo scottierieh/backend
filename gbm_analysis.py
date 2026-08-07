@@ -4,8 +4,8 @@ import json
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report, confusion_matrix, precision_recall_curve, average_precision_score
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, accuracy_score, classification_report, confusion_matrix, precision_recall_curve, average_precision_score, roc_auc_score
 from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -29,6 +29,28 @@ def _to_native_type(obj):
     elif isinstance(obj, np.bool_):
         return bool(obj)
     return obj
+
+def perform_cross_validation(X, y, problem_type, n_estimators, learning_rate, max_depth, cv_folds=5):
+    """5-fold CV on the full dataset with a fresh (unfitted) model — same contract as
+    random_forest_analysis.py / xgboost_analysis.py etc.: cv_scores/cv_mean/cv_std/cv_folds."""
+    if problem_type == 'classification':
+        model = GradientBoostingClassifier(
+            n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=42
+        )
+        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+        scores = cross_val_score(model, X, y, cv=cv_splitter, scoring='accuracy')
+    else:
+        model = GradientBoostingRegressor(
+            n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth,
+            random_state=42, validation_fraction=0.1, n_iter_no_change=5, tol=0.01
+        )
+        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+    return {
+        'cv_scores': [_to_native_type(s) for s in scores],
+        'cv_mean': _to_native_type(np.mean(scores)),
+        'cv_std': _to_native_type(np.std(scores)),
+        'cv_folds': cv_folds,
+    }
 
 def main():
     try:
@@ -87,15 +109,22 @@ def main():
         
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
+        y_train_pred = model.predict(X_train)
+        cv_result = perform_cross_validation(X, y, problem_type, n_estimators, learning_rate, max_depth)
 
         # --- Evaluation ---
         results = {}
         prediction_examples = []
         if problem_type == 'regression':
+            # Key names match the frontend's GbmMetrics interface (gbm-page.tsx): r2 (not
+            # r2_score), plus train_r2/mae so the Train-vs-Test KPI cards and overfit banner
+            # (regGap = train_r2 - r2) have real values instead of rendering blank/undefined.
             results['metrics'] = {
-                'r2_score': r2_score(y_test, y_pred),
+                'r2': r2_score(y_test, y_pred),
+                'train_r2': r2_score(y_train, y_train_pred),
                 'mse': mean_squared_error(y_test, y_pred),
-                'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                'rmse': np.sqrt(mean_squared_error(y_test, y_pred)),
+                'mae': mean_absolute_error(y_test, y_pred),
             }
             residuals = y_test - y_pred
             errors = np.abs(residuals)
@@ -116,10 +145,47 @@ def main():
                 })
 
         else:
+            # per_class_metrics / precision_macro / recall_macro / f1_macro / train_accuracy / auc
+            # are what gbm-page.tsx's GbmMetrics interface reads for the Per-Class Metrics table,
+            # the Train-vs-Test KPI cards + overfit banner, and the AUC card. classification_report
+            # alone (the old shape) doesn't match any of those field names, so the sections rendered
+            # empty/"—" even though CV was already being computed correctly.
+            class_report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+            class_labels_sorted = [str(c) for c in sorted(y.unique())]
+            per_class_metrics = []
+            for cls_label in class_labels_sorted:
+                rep = class_report.get(cls_label)
+                if rep is None:
+                    continue
+                per_class_metrics.append({
+                    'class': cls_label,
+                    'precision': rep['precision'],
+                    'recall': rep['recall'],
+                    'f1_score': rep['f1-score'],
+                    'support': int(rep['support']),
+                })
+
+            try:
+                y_proba_auc = model.predict_proba(X_test)
+                if len(model.classes_) == 2:
+                    auc_value = roc_auc_score(y_test, y_proba_auc[:, 1])
+                else:
+                    auc_value = roc_auc_score(y_test, y_proba_auc, multi_class='ovr', average='macro')
+            except Exception:
+                auc_value = None
+
+            macro_avg = class_report.get('macro avg', {})
             results['metrics'] = {
                 'accuracy': accuracy_score(y_test, y_pred),
-                'classification_report': classification_report(y_test, y_pred, output_dict=True, zero_division=0),
-                'confusion_matrix': confusion_matrix(y_test, y_pred).tolist()
+                'train_accuracy': accuracy_score(y_train, y_train_pred),
+                'classification_report': class_report,
+                'confusion_matrix': confusion_matrix(y_test, y_pred).tolist(),
+                'per_class_metrics': per_class_metrics,
+                'precision_macro': macro_avg.get('precision'),
+                'recall_macro': macro_avg.get('recall'),
+                'f1_macro': macro_avg.get('f1-score'),
+                'auc': auc_value,
+                'class_labels': class_labels_sorted,
             }
             n_examples = min(10, len(y_test))
             example_indices = np.random.choice(y_test.index, n_examples, replace=False)
@@ -171,7 +237,7 @@ def main():
             ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
             ax.set_xlabel('Actual Values')
             ax.set_ylabel('Predicted Values')
-            ax.set_title(f"Actual vs Predicted (R² = {results['metrics']['r2_score']:.3f})")
+            ax.set_title(f"Actual vs Predicted (R² = {results['metrics']['r2']:.3f})")
             ax.grid(True, alpha=0.3)
             plt.tight_layout()
             plots.append({'label': 'Actual vs Predicted', 'image': _fig_to_data_url(fig)})
@@ -256,7 +322,7 @@ def main():
             ax.axis('off')
             summary_text = (
                 f"Model Performance:\n"
-                f"  R² Score: {results['metrics']['r2_score']:.4f}\n"
+                f"  R² Score: {results['metrics']['r2']:.4f}\n"
                 f"  MSE: {results['metrics']['mse']:,.2f}\n"
                 f"  RMSE: {results['metrics']['rmse']:,.2f}\n"
                 f"  MAE: {errors.mean():,.2f}\n\n"
@@ -331,17 +397,57 @@ def main():
             plt.tight_layout()
             plots.append({'label': 'Precision-Recall Curve', 'image': _fig_to_data_url(fig)})
 
+        # --- SHAP Feature Importance ---
+        # Lazy import + broad try/except: shap.TreeExplainer works for both GradientBoostingRegressor
+        # and GradientBoostingClassifier, but can be slow or fail on some inputs, so a failure here
+        # must not break the rest of the response (matches random_forest_analysis.py / xgboost_analysis.py).
+        shap_importance = []
+        try:
+            import shap as _shap
+            explainer = _shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_test)
+            sv = np.asarray(shap_values, dtype=object) if isinstance(shap_values, list) else np.asarray(shap_values)
+            if sv.dtype == object:
+                mean_shap = np.mean([np.abs(np.asarray(s)).mean(axis=0) for s in shap_values], axis=0)
+            elif sv.ndim == 3:
+                mean_shap = np.abs(sv).mean(axis=(0, 2))
+            else:
+                mean_shap = np.abs(sv).mean(axis=0)
+
+            shap_importance = [
+                {'feature': name, 'mean_abs_shap': _to_native_type(val)}
+                for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
+            ]
+
+            fig, ax = plt.subplots(figsize=(8, max(6, len(feature_names) * 0.35)))
+            feats = [d['feature'] for d in shap_importance][::-1]
+            vals = [d['mean_abs_shap'] for d in shap_importance][::-1]
+            ax.barh(feats, vals, color='#f59e0b', edgecolor='none')
+            ax.set_xlabel('Mean |SHAP Value|')
+            ax.set_title('SHAP Feature Importance')
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plots.append({'label': 'SHAP Feature Importance', 'image': _fig_to_data_url(fig)})
+        except Exception:
+            shap_importance = []
+
         try:
             from guardrails import compute_guardrails
-            _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2_score')}
+            _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2')}
             guardrails = compute_guardrails(X, y, features, problem_type, _norm_metrics)
         except Exception:
             guardrails = []
 
+        results['cv_results'] = cv_result
+
         response = {
             'results': results,
             'guardrails': guardrails,
-            'plots': plots
+            'plots': plots,
+            # Top-level (sibling to 'results'), matching FullAnalysisResponse.shap_importance
+            # in gbm-page.tsx -- the SHAP Feature Importance table reads it from here, not
+            # from inside 'results'.
+            'shap_importance': shap_importance,
         }
 
         print(json.dumps(response, default=_to_native_type))

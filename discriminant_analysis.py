@@ -992,7 +992,7 @@ def main():
 
         categorical_features = []
         for col in X.columns:
-            if X[col].dtype == 'object':
+            if not pd.api.types.is_numeric_dtype(X[col]):
                 unique_count = X[col].nunique()
                 categorical_features.append({
                     'feature': col,

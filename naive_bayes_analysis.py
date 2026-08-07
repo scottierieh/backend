@@ -676,7 +676,7 @@ def main():
         y = df[target_col].copy()
 
         # Categorical → one-hot (safer than LabelEncoder for NB)
-        cat_cols = [c for c in X.columns if X[c].dtype == 'object']
+        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
         num_cols = [c for c in X.columns if X[c].dtype != 'object']
         for col in num_cols:
             X[col] = pd.to_numeric(X[col], errors='coerce')

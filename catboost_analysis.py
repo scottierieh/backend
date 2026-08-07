@@ -73,7 +73,7 @@ def _fig_to_base64(fig) -> str:
 
 def detect_task_type(y: pd.Series) -> str:
     unique_ratio = len(y.unique()) / len(y)
-    if y.dtype == 'object' or y.dtype.name == 'category':
+    if not pd.api.types.is_numeric_dtype(y):
         return 'classification'
     elif len(y.unique()) <= 10 or unique_ratio < 0.05:
         return 'classification'
@@ -262,6 +262,35 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return []
 
 
+def _catboost_shap_samples(arr, feature_names: List[str], max_samples: int = 8):
+    """CatBoost's native ShapValues array already carries the bias term as its last
+    column (arr[..., -1]) -- no separate explainer.expected_value to fetch. Binary/
+    regression is (n_samples, n_features+1); multiclass is (n_samples, n_classes,
+    n_features+1), which is skipped (3+ classes) same as the other tree models."""
+    try:
+        if arr.ndim == 3:
+            n_classes = arr.shape[1]
+            if n_classes != 2:
+                return None
+            arr = arr[:, 1, :]
+        elif arr.ndim != 2:
+            return None
+        n = min(max_samples, arr.shape[0])
+        if n == 0:
+            return None
+        return [
+            {
+                'base_value': _to_native_type(arr[i, -1]),
+                'contributions': [
+                    {'feature': feature_names[j], 'shap': _to_native_type(arr[i, j])}
+                    for j in range(len(feature_names))
+                ],
+            }
+            for i in range(n)
+        ]
+    except Exception:
+        return None
+
 def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
     """CatBoost computes exact SHAP values natively (no `shap` package needed)."""
     try:
@@ -278,6 +307,7 @@ def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
             {'feature': name, 'mean_abs_shap': _to_native_type(val)}
             for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
         ]
+        shap_samples = _catboost_shap_samples(arr, feature_names)
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -289,9 +319,9 @@ def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_base64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
     except Exception as e:
-        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
+        return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
 
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, cat_features: List[int]) -> Dict[str, Any]:
@@ -642,6 +672,7 @@ def main():
             'perm_importance': perm_importance,
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
+            'shap_samples': shap_result.get('shap_samples'),
             'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'best_iteration': result['best_iteration'],

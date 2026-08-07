@@ -3,8 +3,9 @@ import sys
 import json
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
@@ -56,6 +57,23 @@ def _generate_interpretation(train_r2, test_r2, l1_ratio):
         mix_desc = f"With an L1 ratio of {l1_ratio:.2f}, the model blends Lasso's variable selection with Ridge's coefficient shrinkage."
 
     return f"{fit_desc.strip()} {mix_desc}"
+
+def perform_cross_validation(X, y, alpha, l1_ratio, cv_folds=5):
+    """5-fold CV on the full (unscaled) dataset via a scaler+model Pipeline, so each
+    fold's scaler only ever sees its own training portion — same contract as the other
+    *_analysis.py scripts: cv_scores/cv_mean/cv_std/cv_folds."""
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('model', ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=10000)),
+    ])
+    kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    scores = cross_val_score(pipeline, X, y, cv=kf, scoring='r2')
+    return {
+        'cv_scores': [_to_native_type(s) for s in scores],
+        'cv_mean': _to_native_type(np.mean(scores)),
+        'cv_std': _to_native_type(np.std(scores)),
+        'cv_folds': cv_folds,
+    }
 
 def main():
     try:
@@ -121,9 +139,11 @@ def main():
         }
 
         interpretation = _generate_interpretation(train_metrics['r2_score'], test_metrics['r2_score'], l1_ratio)
+        cv_result = perform_cross_validation(X, y, alpha, l1_ratio, cv_folds)
 
         results = {
             'metrics': {'test': test_metrics, 'train': train_metrics},
+            'cv_results': cv_result,
             'coefficients': dict(zip(final_features, model.coef_)),
             'intercept': model.intercept_,
             'alpha': alpha,

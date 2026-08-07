@@ -93,7 +93,7 @@ def _fig_to_base64(fig) -> str:
 def detect_task_type(y: pd.Series) -> str:
     """Auto-detect classification vs regression"""
     unique_ratio = len(y.unique()) / len(y)
-    if y.dtype == 'object' or y.dtype.name == 'category':
+    if not pd.api.types.is_numeric_dtype(y):
         return 'classification'
     elif len(y.unique()) <= 10 or unique_ratio < 0.05:
         return 'classification'
@@ -825,7 +825,7 @@ def main():
         y = df[target_col].copy()
 
         # Categorical → one-hot (safer than LabelEncoder for distance-based KNN)
-        cat_cols = [c for c in X.columns if X[c].dtype == 'object']
+        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
         num_cols = [c for c in X.columns if X[c].dtype != 'object']
         for col in num_cols:
             X[col] = pd.to_numeric(X[col], errors='coerce')

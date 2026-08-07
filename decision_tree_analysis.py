@@ -87,7 +87,7 @@ def _fig_to_data_url(fig) -> str:
 
 
 def detect_task_type(y: pd.Series) -> str:
-    if y.dtype == 'object' or y.dtype.name == 'category':
+    if not pd.api.types.is_numeric_dtype(y):
         return 'classification'
     if len(y.unique()) <= 10 or len(y.unique()) / len(y) < 0.05:
         return 'classification'
@@ -129,6 +129,45 @@ def get_feature_importance(model, feature_names: List[str]) -> List[Dict[str, An
 # SHAP
 # ─────────────────────────────────────────────
 
+def _shap_samples_from_matrix(sv, X_arr, feature_names: List[str], expected_value, max_samples: int = 8):
+    """Turns an already-computed SHAP matrix into a small set of per-sample (feature
+    value, contribution) pairs for a Force Plot. Reuses the SHAP values the caller
+    already computed for shap_importance -- no extra explainer calls. For binary
+    classification (3D output with 2 classes), picks the positive class's slice, same
+    convention as the confusion matrix / ROC curve elsewhere in this app. True
+    multiclass (3+ classes, or the older list-of-arrays shape) is skipped rather than
+    guess which class to show."""
+    try:
+        if isinstance(sv, list):
+            return None
+        sv = np.asarray(sv)
+        base = expected_value
+        if sv.ndim == 3:
+            n_classes = sv.shape[2]
+            if n_classes != 2:
+                return None
+            sv = sv[:, :, 1]
+            base = base[1] if isinstance(base, (list, np.ndarray)) else base
+        elif sv.ndim != 2:
+            return None
+        n = min(max_samples, sv.shape[0])
+        if n == 0:
+            return None
+        base = float(base[0]) if isinstance(base, (list, np.ndarray)) else float(base)
+        X_arr = np.asarray(X_arr)
+        return [
+            {
+                'base_value': _to_native(base),
+                'contributions': [
+                    {'feature': feature_names[j], 'value': _to_native(X_arr[i, j]), 'shap': _to_native(sv[i, j])}
+                    for j in range(len(feature_names))
+                ],
+            }
+            for i in range(n)
+        ]
+    except Exception:
+        return None
+
 def compute_shap(model, X_train: np.ndarray, X_test: np.ndarray,
                  feature_names: List[str], task_type: str) -> Dict[str, Any]:
     try:
@@ -155,6 +194,7 @@ def compute_shap(model, X_train: np.ndarray, X_test: np.ndarray,
         for name, val in zip(feature_names, mean_shap):
             shap_importance.append({'feature': name, 'mean_abs_shap': _to_native(val)})
         shap_importance.sort(key=lambda x: x['mean_abs_shap'], reverse=True)
+        shap_samples = _shap_samples_from_matrix(shap_values, X_test, feature_names, explainer.expected_value)
 
         # Bar plot
         fig, ax = plt.subplots(figsize=(10, max(5, len(feature_names) * 0.4)))
@@ -173,9 +213,9 @@ def compute_shap(model, X_train: np.ndarray, X_test: np.ndarray,
         plt.tight_layout()
         shap_plot = _fig_to_b64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples}
     except Exception as e:
-        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
+        return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
 
 # ─────────────────────────────────────────────
@@ -212,6 +252,24 @@ def compute_pdp(model, X_train: np.ndarray, feature_names: List[str],
                      fontweight='bold', y=1.02)
         plt.tight_layout()
         return _fig_to_b64(fig)
+    except Exception:
+        return None
+
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      top_n: int = 6) -> Optional[List[Dict]]:
+    """Same top-N feature selection as compute_pdp, but returns the {grid, average} curve
+    data as JSON instead of a PNG -- for an interactive PDP/ICE chart on the frontend."""
+    try:
+        n = min(top_n, len(feature_names))
+        out = []
+        for i in range(n):
+            pd_result = partial_dependence(model, X_train, [i], kind='average')
+            out.append({
+                'feature': feature_names[i],
+                'grid': [_to_native(v) for v in pd_result['grid_values'][0]],
+                'average': [_to_native(v) for v in pd_result['average'][0]],
+            })
+        return out
     except Exception:
         return None
 
@@ -750,7 +808,7 @@ def main():
         # Encode categorical features
         categorical_features = []
         for col in X.columns:
-            if X[col].dtype == 'object':
+            if not pd.api.types.is_numeric_dtype(X[col]):
                 categorical_features.append(col)
                 X[col] = LabelEncoder().fit_transform(X[col].astype(str))
             else:
@@ -766,7 +824,7 @@ def main():
         if task_type == 'auto':
             task_type = detect_task_type(y)
 
-        if task_type == 'classification' and y.dtype == 'object':
+        if task_type == 'classification' and not pd.api.types.is_numeric_dtype(y):
             y = pd.Series(LabelEncoder().fit_transform(y))
 
         criterion = _fix_criterion(criterion, task_type)
@@ -810,6 +868,7 @@ def main():
 
         # ── SHAP ──
         shap_result = compute_shap(model, X_train, X_test, feature_cols, task_type)
+        pdp_data = compute_pdp_json(model, X_train, feature_cols, top_n=6)
 
         # ── PDP (top 6 features) ──
         top6_names = [d['feature'] for d in feature_importance[:6]]
@@ -866,7 +925,9 @@ def main():
             'tree_plot':          tree_plot,
             'shap_importance':    shap_result.get('shap_importance', []),
             'shap_plot':          shap_result.get('shap_plot'),
+            'shap_samples':       shap_result.get('shap_samples'),
             'pdp_plot':           pdp_plot,
+            'pdp':                pdp_data,
             'tree_rules':         tree_rules,
             'interpretation':     interpretation,
         }

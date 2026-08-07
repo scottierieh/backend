@@ -263,6 +263,42 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return []
 
 
+def _shap_samples_from_matrix(sv, X_arr, feature_names: List[str], expected_value, max_samples: int = 8):
+    """Turns an already-computed SHAP matrix into a small set of per-sample (feature
+    value, contribution) pairs for a Force Plot. Reuses the SHAP values the caller
+    already computed for shap_importance -- no extra explainer calls. For binary
+    classification (3D output with 2 classes), picks the positive class's slice, same
+    convention as the confusion matrix / ROC curve elsewhere in this app. True
+    multiclass (3+ classes) is skipped rather than guess which class to show."""
+    try:
+        sv = np.asarray(sv)
+        base = expected_value
+        if sv.ndim == 3:
+            n_classes = sv.shape[2]
+            if n_classes != 2:
+                return None
+            sv = sv[:, :, 1]
+            base = base[1] if isinstance(base, (list, np.ndarray)) else base
+        elif sv.ndim != 2:
+            return None
+        n = min(max_samples, sv.shape[0])
+        if n == 0:
+            return None
+        base = float(base[0]) if isinstance(base, (list, np.ndarray)) else float(base)
+        X_arr = np.asarray(X_arr)
+        return [
+            {
+                'base_value': _to_native_type(base),
+                'contributions': [
+                    {'feature': feature_names[j], 'value': _to_native_type(X_arr[i, j]), 'shap': _to_native_type(sv[i, j])}
+                    for j in range(len(feature_names))
+                ],
+            }
+            for i in range(n)
+        ]
+    except Exception:
+        return None
+
 def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
     try:
         try:
@@ -285,6 +321,7 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
             {'feature': name, 'mean_abs_shap': _to_native_type(val)}
             for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
         ]
+        shap_samples = _shap_samples_from_matrix(sv, X_test, feature_names, explainer.expected_value)
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -296,9 +333,9 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_base64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
     except Exception as e:
-        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
+        return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
 
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
@@ -632,6 +669,7 @@ def main():
             'learning_plot': learning_plot,
             'shap_plot': shap_result.get('shap_plot'),
             'shap_importance': shap_result.get('shap_importance'),
+            'shap_samples': shap_result.get('shap_samples'),
             'shap_error': shap_result.get('error'),
             'interpretation': interpretation,
             'prediction_examples': prediction_examples

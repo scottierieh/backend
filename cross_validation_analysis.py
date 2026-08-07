@@ -65,7 +65,7 @@ def _fig_to_data_url(fig) -> str:
 def detect_task_type(y: pd.Series) -> str:
     """Auto-detect classification vs regression"""
     unique_ratio = len(y.unique()) / len(y)
-    if y.dtype == 'object' or y.dtype.name == 'category':
+    if not pd.api.types.is_numeric_dtype(y):
         return 'classification'
     elif len(y.unique()) <= 10 or unique_ratio < 0.05:
         return 'classification'
@@ -528,7 +528,7 @@ def main():
         # Handle categorical features
         label_encoders = {}
         for col in X.columns:
-            if X[col].dtype == 'object':
+            if not pd.api.types.is_numeric_dtype(X[col]):
                 le = LabelEncoder()
                 X[col] = le.fit_transform(X[col].astype(str))
                 label_encoders[col] = le

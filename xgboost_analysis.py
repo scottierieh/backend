@@ -80,7 +80,7 @@ def _fig_to_data_url(fig) -> str:
 
 def detect_task_type(y: pd.Series) -> str:
     unique_ratio = len(y.unique()) / len(y)
-    if y.dtype == 'object' or y.dtype.name == 'category':
+    if not pd.api.types.is_numeric_dtype(y):
         return 'classification'
     elif len(y.unique()) <= 10 or unique_ratio < 0.05:
         return 'classification'
@@ -307,6 +307,42 @@ def compute_permutation_importance(
         return []
 
 
+def _shap_samples_from_matrix(sv, X_arr, feature_names: List[str], expected_value, max_samples: int = 8):
+    """Turns an already-computed SHAP matrix into a small set of per-sample (feature
+    value, contribution) pairs for a Force Plot. Reuses the SHAP values the caller
+    already computed for shap_importance -- no extra explainer calls. For binary
+    classification (3D output with 2 classes), picks the positive class's slice, same
+    convention as the confusion matrix / ROC curve elsewhere in this app. True
+    multiclass (3+ classes) is skipped rather than guess which class to show."""
+    try:
+        sv = np.asarray(sv)
+        base = expected_value
+        if sv.ndim == 3:
+            n_classes = sv.shape[2]
+            if n_classes != 2:
+                return None
+            sv = sv[:, :, 1]
+            base = base[1] if isinstance(base, (list, np.ndarray)) else base
+        elif sv.ndim != 2:
+            return None
+        n = min(max_samples, sv.shape[0])
+        if n == 0:
+            return None
+        base = float(base[0]) if isinstance(base, (list, np.ndarray)) else float(base)
+        X_arr = np.asarray(X_arr)
+        return [
+            {
+                'base_value': _to_native_type(base),
+                'contributions': [
+                    {'feature': feature_names[j], 'value': _to_native_type(X_arr[i, j]), 'shap': _to_native_type(sv[i, j])}
+                    for j in range(len(feature_names))
+                ],
+            }
+            for i in range(n)
+        ]
+    except Exception:
+        return None
+
 def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
     try:
         try:
@@ -331,6 +367,7 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
             for name, val in sorted(zip(feature_names, mean_shap),
                                     key=lambda x: x[1], reverse=True)
         ]
+        shap_samples = _shap_samples_from_matrix(sv, X_test, feature_names, explainer.expected_value)
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -342,9 +379,9 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_base64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
     except Exception as e:
-        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
+        return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
 
 def compute_pdp(model, X_train: np.ndarray, feature_names: List[str],
@@ -382,6 +419,35 @@ def compute_pdp(model, X_train: np.ndarray, feature_names: List[str],
         fig.suptitle('Partial Dependence Plots (Top Features)', fontsize=13, fontweight='bold', y=1.01)
         fig.subplots_adjust(left=0.12, hspace=0.5, wspace=0.4)
         return _fig_to_base64(fig)
+    except Exception:
+        return None
+
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      feature_importance: Optional[List[Dict]] = None,
+                      top_n: int = 6) -> Optional[List[Dict]]:
+    """Same top-N feature selection as compute_pdp, but returns the {grid, average} curve
+    data as JSON instead of a PNG -- for an interactive PDP/ICE chart on the frontend."""
+    try:
+        if feature_importance:
+            sorted_indices = [
+                feature_names.index(f['feature'])
+                for f in feature_importance
+                if f['feature'] in feature_names
+            ][:top_n]
+        else:
+            sorted_indices = list(range(min(top_n, len(feature_names))))
+
+        out = []
+        for feat_idx in sorted_indices:
+            pd_res = partial_dependence(model, X_train, [feat_idx], kind='average')
+            grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
+            avg_vals = pd_res['average'][0]
+            out.append({
+                'feature': feature_names[feat_idx],
+                'grid': [_to_native_type(v) for v in grid_vals],
+                'average': [_to_native_type(v) for v in avg_vals],
+            })
+        return out
     except Exception:
         return None
 
@@ -785,7 +851,7 @@ def main():
         y = df[target_col].copy()
 
         for col in X.columns:
-            if X[col].dtype == 'object':
+            if not pd.api.types.is_numeric_dtype(X[col]):
                 X[col] = LabelEncoder().fit_transform(X[col].astype(str))
             else:
                 X[col] = pd.to_numeric(X[col], errors='coerce')
@@ -840,6 +906,7 @@ def main():
         shap_result = compute_shap(model, X_test.values, feature_cols)
 
         pdp_plot = compute_pdp(model, X_train.values, feature_cols, feature_importance, top_n=6)
+        pdp_data = compute_pdp_json(model, X_train.values, feature_cols, feature_importance, top_n=6)
 
         class_names = result.get('class_labels') if task_type == 'classification' else None
         tree_rules = extract_tree_rules(model, feature_cols, task_type, class_names)
@@ -882,8 +949,10 @@ def main():
             'learning_plot': learning_plot,
             'shap_plot': shap_result.get('shap_plot'),
             'shap_importance': shap_result.get('shap_importance'),
+            'shap_samples': shap_result.get('shap_samples'),
             'shap_error': shap_result.get('error'),
             'pdp_plot': pdp_plot,
+            'pdp': pdp_data,
             'tree_rules': tree_rules,
             'interpretation': interpretation,
         }

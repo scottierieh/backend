@@ -40,7 +40,7 @@ def main():
             X = df[feature_cols].values
             
             # Encode target variable if it's not numeric
-            if df[target_col].dtype == 'object':
+            if not pd.api.types.is_numeric_dtype(df[target_col]):
                 le = LabelEncoder()
                 y = le.fit_transform(df[target_col])
             else:

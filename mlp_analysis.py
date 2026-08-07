@@ -203,6 +203,41 @@ def _perm_to_feature_importance(perm_importance):
     ]
 
 
+def _shap_samples_from_explanation(shap_values, X_sample, feature_names: List[str], max_samples: int = 8):
+    """Turns an already-computed shap.Explainer Explanation into a small set of
+    per-sample (feature value, contribution) pairs for a Force Plot. Reuses the
+    values/base_values the caller already computed for shap_importance -- no extra
+    explainer calls. For binary classification (3D output with 2 classes), picks the
+    positive class's slice. True multiclass (3+ classes) is skipped rather than guess
+    which class to show."""
+    try:
+        sv = np.asarray(shap_values.values)
+        base = np.asarray(shap_values.base_values)
+        if sv.ndim == 3:
+            n_classes = sv.shape[2]
+            if n_classes != 2:
+                return None
+            sv = sv[:, :, 1]
+            base = base[:, 1] if base.ndim == 2 else base
+        elif sv.ndim != 2:
+            return None
+        n = min(max_samples, sv.shape[0])
+        if n == 0:
+            return None
+        X_arr = np.asarray(X_sample)
+        return [
+            {
+                'base_value': _to_native_type(base[i] if base.ndim >= 1 and base.shape[0] == sv.shape[0] else base),
+                'contributions': [
+                    {'feature': feature_names[j], 'value': _to_native_type(X_arr[i, j]), 'shap': _to_native_type(sv[i, j])}
+                    for j in range(len(feature_names))
+                ],
+            }
+            for i in range(n)
+        ]
+    except Exception:
+        return None
+
 def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type: str,
                   max_background: int = 50, max_samples: int = 100) -> Dict:
     """Model-agnostic SHAP (Permutation explainer) — MLP has no tree structure for TreeExplainer."""
@@ -229,6 +264,7 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type:
             {'feature': name, 'mean_abs_shap': _to_native_type(val)}
             for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
         ]
+        shap_samples = _shap_samples_from_explanation(shap_values, X_sample, feature_names)
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -240,9 +276,9 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_data_url(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
     except Exception as e:
-        return {'shap_importance': [], 'shap_plot': None, 'error': str(e)}
+        return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
 
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
@@ -627,6 +663,7 @@ def main():
             'perm_importance': perm_importance,
             'feature_importance': _perm_to_feature_importance(perm_importance),
             'shap_importance': shap_result.get('shap_importance'),
+            'shap_samples': shap_result.get('shap_samples'),
             'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'plots': plots,

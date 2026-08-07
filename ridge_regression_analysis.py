@@ -3,10 +3,12 @@ import sys
 import json
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import Ridge, LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from scipy import stats as scipy_stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -50,6 +52,101 @@ def _generate_interpretation(train_r2, test_r2):
     return interpretation.strip()
 
 
+def _compute_cv_results(X, y, alpha, cv_folds=5):
+    """K-fold CV of the Ridge model (with its own scaler) on the FULL dataset.
+    Mirrors the {r2_mean, r2_std, rmse_mean, rmse_std, n_folds, scores} shape
+    expected by the ridge-regression-page.tsx frontend."""
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('model', Ridge(alpha=alpha, random_state=42)),
+    ])
+    kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    r2_scores = cross_val_score(pipeline, X, y, cv=kf, scoring='r2')
+    neg_mse_scores = cross_val_score(pipeline, X, y, cv=kf, scoring='neg_mean_squared_error')
+    rmse_scores = np.sqrt(-neg_mse_scores)
+    return {
+        'r2_mean': float(np.mean(r2_scores)),
+        'r2_std': float(np.std(r2_scores)),
+        'rmse_mean': float(np.mean(rmse_scores)),
+        'rmse_std': float(np.std(rmse_scores)),
+        'n_folds': cv_folds,
+        'scores': [float(s) for s in r2_scores],
+        'mean_cv_score': float(np.mean(r2_scores)),
+        'std_cv_score': float(np.std(r2_scores)),
+    }
+
+
+def _compute_ols_comparison(X_train_scaled, X_test_scaled, y_train, y_test, ridge_train_r2, ridge_test_r2, ridge_test_rmse):
+    """Fit a plain (unregularized) LinearRegression on the same standardized
+    train/test split as Ridge, for a fair head-to-head comparison."""
+    ols = LinearRegression()
+    ols.fit(X_train_scaled, y_train)
+    ols_pred_train = ols.predict(X_train_scaled)
+    ols_pred_test = ols.predict(X_test_scaled)
+
+    ols_train_r2 = float(r2_score(y_train, ols_pred_train))
+    ols_test_r2 = float(r2_score(y_test, ols_pred_test))
+    ols_test_rmse = float(np.sqrt(mean_squared_error(y_test, ols_pred_test)))
+    delta_test_r2 = ols_test_r2 - float(ridge_test_r2)
+
+    return {
+        'ols_train_r2': ols_train_r2,
+        'ols_test_r2': ols_test_r2,
+        'ols_test_rmse': ols_test_rmse,
+        'ridge_train_r2': float(ridge_train_r2),
+        'ridge_test_r2': float(ridge_test_r2),
+        'ridge_test_rmse': float(ridge_test_rmse),
+        'delta_test_r2': delta_test_r2,
+        'note': (
+            'Positive ΔTest R² (OLS − Ridge) means unregularized OLS outperformed Ridge on the '
+            'held-out test set; Ridge trades a small R² cost for more stable, shrunk coefficients.'
+        ),
+    }
+
+
+def _compute_residual_diagnostics(residuals, fitted):
+    """Standard residual diagnostics on test-set residuals: mean/std, skewness,
+    kurtosis, a Shapiro-Wilk normality test (guarded for sample size), and a
+    simple heteroscedasticity check (correlation of |residual| with fitted values)."""
+    residuals = np.asarray(residuals, dtype=float)
+    fitted = np.asarray(fitted, dtype=float)
+    n = len(residuals)
+
+    mean_r = float(np.mean(residuals)) if n > 0 else 0.0
+    std_r = float(np.std(residuals, ddof=1)) if n > 1 else 0.0
+    skewness = float(scipy_stats.skew(residuals)) if n > 2 else 0.0
+    kurtosis = float(scipy_stats.kurtosis(residuals)) if n > 3 else 0.0
+
+    if 3 <= n <= 5000:
+        sw_stat, sw_p = scipy_stats.shapiro(residuals)
+        shapiro_wilk = {
+            'statistic': float(sw_stat),
+            'p_value': float(sw_p),
+            'normal': bool(sw_p > 0.05),
+        }
+    else:
+        shapiro_wilk = {'statistic': None, 'p_value': None, 'normal': None}
+
+    if n > 2 and np.std(fitted) > 0 and np.std(np.abs(residuals)) > 0:
+        corr, p_val = scipy_stats.pearsonr(fitted, np.abs(residuals))
+        heteroscedasticity = {
+            'corr_fitted_abs_resid': float(corr),
+            'p_value': float(p_val),
+            'detected': bool(p_val < 0.05),
+        }
+    else:
+        heteroscedasticity = {'corr_fitted_abs_resid': 0.0, 'p_value': 1.0, 'detected': False}
+
+    return {
+        'mean': mean_r,
+        'std': std_r,
+        'skewness': skewness,
+        'kurtosis': kurtosis,
+        'shapiro_wilk': shapiro_wilk,
+        'heteroscedasticity': heteroscedasticity,
+    }
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -58,6 +155,11 @@ def main():
         features = payload.get('features')
         alpha = float(payload.get('alpha', 1.0))
         test_size = float(payload.get('test_size', 0.2))
+        cv_folds = int(payload.get('cv_folds', 5) or 5)
+        cv_folds = max(2, cv_folds)
+        # Ridge alpha is currently always a fixed user-provided value (no CV
+        # auto-selection UI exists for Ridge in the frontend).
+        alpha_source = 'user_specified'
 
         if not all([data, target, features]):
             raise ValueError("Missing data, target, or features")
@@ -104,7 +206,15 @@ def main():
         }
         
         interpretation = _generate_interpretation(train_metrics['r2_score'], test_metrics['r2_score'])
-        
+
+        residuals_test = np.asarray(y_test) - np.asarray(y_pred_test)
+        residual_diagnostics = _compute_residual_diagnostics(residuals_test, y_pred_test)
+        ols_comparison = _compute_ols_comparison(
+            X_train_scaled, X_test_scaled, y_train, y_test,
+            train_metrics['r2_score'], test_metrics['r2_score'], test_metrics['rmse'],
+        )
+        cv_results = _compute_cv_results(X, y, alpha, cv_folds=cv_folds)
+
         results = {
             'metrics': {
                 'test': test_metrics,
@@ -113,9 +223,15 @@ def main():
             'coefficients': dict(zip(final_features, model.coef_)),
             'intercept': model.intercept_,
             'alpha': alpha,
+            'alpha_source': alpha_source,
+            'cv_folds': cv_results['n_folds'],
             'interpretation': interpretation,
+            'n_features': len(final_features),
+            'ols_comparison': ols_comparison,
+            'cv_results': cv_results,
+            'residual_diagnostics': residual_diagnostics,
         }
-        
+
         fig_main, axes = plt.subplots(2, 1, figsize=(8, 12))
         fig_main.suptitle(f'Ridge Regression Performance (alpha={alpha})', fontsize=16)
 
@@ -184,10 +300,54 @@ def main():
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         path_plot_image = fig_to_base64(fig_path)
 
+        # Residual diagnostics plot: residuals vs fitted (with quadratic trend) + Normal Q-Q
+        fig_resid, axes_resid = plt.subplots(1, 2, figsize=(12, 5))
+        fig_resid.suptitle('Residual Diagnostics (Test Set)', fontsize=14)
+
+        axes_resid[0].scatter(y_pred_test, residuals_test, alpha=0.5)
+        axes_resid[0].axhline(0, color='r', linestyle='--', lw=1.5)
+        if len(y_pred_test) > 2:
+            order = np.argsort(y_pred_test)
+            trend_coefs = np.polyfit(np.asarray(y_pred_test)[order], np.asarray(residuals_test)[order], 2)
+            trend = np.poly1d(trend_coefs)
+            axes_resid[0].plot(np.asarray(y_pred_test)[order], trend(np.asarray(y_pred_test)[order]), color='orange', lw=2, label='Trend')
+            axes_resid[0].legend()
+        axes_resid[0].set_xlabel('Fitted Values')
+        axes_resid[0].set_ylabel('Residuals')
+        axes_resid[0].set_title('Residuals vs Fitted')
+        axes_resid[0].grid(True)
+
+        scipy_stats.probplot(residuals_test, dist='norm', plot=axes_resid[1])
+        axes_resid[1].set_title('Normal Q-Q Plot')
+        axes_resid[1].grid(True)
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.93])
+        residual_plot_image = fig_to_base64(fig_resid)
+
+        # OLS vs Ridge comparison plot
+        fig_ols, ax_ols = plt.subplots(figsize=(7, 5))
+        metric_labels = ['Train R²', 'Test R²', 'Test RMSE']
+        ols_vals = [ols_comparison['ols_train_r2'], ols_comparison['ols_test_r2'], ols_comparison['ols_test_rmse']]
+        ridge_vals = [ols_comparison['ridge_train_r2'], ols_comparison['ridge_test_r2'], ols_comparison['ridge_test_rmse']]
+        x_pos = np.arange(len(metric_labels))
+        width = 0.35
+        ax_ols.bar(x_pos - width / 2, ols_vals, width, label='OLS')
+        ax_ols.bar(x_pos + width / 2, ridge_vals, width, label='Ridge')
+        ax_ols.set_xticks(x_pos)
+        ax_ols.set_xticklabels(metric_labels)
+        ax_ols.set_title('OLS vs Ridge Comparison')
+        ax_ols.legend()
+        ax_ols.grid(True, axis='y')
+
+        plt.tight_layout()
+        ols_plot_image = fig_to_base64(fig_ols)
+
         response = {
             'results': results,
             'plot': plot_image,
-            'path_plot': path_plot_image
+            'path_plot': path_plot_image,
+            'residual_plot': residual_plot_image,
+            'ols_plot': ols_plot_image,
         }
         
         print(json.dumps(response, default=_to_native_type))

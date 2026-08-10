@@ -7,12 +7,12 @@ import sys
 import os
 import json
 
-# This backend serves ONLY the "통계분석" (Statistica) analyses that have no
-# R-backend equivalent yet -- everything else (conjoint/survey analyses,
-# the now-R-backed descriptive stats route, and the unused effectiveness
-# route) was intentionally dropped from here; see r-backend/ for the
-# migrated analyses and the conjoint-family Python files under src/backend/
-# if the survey module ever needs its own service again.
+# The conjoint/survey analysis family (RC, CBC, ACA) was reinstated here as
+# proper FastAPI routers (see rc_analysis.py, conjoint_analysis.py,
+# aca_analysis.py) — the survey module calls this same service, not a
+# separate one. conjoint_hb.py (CBC Hierarchical Bayes) and acbc_analysis.py
+# are NOT wired in yet: both depend on a hb_mnl.py module (PyMC/NUTS) that
+# hasn't been added to this repo.
 
 app = FastAPI()
 
@@ -39,6 +39,19 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+# Conjoint / survey-analysis family — real APIRouter modules (not the
+# subprocess-script pattern below), each already prefixed with its own path
+# in-module (e.g. rc_analysis.py's router defines POST /rating-conjoint), so
+# they're mounted here under the same /api/analysis prefix the script routes use.
+from rc_analysis import router as rc_router
+from conjoint_analysis import router as cbc_router
+from aca_analysis import router as aca_router
+
+app.include_router(rc_router, prefix="/api/analysis")
+app.include_router(cbc_router, prefix="/api/analysis")
+app.include_router(aca_router, prefix="/api/analysis")
 
 
 # ---------------------------------------------------------------------------

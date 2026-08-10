@@ -7,12 +7,13 @@ import sys
 import os
 import json
 
-# The conjoint/survey analysis family (RC, CBC, ACA) was reinstated here as
-# proper FastAPI routers (see rc_analysis.py, conjoint_analysis.py,
-# aca_analysis.py) — the survey module calls this same service, not a
-# separate one. conjoint_hb.py (CBC Hierarchical Bayes) and acbc_analysis.py
-# are NOT wired in yet: both depend on a hb_mnl.py module (PyMC/NUTS) that
-# hasn't been added to this repo.
+# The conjoint/survey analysis family (RC, CBC, ACA, CBC-HB, ACBC) was
+# reinstated here as proper FastAPI routers (see rc_analysis.py,
+# conjoint_analysis.py, aca_analysis.py, conjoint_hb.py, acbc_analysis.py) —
+# the survey module calls this same service, not a separate one. CBC-HB and
+# ACBC share their individual-level estimation core (hb_mnl.py — a pure
+# numpy/scipy Gibbs/Metropolis sampler, not PyMC, so no new compiler-needing
+# dependency was added).
 
 app = FastAPI()
 
@@ -48,10 +49,14 @@ def health_check():
 from rc_analysis import router as rc_router
 from conjoint_analysis import router as cbc_router
 from aca_analysis import router as aca_router
+from conjoint_hb import router as cbc_hb_router
+from acbc_analysis import router as acbc_router
 
 app.include_router(rc_router, prefix="/api/analysis")
 app.include_router(cbc_router, prefix="/api/analysis")
 app.include_router(aca_router, prefix="/api/analysis")
+app.include_router(cbc_hb_router, prefix="/api/analysis")
+app.include_router(acbc_router, prefix="/api/analysis")
 
 
 # ---------------------------------------------------------------------------

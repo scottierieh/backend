@@ -460,21 +460,31 @@ def compute_wtp_cbc(
                 design_cols_wtp.append(col)
 
     # Parse price to numeric
-    price_numeric = df[price_col].apply(parse_price_value)
-    if price_numeric.isna().sum() > len(df) * 0.5:
+    price_raw = df[price_col].apply(parse_price_value)
+    if price_raw.isna().sum() > len(df) * 0.5:
         return None, None  # too many unparseable prices
 
+    # Scale price before fitting — raw currency values (often in the hundreds
+    # of thousands to millions) badly skew BFGS's implicit parameter scaling
+    # relative to the 0/1 attribute dummies in the same design matrix, which
+    # in practice produced a wildly unstable beta_price (and therefore
+    # near-zero point estimates with enormous confidence intervals — the
+    # classic symptom of dividing by a poorly-identified coefficient). Fit on
+    # standardized price, then rescale beta_price/se_price back to
+    # raw-currency terms so every WTP formula below is unchanged.
+    price_scale = float(price_raw.std(skipna=True)) or 1.0
+    price_numeric = price_raw / price_scale
     df['_price_numeric'] = price_numeric.fillna(0)  # none option: price=0 (no purchase = no payment)
     design_cols_wtp.append('_price_numeric')
 
-    # Fit conditional logit with continuous price
+    # Fit conditional logit with continuous (scaled) price
     fit_wtp = conditional_logit_fit(df, design_cols_wtp, response_col, choice_id_col)
     beta_wtp = fit_wtp['beta']
     se_wtp = fit_wtp['se']
 
-    # Price coefficient is the last one
-    beta_price = beta_wtp[-1]
-    se_price = se_wtp[-1]
+    # Price coefficient is the last one — rescale back to raw-currency units
+    beta_price = beta_wtp[-1] / price_scale
+    se_price = se_wtp[-1] / price_scale
 
     if abs(beta_price) < 1e-10:
         return None, None  # price has no effect, can't compute WTP

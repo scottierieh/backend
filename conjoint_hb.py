@@ -66,10 +66,12 @@ async def analyze_conjoint_hb(payload: ConjointHBPayload):
             tune=payload.tune,
             chains=payload.chains,
         )
+        res["price_col"] = None
         if payload.priceCol:
             wtp = _compute_wtp(res["partWorths"], payload.priceCol)
             if wtp is not None:
                 res["wtp"] = wtp
+                res["price_col"] = payload.priceCol
         return {"results": res}
     except HTTPException:
         raise

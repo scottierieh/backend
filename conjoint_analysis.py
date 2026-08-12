@@ -839,6 +839,7 @@ async def conjoint_analysis(request: ConjointRequest):
             'data_summary': data_summary,
             'attribute_map': attribute_map,
             'ref_levels': ref_levels,
+            'price_col': request.priceCol if (request.priceCol and request.priceCol in df.columns) else None,
             'partworths': {attr: [_to_native(pw) for pw in pw_list] for attr, pw_list in partworths.items()},
             'importance': {attr: safe_float(v) for attr, v in importance.items()},
             'wtp': _to_native(wtp_results) if wtp_results else None,

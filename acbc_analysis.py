@@ -82,7 +82,10 @@ def _tournament_to_rows(attributes, responses):
 
 
 def _detect_rules(attributes, responses):
-    """Must-have / unacceptable detection from screening possibilities.
+    """Must-have / unacceptable detection from screening possibilities, plus
+    the full per-level acceptance-rate distribution the report's screening
+    survival section reads (must_have/unacceptable are just the ≥85%/≤15%
+    tails of that same `screening_distribution` list).
 
     - unacceptable: a level that, whenever it appeared in a screened concept,
       was almost always rejected (low possibility rate).
@@ -103,24 +106,29 @@ def _detect_rules(attributes, responses):
                 counts[key][1] += poss
 
     id_to_name = {a["id"]: a["name"] for a in attributes}
-    unacceptable, must_have = [], []
+    unacceptable, must_have, distribution = [], [], []
     for (aid, lv), (n, pos) in counts.items():
         if n < 5:
             continue
         rate = pos / n
         rec = {"attributeId": aid, "attribute": id_to_name.get(aid, aid),
                "level": lv, "appearances": n, "possibilityRate": round(rate, 3)}
+        distribution.append(rec)
         if rate <= 0.15:
             unacceptable.append(rec)
         elif rate >= 0.85:
             must_have.append(rec)
     unacceptable.sort(key=lambda d: d["possibilityRate"])
     must_have.sort(key=lambda d: -d["possibilityRate"])
-    return must_have, unacceptable
+    distribution.sort(key=lambda d: (d["attribute"], -d["possibilityRate"]))
+    return must_have, unacceptable, distribution
 
 
 def _byo_summary(attributes, responses):
-    """Most-frequent BYO level per attribute (the modal ideal configuration)."""
+    """BYO ideal-configuration breakdown per attribute: the full per-level
+    share distribution (report section 02), plus the modal ("topLevel")
+    pick each summary entry already carried for backward compatibility.
+    """
     from collections import Counter
     id_to_name = {a["id"]: a["name"] for a in attributes}
     per_attr: Dict[str, Counter] = {a["id"]: Counter() for a in attributes}
@@ -139,8 +147,10 @@ def _byo_summary(attributes, responses):
         if not c:
             continue
         top, cnt = c.most_common(1)[0]
+        levels = [{"value": lv, "share": round(ct / n, 3) if n else 0.0} for lv, ct in c.most_common()]
         summary.append({"attributeId": a["id"], "attribute": id_to_name[a["id"]],
-                        "topLevel": top, "share": round(cnt / n, 3) if n else 0.0})
+                        "topLevel": top, "share": round(cnt / n, 3) if n else 0.0,
+                        "levels": levels})
     return summary, n
 
 
@@ -189,10 +199,11 @@ async def analyze_acbc(payload: ACBCPayload):
                 if wtp:
                     hb["wtp"] = wtp
 
-        must_have, unacceptable = _detect_rules(payload.attributes, payload.responses)
+        must_have, unacceptable, screening_distribution = _detect_rules(payload.attributes, payload.responses)
         byo, n_byo = _byo_summary(payload.attributes, payload.responses)
 
         hb["mustHave"] = must_have
+        hb["screeningDistribution"] = screening_distribution
         hb["unacceptable"] = unacceptable
         hb["byoSummary"] = byo
         hb["nByo"] = n_byo

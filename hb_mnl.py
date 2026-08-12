@@ -269,7 +269,31 @@ def run_hb_mnl(
             total += 1
     hit_rate = hit / total if total > 0 else 0
 
+    # ── Per-respondent part-worths (HB's actual deliverable) in the same
+    #    {attribute: {level: coef}} shape as ACA's individualPartWorths, so
+    #    downstream consumers (market-share simulators, bootstrap box-plots)
+    #    work identically regardless of which estimator produced the data.
+    #    Same reference-level-at-0 coding as the aggregate `partworths` above
+    #    (not centered) — softmax/logit shares only depend on utility
+    #    differences, so the choice of coding origin doesn't affect them.
+    col_index = {col: i for i, col in enumerate(design_cols)}
+    individual_part_worths = []
+    for i in range(R):
+        b = beta_hat[i]
+        util_map = {}
+        for attr, levels in attribute_map.items():
+            ref = ref_levels[attr]
+            util_map[attr] = {ref: 0.0}
+            for lvl in levels:
+                if lvl == ref:
+                    continue
+                col = f"{attr}__{lvl}"
+                if col in col_index:
+                    util_map[attr][lvl] = float(b[col_index[col]])
+        individual_part_worths.append(util_map)
+
     results = {
+        'n': R,
         'model_info': {
             'type': 'Hierarchical Bayes MNL',
             'n_params': K,
@@ -300,5 +324,6 @@ def run_hb_mnl(
         # Flat list for the calling routers' WTP helpers (conjoint_hb.py / acbc_analysis.py).
         'partWorths': _to_native(pw_flat),
         'partWorthsFlat': _to_native(pw_flat),
+        'individualPartWorths': _to_native(individual_part_worths),
     }
     return results

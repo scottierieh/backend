@@ -1,32 +1,36 @@
-fastapi
-uvicorn[standard]
-pandas
-numpy<2  # pinned: scikit-learn-extra (k-medoids) is not importable under numpy 2.x (ABI)
-scipy
-scikit-learn
-scikit-learn-extra
-mlxtend
-statsmodels
-matplotlib
-seaborn
-catboost
-lightgbm
-xgboost
-shap
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pandas==2.3.3
+# numpy: pinned to the last 1.x release, not just <2 — scikit-learn-extra
+# (k-medoids) ships compiled extensions that are not importable under numpy
+# 2.x (ABI break, not just an API one), and several other pins below
+# (tensorflow-cpu, catboost) also cap at numpy<2.
+numpy==1.26.4
+scipy==1.14.1
+scikit-learn==1.5.2
+scikit-learn-extra==0.3.0
+mlxtend==0.23.3
+statsmodels==0.14.4
+matplotlib==3.9.3
+seaborn==0.13.2
+catboost==1.2.7
+lightgbm==4.5.0
+xgboost==2.1.3
+shap==0.46.0
 # tensorflow-cpu, not tensorflow: the plain wheel is 621 MB against 247 MB
 # because it ships GPU kernels, and Cloud Run has no GPU to run them on. Same
 # import surface — lstm_forecasting_analysis.py's `import tensorflow as tf` and
 # `from tensorflow.keras...` are unchanged.
-tensorflow-cpu
-umap-learn
-pingouin
-linearmodels
-plotly
-pillow
-PyPortfolioOpt
-QuantLib
-empyrical-reloaded
-pytz
-arch
-lifetimes
-pulp
+tensorflow-cpu==2.17.0
+umap-learn==0.5.7
+pingouin==0.5.5
+linearmodels==6.1
+plotly==5.24.1
+pillow==11.0.0
+PyPortfolioOpt==1.5.5
+QuantLib==1.36
+empyrical-reloaded==0.5.11
+pytz==2024.2
+arch==7.2.0
+lifetimes==0.11.3
+pulp==2.9.0

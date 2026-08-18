@@ -28,7 +28,13 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # No allow_credentials: this service has no cookie/session auth (see
+    # audit finding H1 — there is no application-level auth at all yet), so
+    # there's nothing that needs credentialed cross-origin requests. Origin
+    # "*" + allow_credentials=True together let Starlette reflect the
+    # request's Origin back verbatim in Access-Control-Allow-Origin the
+    # moment any cookie-based auth is added later — dropping credentials
+    # now closes that off pre-emptively rather than after the fact.
     allow_methods=["*"],
     allow_headers=["*"],
 )

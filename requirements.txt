@@ -14,7 +14,10 @@ statsmodels==0.14.4
 matplotlib==3.9.3
 seaborn==0.13.2
 catboost==1.2.7
-lightgbm==4.5.0
+# lightgbm: 4.5.0 (my first pin) carries a real RCE advisory
+# (GHSA-2586-f3p4-hq84), fixed in 4.6.0 — caught by re-scanning every pin
+# against OSV.dev after pinning, not by the original unpinned scan.
+lightgbm==4.7.0
 xgboost==2.1.3
 shap==0.46.0
 # tensorflow-cpu, not tensorflow: the plain wheel is 621 MB against 247 MB
@@ -26,7 +29,13 @@ umap-learn==0.5.7
 pingouin==0.5.5
 linearmodels==6.1
 plotly==5.24.1
-pillow==11.0.0
+# pillow: pinned to latest (12.3.0), not just "recent" like everything else
+# here — audit finding C2 flagged it specifically because fruit_clustering_
+# analysis.py passes a user-supplied base64 image straight into
+# PIL.Image.open() on a public endpoint. Rescanned via OSV.dev after
+# pinning: 11.0.0-12.0.0 all still carry ~34-38 known advisories; 12.3.0
+# is the first version in that line with 0.
+pillow==12.3.0
 PyPortfolioOpt==1.5.5
 QuantLib==1.36
 empyrical-reloaded==0.5.11

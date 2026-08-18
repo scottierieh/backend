@@ -1,11 +1,14 @@
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 import subprocess
 import sys
 import os
 import json
+import time
+from collections import defaultdict
 
 # The conjoint/survey analysis family (RC, CBC, ACA, CBC-HB, ACBC) was
 # reinstated here as proper FastAPI routers (see rc_analysis.py,
@@ -38,6 +41,43 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Per-IP rate limit. This service is called directly from the browser
+# (NEXT_PUBLIC_API_URL is baked into the frontend's client JS bundle), not
+# proxied through a server, so there is no secret we could add here that
+# wouldn't be visible in devtools — app-level auth isn't a meaningful option
+# for this deployment. The actual risk (per the 2026-08-12 audit, H1) is
+# resource-abuse/cost, not data exposure (this is a stateless calculator
+# with no per-user data), so a per-IP request cap is the fix that matches
+# the threat: fixed 60s window, 60 requests/window. That comfortably covers
+# legitimate bursty use (e.g. the frontend's Model Lab "Auto Compare" firing
+# several analyses back to back) while capping a scripted flood.
+# Caveat: this dict is per-instance, not shared across Cloud Run instances,
+# so the effective ceiling rises if the service scales out under sustained
+# load from one source. Cloud Armor (edge-level, shared across all
+# instances) is the next step up if that turns out to matter in practice.
+_RL_WINDOW_SECS = 60
+_RL_MAX_REQUESTS = 60
+_rl_store = defaultdict(list)
+
+def _rl_client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if request.url.path in ("/health", "/") or request.method == "OPTIONS":
+        return await call_next(request)
+    ip = _rl_client_ip(request)
+    now = time.time()
+    hits = [t for t in _rl_store[ip] if t > now - _RL_WINDOW_SECS]
+    if len(hits) >= _RL_MAX_REQUESTS:
+        return JSONResponse(status_code=429, content={"error": "Too many requests, slow down."})
+    hits.append(now)
+    _rl_store[ip] = hits
+    return await call_next(request)
 
 @app.get("/")
 def read_root():

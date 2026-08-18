@@ -28,46 +28,12 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import warnings
-
-
-def _compute_multiclass_auc(y_true, y_pred_proba):
-    """Macro-average ROC-AUC: binary uses the positive-class column; multiclass uses One-vs-Rest macro averaging."""
-    try:
-        n_classes = y_pred_proba.shape[1]
-        if n_classes == 2:
-            return float(roc_auc_score(y_true, y_pred_proba[:, 1]))
-        else:
-            return float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='macro'))
-    except Exception:
-        return None
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64
 
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['axes.unicode_minus'] = False
-
-
-def _to_native_type(obj):
-    if isinstance(obj, np.integer):
-        return int(obj)
-    if isinstance(obj, (float, np.floating)):
-        if np.isnan(obj) or np.isinf(obj):
-            return None
-        return float(obj)
-    if isinstance(obj, (np.bool_, bool)):
-        return bool(obj)
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    return obj
-
-
-def _fig_to_base64(fig) -> str:
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format='png', dpi=120, bbox_inches='tight', facecolor='white')
-    buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode()
-    plt.close(fig)
-    return image_base64
 
 
 def _fig_to_data_url(fig) -> str:

@@ -28,18 +28,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance
 import warnings
-
-
-def _compute_multiclass_auc(y_true, y_pred_proba):
-    """Macro-average ROC-AUC: binary uses the positive-class column; multiclass uses One-vs-Rest macro averaging."""
-    try:
-        n_classes = y_pred_proba.shape[1]
-        if n_classes == 2:
-            return float(roc_auc_score(y_true, y_pred_proba[:, 1]))
-        else:
-            return float(roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='macro'))
-    except Exception:
-        return None
+from analysis_common import _compute_multiclass_auc
 
 
 warnings.filterwarnings('ignore')

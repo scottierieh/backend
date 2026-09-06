@@ -18,6 +18,7 @@ sns.set_theme(style="darkgrid")
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold
+from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression, Ridge
@@ -26,8 +27,24 @@ from sklearn.svm import SVC, SVR
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.ensemble import (
     RandomForestClassifier, RandomForestRegressor,
+    GradientBoostingClassifier, GradientBoostingRegressor,
     VotingClassifier, VotingRegressor, StackingClassifier, StackingRegressor
 )
+
+# Optional boosting base learners — so an ensemble can blend the actual Auto Compare
+# winners (often XGBoost/LightGBM/GBM), not just the 5 sklearn defaults. Guarded so the
+# script still imports if a lib is absent; unavailable models are simply skipped by
+# build_estimators' registry filter.
+try:
+    from xgboost import XGBClassifier, XGBRegressor
+    _HAS_XGB = True
+except Exception:
+    _HAS_XGB = False
+try:
+    from lightgbm import LGBMClassifier, LGBMRegressor
+    _HAS_LGBM = True
+except Exception:
+    _HAS_LGBM = False
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
@@ -48,6 +65,7 @@ BASE_ESTIMATORS = {
         'logistic_regression': lambda rs: LogisticRegression(max_iter=1000, random_state=rs),
         'decision_tree': lambda rs: DecisionTreeClassifier(max_depth=5, random_state=rs),
         'random_forest': lambda rs: RandomForestClassifier(n_estimators=100, random_state=rs),
+        'gbm': lambda rs: GradientBoostingClassifier(random_state=rs),
         'svm': lambda rs: SVC(probability=True, random_state=rs),
         'knn': lambda rs: KNeighborsClassifier(n_neighbors=5),
     },
@@ -55,10 +73,20 @@ BASE_ESTIMATORS = {
         'ridge': lambda rs: Ridge(random_state=rs),
         'decision_tree': lambda rs: DecisionTreeRegressor(max_depth=5, random_state=rs),
         'random_forest': lambda rs: RandomForestRegressor(n_estimators=100, random_state=rs),
+        'gbm': lambda rs: GradientBoostingRegressor(random_state=rs),
         'svm': lambda rs: SVR(),
         'knn': lambda rs: KNeighborsRegressor(n_neighbors=5),
     }
 }
+
+# Boosting learners registered only if their lib imported — keeps blends able to
+# include the common Auto Compare winners without making them a hard dependency.
+if _HAS_XGB:
+    BASE_ESTIMATORS['classification']['xgboost'] = lambda rs: XGBClassifier(random_state=rs, n_jobs=-1, verbosity=0, eval_metric='logloss')
+    BASE_ESTIMATORS['regression']['xgboost'] = lambda rs: XGBRegressor(random_state=rs, n_jobs=-1, verbosity=0)
+if _HAS_LGBM:
+    BASE_ESTIMATORS['classification']['lightgbm'] = lambda rs: LGBMClassifier(random_state=rs, n_jobs=-1, verbose=-1)
+    BASE_ESTIMATORS['regression']['lightgbm'] = lambda rs: LGBMRegressor(random_state=rs, n_jobs=-1, verbose=-1)
 
 DEFAULT_ESTIMATORS = {
     'classification': ['logistic_regression', 'decision_tree', 'random_forest'],
@@ -391,16 +419,11 @@ def perform_cross_validation(X, y, task_type: str, params: dict, cv_folds: int) 
     if task_type == 'classification':
         le = LabelEncoder()
         y_encoded = le.fit_transform(y)
-        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
-        scores = cross_val_score(model, X, y_encoded, cv=cv_splitter, scoring='accuracy')
+        cv_target, cv_task = y_encoded, 'classification'
     else:
-        cv_splitter = KFold(n_splits=cv_folds, shuffle=True, random_state=params['random_state'])
-        scores = cross_val_score(model, X, y, cv=cv_splitter, scoring='r2')
+        cv_target, cv_task = y, 'regression'
 
-    return {
-        'cv_scores': _to_native_scalar_list(scores), 'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)), 'cv_folds': cv_folds
-    }
+    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_comparison_plot(individual_scores: Dict[str, float], model_label: str, task_type: str) -> str:

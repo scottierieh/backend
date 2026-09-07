@@ -104,6 +104,14 @@ app.include_router(aca_router, prefix="/api/analysis")
 app.include_router(cbc_hb_router, prefix="/api/analysis")
 app.include_router(acbc_router, prefix="/api/analysis")
 
+# Model Lab's model registry — train/predict/explain/delete by model_id. Also
+# a real APIRouter (stateful: persists a fitted pipeline and reloads it by
+# id), mounted at /api directly since the frontend calls /api/models/{id}/...,
+# not /api/analysis/models/... — see models_api.py's module docstring.
+from models_api import router as models_router
+
+app.include_router(models_router, prefix="/api")
+
 
 # ---------------------------------------------------------------------------
 # Generic wiring for the analysis scripts. Every script below follows the

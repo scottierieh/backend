@@ -14,6 +14,7 @@ from scipy import stats
 import io
 import base64
 import warnings
+from analysis_common import build_error_examples
 
 warnings.filterwarnings('ignore')
 
@@ -64,6 +65,7 @@ def main():
         n_estimators = int(payload.get('nEstimators', 100))
         learning_rate = float(payload.get('learningRate', 0.1))
         max_depth = int(payload.get('maxDepth', 3))
+        test_size = float(payload.get('test_size', 0.2))
 
         if not all([data, features, target, problem_type]):
             raise ValueError("Missing data, features, target, or problemType")
@@ -80,12 +82,12 @@ def main():
 
         try:
              X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42, stratify=y if problem_type == 'classification' else None
+                X, y, test_size=test_size, random_state=42, stratify=y if problem_type == 'classification' else None
             )
         except ValueError:
             # Fallback for small classes
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42
+                X, y, test_size=test_size, random_state=42
             )
 
         # --- Model Training ---
@@ -187,6 +189,10 @@ def main():
                 'auc': auc_value,
                 'class_labels': class_labels_sorted,
             }
+            results['error_examples'] = build_error_examples(
+                X_test, y_test.values if hasattr(y_test, 'values') else y_test, y_pred,
+                feature_names=feature_names, y_pred_proba=locals().get('y_proba_auc'),
+            )
             n_examples = min(10, len(y_test))
             example_indices = np.random.choice(y_test.index, n_examples, replace=False)
 

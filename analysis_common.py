@@ -56,6 +56,54 @@ def _fig_to_base64(fig) -> str:
     return image_base64
 
 
+def build_error_examples(X_test, y_test, y_pred, feature_names, y_pred_proba=None, max_examples: int = 20):
+    """Misclassified test rows for the Error Analysis view (Model Lab 2's
+    Evaluate > Explain tab reads this via the existing errorExamples field —
+    src/lib/types/model-result.ts:145 — which was already wired end to end
+    from auto-compare-engine.ts down to Firestore, just never populated by
+    any backend script until now: `r.norm?.error_examples`).
+
+    Classification only — regression's analog is the already-shipped
+    actual-vs-predicted scatter (regressionDiag), not a misclassification
+    list. X_test may be a DataFrame or ndarray; y_test/y_pred are 1D
+    arrays/Series of the (label-encoded or raw) class values actually
+    compared, so 'actual'/'predicted' are whatever those values are —
+    callers that label-encoded y should pass the decoded (original-label)
+    versions in, not the encoded ints, so the UI shows real class names.
+    """
+    try:
+        y_test_arr = np.asarray(y_test)
+        y_pred_arr = np.asarray(y_pred)
+        wrong = np.where(y_test_arr != y_pred_arr)[0]
+        if len(wrong) == 0:
+            return []
+        if len(wrong) > max_examples:
+            # Deterministic, evenly-spread sample rather than just the first N,
+            # so a long run of one confused class near the top of the test set
+            # doesn't crowd out every other kind of mistake.
+            idx = np.linspace(0, len(wrong) - 1, max_examples).round().astype(int)
+            wrong = wrong[idx]
+
+        X_arr = X_test.values if hasattr(X_test, 'values') else np.asarray(X_test)
+        out = []
+        for i in wrong:
+            row = {
+                'index': int(i),
+                'actual': _to_native_type(y_test_arr[i]),
+                'predicted': _to_native_type(y_pred_arr[i]),
+            }
+            if y_pred_proba is not None:
+                proba = np.asarray(y_pred_proba)
+                row['confidence'] = _to_native_type(float(proba[i].max())) if proba.ndim == 2 else _to_native_type(float(proba[i]))
+            if feature_names is not None:
+                for j, name in enumerate(feature_names):
+                    row[name] = _to_native_type(X_arr[i, j])
+            out.append(row)
+        return out
+    except Exception:
+        return None
+
+
 def detect_task_type(y: pd.Series) -> str:
     unique_ratio = len(y.unique()) / len(y)
     if not pd.api.types.is_numeric_dtype(y) or y.dtype.name == 'category':

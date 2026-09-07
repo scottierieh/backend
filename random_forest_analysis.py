@@ -31,7 +31,7 @@ from sklearn.metrics import (
 )
 from sklearn.tree import export_text
 import warnings
-from analysis_common import _compute_multiclass_auc
+from analysis_common import _compute_multiclass_auc, build_error_examples
 
 
 warnings.filterwarnings('ignore')
@@ -180,6 +180,12 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
 
     calibration_data = _compute_calibration_curve(y_test_encoded, y_pred_proba, result_class_labels=[str(c) for c in le.classes_])
 
+    error_examples = build_error_examples(
+        X_test, le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred),
+        feature_names=list(X_test.columns) if hasattr(X_test, 'columns') else None,
+        y_pred_proba=y_pred_proba,
+    )
+
     return {
         'model': model,
         'metrics': metrics,
@@ -189,7 +195,8 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         'roc_data': roc_data,
         'pr_data': pr_data,
         'calibration_data': calibration_data,
-        'label_encoder': le
+        'label_encoder': le,
+        'error_examples': error_examples,
     }
 
 
@@ -983,6 +990,7 @@ def main():
             response['per_class_metrics'] = result['per_class_metrics']
             response['confusion_matrix'] = result['confusion_matrix']
             response['class_labels'] = result['class_labels']
+            response['error_examples'] = result.get('error_examples')
 
         print(json.dumps(response, default=_to_native_type))
 

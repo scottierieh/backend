@@ -30,7 +30,7 @@ from sklearn.metrics import (
 )
 import lightgbm as lgb
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, build_error_examples
 
 
 warnings.filterwarnings('ignore')
@@ -142,12 +142,19 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
 
     train_history = {'train': evals_result['train'][eval_metric], 'test': evals_result['test'][eval_metric]}
 
+    error_examples = build_error_examples(
+        X_test, le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred),
+        feature_names=list(X_test.columns) if hasattr(X_test, 'columns') else None,
+        y_pred_proba=y_pred_proba,
+    )
+
     return {
         'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': eval_metric,
         'label_encoder': le, 'best_iteration': int(model.best_iteration_ or params['n_estimators']),
-        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
+        'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
+        'error_examples': error_examples,
     }
 
 
@@ -662,6 +669,7 @@ def main():
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
             response['pr_plot'] = pr_plot
+            response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plots'] = regression_plots
 

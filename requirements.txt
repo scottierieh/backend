@@ -8,6 +8,16 @@ pandas==2.3.3
 numpy==1.26.4
 scipy==1.14.1
 scikit-learn==1.5.2
+# joblib: not a scikit-learn dependency you get for free at a specific
+# version — pinned explicitly since models_api.py's joblib.dump/load format
+# is sensitive to it (a version mismatch between the process that trained a
+# model and the one loading it later can silently fail to deserialize).
+joblib==1.4.2
+# google-cloud-storage: models_api.py's model_store.py persists trained
+# pipelines here (models/{model_id}/... in the project's Firebase Storage
+# bucket) so predict/explain can reload a model trained in an earlier,
+# possibly different, Cloud Run instance.
+google-cloud-storage==2.18.2
 scikit-learn-extra==0.3.0
 mlxtend==0.23.3
 statsmodels==0.14.4

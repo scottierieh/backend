@@ -35,7 +35,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import shap
-from analysis_common import _compute_multiclass_auc
+from analysis_common import _compute_multiclass_auc, build_error_examples
 
 
 warnings.filterwarnings('ignore')
@@ -655,6 +655,11 @@ def train_classifier(X_train, X_test, y_train, y_test,
         if class_aps:
             metrics['average_precision_macro'] = _to_native(float(np.mean(class_aps)))
 
+    error_examples = build_error_examples(
+        X_test, le.inverse_transform(y_test_enc), le.inverse_transform(y_pred),
+        feature_names=feature_names, y_pred_proba=y_pred_proba,
+    )
+
     return {
         'model': model, 'metrics': metrics,
         'per_class_metrics': per_class,
@@ -667,7 +672,8 @@ def train_classifier(X_train, X_test, y_train, y_test,
             'n_nodes':          int(model.tree_.node_count),
             'max_depth_actual': int(model.get_depth()),
             'n_leaves':         int(model.get_n_leaves())
-        }
+        },
+        'error_examples': error_examples,
     }
 
 
@@ -1038,6 +1044,7 @@ def main():
             response['cm_plot']           = cm_plot
             response['roc_plot']          = roc_plot
             response['pr_plot']           = pr_plot
+            response['error_examples']    = result.get('error_examples')
         else:
             response['regression_plot']  = regression_plot
             response['regression_plots'] = regression_plots

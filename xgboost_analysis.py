@@ -29,7 +29,7 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples
 
 
 warnings.filterwarnings('ignore')
@@ -182,6 +182,12 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         'test': model.evals_result()['validation_1'][eval_metric]
     }
 
+    error_examples = build_error_examples(
+        X_test, le.inverse_transform(y_test_encoded), le.inverse_transform(y_pred),
+        feature_names=list(X_test.columns) if hasattr(X_test, 'columns') else None,
+        y_pred_proba=y_pred_proba,
+    )
+
     return {
         'model': model,
         'metrics': metrics,
@@ -192,7 +198,8 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         'pr_data': pr_data,
         'train_history': train_history,
         'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
-        'label_encoder': le
+        'label_encoder': le,
+        'error_examples': error_examples,
     }
 
 
@@ -954,6 +961,7 @@ def main():
             response['cm_plot'] = cm_plot
             response['roc_plot'] = roc_plot
             response['pr_plot'] = pr_plot
+            response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plot'] = regression_plot
 

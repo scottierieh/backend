@@ -264,6 +264,32 @@ def _compute_row_contributions(pipeline: Pipeline, task: Task, background_raw: p
         return None
 
 
+def _compute_feature_baseline(X: pd.DataFrame, numeric_features: list[str], categorical_features: list[str]) -> dict:
+    """Per-feature training-time distribution summary, persisted on the
+    ModelRegistryEntry (not the artifact) so Feature Drift (deployment-
+    section.tsx's Monitoring tab) can compare it against live prediction-log
+    inputs without reloading the model. Deliberately simple — mean/std for
+    numeric, top category frequencies for categorical — a first cut, not a
+    PSI/KS-test-grade drift statistic."""
+    baseline: dict[str, dict] = {}
+    for c in numeric_features:
+        col = pd.to_numeric(X[c], errors='coerce').dropna()
+        if len(col) == 0:
+            continue
+        baseline[c] = {
+            'type': 'numeric',
+            'mean': _to_native_type(float(col.mean())),
+            'std': _to_native_type(float(col.std(ddof=0))),
+        }
+    for c in categorical_features:
+        counts = X[c].astype(str).value_counts(normalize=True)
+        baseline[c] = {
+            'type': 'categorical',
+            'frequencies': {str(k): _to_native_type(float(v)) for k, v in counts.head(20).items()},
+        }
+    return baseline
+
+
 @router.post("/models/{model_id}/train")
 def train_model(model_id: str, req: TrainRequest):
     if not req.data:
@@ -314,6 +340,7 @@ def train_model(model_id: str, req: TrainRequest):
         _fail(422, f"Training failed: {e}")
 
     shap_beeswarm = _compute_beeswarm(pipeline, req.task, X)
+    feature_baseline = _compute_feature_baseline(X, numeric_features, categorical_features)
 
     background_n = min(len(X), BACKGROUND_SAMPLE_SIZE)
     background = X.sample(n=background_n, random_state=42) if len(X) > background_n else X
@@ -330,7 +357,10 @@ def train_model(model_id: str, req: TrainRequest):
     except Exception as e:
         _fail(502, f"Could not save model artifact: {e}")
 
-    return {'artifactUri': artifact_uri, 'metrics': metrics or None, 'shapBeeswarm': shap_beeswarm}
+    return {
+        'artifactUri': artifact_uri, 'metrics': metrics or None, 'shapBeeswarm': shap_beeswarm,
+        'featureBaseline': feature_baseline,
+    }
 
 
 @router.post("/models/{model_id}/predict")

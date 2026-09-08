@@ -80,6 +80,15 @@ def main():
         X = pd.get_dummies(X, drop_first=True)
         feature_names = X.columns.tolist()
 
+        # GradientBoosting (unlike every other tree model here) has no native
+        # missing-value support and fails outright with "Input X contains
+        # NaN" — every numeric column gets median-imputed before it ever
+        # reaches train_test_split/cross_val_score. get_dummies already
+        # turned every categorical column into 0/1 indicators with no NaNs
+        # of its own, so this only ever touches genuinely numeric gaps.
+        if X.isna().any().any():
+            X = X.fillna(X.median(numeric_only=True))
+
         try:
              X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=test_size, random_state=42, stratify=y if problem_type == 'classification' else None

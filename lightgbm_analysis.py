@@ -21,7 +21,7 @@ import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder
-from sklearn.inspection import permutation_importance
+from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
@@ -329,6 +329,38 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
         return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
 
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      feature_importance=None, top_n: int = 6):
+    """Same as random_forest_analysis.py's compute_pdp_json — top-N feature
+    partial dependence as {grid, average} JSON for an interactive PDP/ICE
+    chart, not a PNG. sklearn.inspection.partial_dependence works on any
+    fitted sklearn-compatible estimator (LGBMClassifier/Regressor included),
+    so this is unchanged from the RF/XGBoost version."""
+    try:
+        if feature_importance:
+            sorted_indices = [
+                feature_names.index(f['feature'])
+                for f in feature_importance
+                if f['feature'] in feature_names
+            ][:top_n]
+        else:
+            sorted_indices = list(range(min(top_n, len(feature_names))))
+
+        out = []
+        for feat_idx in sorted_indices:
+            pd_res = partial_dependence(model, X_train, [feat_idx], kind='average')
+            grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
+            avg_vals = pd_res['average'][0]
+            out.append({
+                'feature': feature_names[feat_idx],
+                'grid': [_to_native_type(v) for v in grid_vals],
+                'average': [_to_native_type(v) for v in avg_vals],
+            })
+        return out
+    except Exception:
+        return None
+
+
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
     cv_params = _common_params(params)
     if task_type == 'classification':
@@ -614,6 +646,7 @@ def main():
 
         cv_result = perform_cross_validation(X, y, params, task_type, cv_folds)
         shap_result = compute_shap(model, X_test.values, feature_cols)
+        pdp_data = compute_pdp_json(model, X_train.values, feature_cols, feature_importance, top_n=6)
 
         importance_plot = generate_feature_importance_plot(feature_importance)
         learning_plot = generate_learning_curve_plot(result['train_history'], result['eval_metric'], result['best_iteration'])
@@ -659,7 +692,8 @@ def main():
             'shap_samples': shap_result.get('shap_samples'),
             'shap_error': shap_result.get('error'),
             'interpretation': interpretation,
-            'prediction_examples': prediction_examples
+            'prediction_examples': prediction_examples,
+            'pdp': pdp_data,
         }
 
         if task_type == 'classification':

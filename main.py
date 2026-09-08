@@ -220,6 +220,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/homogeneity-test",            "homogeneity_test.py",                     False),
     ("/api/analysis/hyperparameter-tuning",       "hyperparameter_tuning_analysis.py",       True),
     ("/api/analysis/tune",                        "tune_analysis.py",                        True),
+    ("/api/analysis/feature-engineering",         "feature_engineering_analysis.py",         True),
     ("/api/analysis/ipa",                         "ipa_analysis.py",                         False),
     ("/api/analysis/kmeans",                      "kmeans_analysis.py",                      True),
     ("/api/analysis/customer-segmentation",       "customer_segmentation_analysis.py",       True),

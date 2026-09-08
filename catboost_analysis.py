@@ -21,7 +21,7 @@ import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold
 from cv_strategy import make_cv_splitter
 from sklearn.preprocessing import LabelEncoder
-from sklearn.inspection import permutation_importance
+from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
@@ -321,6 +321,43 @@ def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
         return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
     except Exception as e:
         return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
+
+
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      feature_importance=None, top_n: int = 6):
+    """Same as random_forest_analysis.py's compute_pdp_json. Verified
+    separately (not assumed) that this actually works for CatBoost despite
+    its categorical columns staying as raw strings rather than being
+    pre-encoded like the other tree scripts: sklearn.inspection.
+    partial_dependence auto-detects a non-numeric column and uses its
+    observed unique values as the grid instead of a percentile grid, which
+    is exactly the right behavior for a categorical feature — a
+    from-scratch test against a fitted CatBoostClassifier with a real
+    categorical column returned the actual category values as the grid and
+    sensible (non-crashing, non-garbage) average predictions."""
+    try:
+        if feature_importance:
+            sorted_indices = [
+                feature_names.index(f['feature'])
+                for f in feature_importance
+                if f['feature'] in feature_names
+            ][:top_n]
+        else:
+            sorted_indices = list(range(min(top_n, len(feature_names))))
+
+        out = []
+        for feat_idx in sorted_indices:
+            pd_res = partial_dependence(model, X_train, [feat_idx], kind='average')
+            grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
+            avg_vals = pd_res['average'][0]
+            out.append({
+                'feature': feature_names[feat_idx],
+                'grid': [_to_native_type(v) for v in grid_vals],
+                'average': [_to_native_type(v) for v in avg_vals],
+            })
+        return out
+    except Exception:
+        return None
 
 
 def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, cat_features: List[int]) -> Dict[str, Any]:
@@ -631,6 +668,7 @@ def main():
         perm_importance = compute_permutation_importance(model, X_test, y_test_for_perm, feature_cols)
         shap_result = compute_shap(model, result['test_pool'], feature_cols)
         interaction_importance = compute_interaction_importance(model, result['test_pool'], feature_cols)
+        pdp_data = compute_pdp_json(model, X_train.values, feature_cols, feature_importance, top_n=6)
 
         cv_result = perform_cross_validation(X, y, params, task_type, cv_folds, cat_feature_indices)
 
@@ -680,7 +718,8 @@ def main():
             'importance_plot': importance_plot,
             'learning_plot': learning_plot,
             'interpretation': interpretation,
-            'prediction_examples': prediction_examples
+            'prediction_examples': prediction_examples,
+            'pdp': pdp_data,
         }
 
         if task_type == 'classification':

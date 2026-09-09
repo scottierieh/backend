@@ -171,6 +171,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/market-basket",                "market_basket_analysis.py",               True),
     ("/api/analysis/attribution-analysis",        "attribution_analysis.py",                 True),
     ("/api/analysis/churn-prediction-v2",         "churn_prediction_analysis.py",           True),
+    ("/api/analysis/data-profile",                "data_profile_analysis.py",                True),
     ("/api/analysis/adaboost",                    "adaboost_analysis.py",                    True),
     ("/api/analysis/ahp",                         "ahp_analysis.py",                         False),
     ("/api/analysis/catboost",                    "catboost_analysis.py",                    True),

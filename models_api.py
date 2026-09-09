@@ -63,6 +63,7 @@ from sklearn.metrics import accuracy_score, f1_score, r2_score, mean_absolute_er
 
 from analysis_common import _to_native_type
 from algorithm_registry import build_estimator
+from feature_pipeline import FeatureEngineer
 import model_store
 
 router = APIRouter()
@@ -80,6 +81,13 @@ class TrainRequest(BaseModel):
     target: str
     features: list[str]
     task: Task
+    # Optional Feature Engineering Lab recipe (RegisteredModel.pipeline on the
+    # frontend) -- same {id, kind, columns, keepSource} shape as TransformStep.
+    # When present, `features` names columns AFTER this recipe runs (e.g.
+    # 'income_log'), and `data` carries the RAW columns the recipe reads from.
+    # See feature_pipeline.py for why this has to be fit here rather than
+    # trusting whatever the frontend already applied client-side.
+    pipeline: Optional[list[dict[str, Any]]] = None
 
 
 class PredictRequest(BaseModel):
@@ -297,11 +305,31 @@ def train_model(model_id: str, req: TrainRequest):
     if req.target not in (req.data[0].keys() if req.data else []):
         _fail(400, f"Target column '{req.target}' not found in data")
     df = pd.DataFrame(req.data)
+    if req.target not in df.columns:
+        _fail(400, f"Target column '{req.target}' not found in data")
+
+    feature_engineer: Optional[FeatureEngineer] = None
+    if req.pipeline:
+        # `features` names columns the recipe produces (e.g. 'income_log'),
+        # not columns present in the raw `data` -- validated after the recipe
+        # runs, below, instead of here. Fit on the feature columns only: the
+        # target must never be an input the recipe can touch, and excluding
+        # it here is also what keeps feature_engineer.input_columns_ (below,
+        # persisted as `raw_columns`) from demanding the target back at
+        # predict time, when no caller has it.
+        feature_engineer = FeatureEngineer(req.pipeline)
+        raw_features = df.drop(columns=[req.target], errors='ignore')
+        try:
+            feature_engineer.fit(raw_features)
+            engineered = feature_engineer.transform(raw_features)
+        except Exception as e:
+            _fail(422, f"Feature pipeline failed: {e}")
+        engineered[req.target] = df[req.target]
+        df = engineered
+
     missing = [f for f in req.features if f not in df.columns]
     if missing:
         _fail(400, f"Feature column(s) not found: {missing}")
-    if req.target not in df.columns:
-        _fail(400, f"Target column '{req.target}' not found in data")
 
     numeric_features, categorical_features = _split_feature_types(df, req.features)
     X, y, label_encoder = _prepare_xy(df, req.target, req.features, req.task, numeric_features)
@@ -351,6 +379,11 @@ def train_model(model_id: str, req: TrainRequest):
         'task': req.task,
         'features': req.features,
         'background': background,
+        # None when no Feature Engineering recipe was configured -- predict
+        # then reads `features` straight off incoming rows, same as before
+        # this existed.
+        'feature_engineer': feature_engineer,
+        'raw_columns': feature_engineer.input_columns_ if feature_engineer else req.features,
     }
     try:
         artifact_uri = model_store.save_pipeline(model_id, artifact)
@@ -377,12 +410,24 @@ def predict_model(model_id: str, req: PredictRequest):
     task: Task = artifact['task']
     features: list[str] = artifact['features']
     background: pd.DataFrame = artifact.get('background')
+    feature_engineer: Optional[FeatureEngineer] = artifact.get('feature_engineer')
+    raw_columns: list[str] = artifact.get('raw_columns') or features
 
     rows_df = pd.DataFrame(req.rows)
-    missing = [f for f in features if f not in rows_df.columns]
+    missing = [f for f in raw_columns if f not in rows_df.columns]
     if missing:
         _fail(400, f"Row(s) missing required feature(s): {missing}")
-    X = rows_df[features]
+
+    # A model trained with a Feature Engineering recipe expects rows in that
+    # recipe's RAW columns, not its output columns -- re-derive the same
+    # engineered columns here, with the training-time fitted parameters
+    # (medians, box-cox lambdas, category codes, ...) feature_engineer already
+    # holds, rather than the caller trying to reproduce them.
+    engineered = feature_engineer.transform(rows_df[raw_columns]) if feature_engineer is not None else rows_df
+    missing_engineered = [f for f in features if f not in engineered.columns]
+    if missing_engineered:
+        _fail(422, f"Feature pipeline did not produce required column(s): {missing_engineered}")
+    X = engineered[features]
 
     try:
         raw_pred = pipeline.predict(X)

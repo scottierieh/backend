@@ -56,6 +56,9 @@ DATE_VALUE = re.compile(r'^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|^\d{1,2}[-/.]\d{1,2}[-/
 ID_UNIQUE_RATIO = 0.95
 # At or below this many distinct values a numeric target is still a class label.
 MAX_CLASSES = 15
+# Enough shares to describe a column at a glance; the rest folds into 'other'
+# rather than becoming a legend nobody reads.
+TOP_CATEGORIES = 6
 
 
 def _infer_kind(name: str, series: pd.Series) -> str:
@@ -127,6 +130,29 @@ def _profile_columns(df: pd.DataFrame, bins: int) -> List[Dict[str, Any]]:
             'unique': int(series.nunique(dropna=True)),
         }
 
+        # Category shares and a date range. Without these the Data screen's
+        # ledger has an empty Distribution cell for every non-numeric column,
+        # and it will not fill one in locally: a second implementation of the
+        # same statistic is a second thing that can disagree with this one.
+        if kind == 'categorical':
+            counts = series.dropna().astype(str).value_counts()
+            total = int(counts.sum())
+            if total:
+                head = counts.head(TOP_CATEGORIES)
+                col['top'] = [
+                    {'value': str(v), 'count': int(c), 'pct': c / total * 100}
+                    for v, c in head.items()
+                ]
+                rest = total - int(head.sum())
+                if rest > 0:
+                    col['other'] = {'count': rest, 'pct': rest / total * 100}
+
+        if kind == 'date':
+            parsed = pd.to_datetime(series, errors='coerce').dropna()
+            if not parsed.empty:
+                col['first'] = parsed.min().isoformat()
+                col['last'] = parsed.max().isoformat()
+
         if kind == 'numeric':
             nums = pd.to_numeric(series, errors='coerce').dropna()
             if not nums.empty:
@@ -139,6 +165,11 @@ def _profile_columns(df: pd.DataFrame, bins: int) -> List[Dict[str, Any]]:
 
                 col.update({
                     'mean': float(nums.mean()),
+                    # Fisher-Pearson skew. The Features screen suggests a log or
+                    # Yeo-Johnson from this rather than from a rule of thumb, and
+                    # computing it in the browser would be a second
+                    # implementation of the same number.
+                    'skew': float(nums.skew()) if len(nums) > 2 else 0.0,
                     # Population sd, matching how the rate is described to the reader.
                     'std': float(nums.std(ddof=0)),
                     'min': float(nums.min()),

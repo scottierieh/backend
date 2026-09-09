@@ -73,6 +73,9 @@ Task = Literal['classification', 'regression']
 BACKGROUND_SAMPLE_SIZE = 50
 BEESWARM_SAMPLE_SIZE = 100
 MIN_TRAINING_ROWS = 10
+# A score on a handful of rows is noise wearing a decimal point. The AutoML
+# screen seals 20% of the table, so this only bites on very small uploads.
+MIN_HOLDOUT_ROWS = 20
 
 
 class TrainRequest(BaseModel):
@@ -88,6 +91,14 @@ class TrainRequest(BaseModel):
     # See feature_pipeline.py for why this has to be fit here rather than
     # trusting whatever the frontend already applied client-side.
     pipeline: Optional[list[dict[str, Any]]] = None
+    # Rows to score the trained model on, instead of splitting `data`
+    # internally. Model Lab's AutoML screen seals a final test set before it
+    # starts, chooses a model without ever sending those rows, and then asks
+    # for one score on them -- so the number it reports was not the maximum of
+    # thirteen tries on the same split. Same columns as `data`, target
+    # included. Omitted keeps the internal 80/20 split, so existing callers
+    # are unaffected.
+    holdout: Optional[list[dict[str, Any]]] = None
 
 
 class PredictRequest(BaseModel):
@@ -343,20 +354,52 @@ def train_model(model_id: str, req: TrainRequest):
 
     # Honest metrics from a held-out split first...
     metrics: dict[str, float] = {}
+    holdout_used = False
     try:
-        stratify = y if req.task == 'classification' and len(set(y)) > 1 else None
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=stratify,
-        )
+        if req.holdout:
+            # Caller supplied the evaluation rows. They go through the same
+            # recipe and the same _prepare_xy as training, or the score would
+            # be measured on differently shaped data than the model saw.
+            hdf = pd.DataFrame(req.holdout)
+            if req.target not in hdf.columns:
+                _fail(400, f"Holdout rows are missing the target column '{req.target}'")
+            if feature_engineer is not None:
+                raw_holdout = hdf.drop(columns=[req.target], errors='ignore')
+                try:
+                    engineered_holdout = feature_engineer.transform(raw_holdout)
+                except Exception as e:
+                    _fail(422, f"Feature pipeline failed on holdout rows: {e}")
+                engineered_holdout[req.target] = hdf[req.target]
+                hdf = engineered_holdout
+            h_missing = [f for f in req.features if f not in hdf.columns]
+            if h_missing:
+                _fail(400, f"Holdout rows are missing feature column(s): {h_missing}")
+            X_test, y_test, _ = _prepare_xy(hdf, req.target, req.features, req.task, numeric_features)
+            if len(X_test) < MIN_HOLDOUT_ROWS:
+                _fail(400, f"Not enough valid holdout rows to score ({len(X_test)}, need >= {MIN_HOLDOUT_ROWS})")
+            X_train, y_train = X, y
+            holdout_used = True
+        else:
+            stratify = y if req.task == 'classification' and len(set(y)) > 1 else None
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=stratify,
+            )
         eval_pipeline = _build_pipeline(req.algorithm, req.task, numeric_features, categorical_features)
         eval_pipeline.fit(X_train, y_train)
         y_pred = eval_pipeline.predict(X_test)
         if req.task == 'classification':
             metrics['accuracy'] = _to_native_type(accuracy_score(y_test, y_pred))
             metrics['f1'] = _to_native_type(f1_score(y_test, y_pred, average='weighted'))
+            # The AutoML leaderboard ranks an imbalanced target on macro F1, so
+            # a final score reported in a different average would not be
+            # comparable to the ranking it is meant to confirm.
+            metrics['f1_macro'] = _to_native_type(f1_score(y_test, y_pred, average='macro'))
         else:
             metrics['r2'] = _to_native_type(r2_score(y_test, y_pred))
             metrics['mae'] = _to_native_type(mean_absolute_error(y_test, y_pred))
+        metrics['n_eval'] = float(len(X_test))
+    except HTTPException:
+        raise  # a bad holdout is the caller's error, not a metric we can skip
     except Exception:
         pass  # best-effort — register-model.ts falls back to the run's own metrics if this is empty
 
@@ -393,6 +436,9 @@ def train_model(model_id: str, req: TrainRequest):
     return {
         'artifactUri': artifact_uri, 'metrics': metrics or None, 'shapBeeswarm': shap_beeswarm,
         'featureBaseline': feature_baseline,
+        # Lets the caller tell "scored on the rows I sealed" from "scored on an
+        # internal split", which are not the same claim.
+        'evaluatedOn': 'holdout' if holdout_used else 'internal_split',
     }
 
 

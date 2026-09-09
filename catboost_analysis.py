@@ -334,7 +334,19 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
     is exactly the right behavior for a categorical feature — a
     from-scratch test against a fitted CatBoostClassifier with a real
     categorical column returned the actual category values as the grid and
-    sensible (non-crashing, non-garbage) average predictions."""
+    sensible (non-crashing, non-garbage) average predictions. Returns
+    {grid, average, individual} — PDP averaged over a sample of up to 200
+    rows, plus up to 30 of those rows' individual ICE curves.
+
+    kind='both' (needed for ICE) fails on a *numeric* feature here with
+    TypeError("can't multiply sequence by non-int of type 'float'") —
+    verified separately, not assumed: sklearn's ICE path breaks on a numeric
+    column when the overall X array is object-dtype (forced by this script's
+    raw-string categorical columns), even though the same call with
+    kind='average' (PDP only) works fine and a *categorical* feature's ICE
+    also works fine (its grid substitution stays string-typed throughout).
+    So each feature falls back to average-only, per-feature, on that
+    TypeError rather than losing the whole response to one bad feature."""
     try:
         if feature_importance:
             sorted_indices = [
@@ -345,15 +357,28 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         else:
             sorted_indices = list(range(min(top_n, len(feature_names))))
 
+        n_rows = X_train.shape[0]
+        if n_rows > 200:
+            sample_idx = np.random.RandomState(42).choice(n_rows, size=200, replace=False)
+            X_sample = X_train[sample_idx]
+        else:
+            X_sample = X_train
+
         out = []
         for feat_idx in sorted_indices:
-            pd_res = partial_dependence(model, X_train, [feat_idx], kind='average')
+            try:
+                pd_res = partial_dependence(model, X_sample, [feat_idx], kind='both')
+                individual_vals = pd_res['individual'][0][:30]
+            except TypeError:
+                pd_res = partial_dependence(model, X_sample, [feat_idx], kind='average')
+                individual_vals = []
             grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
             avg_vals = pd_res['average'][0]
             out.append({
                 'feature': feature_names[feat_idx],
                 'grid': [_to_native_type(v) for v in grid_vals],
                 'average': [_to_native_type(v) for v in avg_vals],
+                'individual': [[_to_native_type(v) for v in row] for row in individual_vals],
             })
         return out
     except Exception:

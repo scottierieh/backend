@@ -332,10 +332,12 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
 def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
                       feature_importance=None, top_n: int = 6):
     """Same as random_forest_analysis.py's compute_pdp_json — top-N feature
-    partial dependence as {grid, average} JSON for an interactive PDP/ICE
-    chart, not a PNG. sklearn.inspection.partial_dependence works on any
-    fitted sklearn-compatible estimator (LGBMClassifier/Regressor included),
-    so this is unchanged from the RF/XGBoost version."""
+    partial dependence as {grid, average, individual} JSON for an interactive
+    PDP/ICE chart, not a PNG. PDP averaged over a sample of up to 200 rows,
+    plus up to 30 of those rows' individual ICE curves.
+    sklearn.inspection.partial_dependence works on any fitted
+    sklearn-compatible estimator (LGBMClassifier/Regressor included), so this
+    is unchanged from the RF/XGBoost version."""
     try:
         if feature_importance:
             sorted_indices = [
@@ -346,15 +348,24 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         else:
             sorted_indices = list(range(min(top_n, len(feature_names))))
 
+        n_rows = X_train.shape[0]
+        if n_rows > 200:
+            sample_idx = np.random.RandomState(42).choice(n_rows, size=200, replace=False)
+            X_sample = X_train[sample_idx]
+        else:
+            X_sample = X_train
+
         out = []
         for feat_idx in sorted_indices:
-            pd_res = partial_dependence(model, X_train, [feat_idx], kind='average')
+            pd_res = partial_dependence(model, X_sample, [feat_idx], kind='both')
             grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
             avg_vals = pd_res['average'][0]
+            individual_vals = pd_res['individual'][0][:30]
             out.append({
                 'feature': feature_names[feat_idx],
                 'grid': [_to_native_type(v) for v in grid_vals],
                 'average': [_to_native_type(v) for v in avg_vals],
+                'individual': [[_to_native_type(v) for v in row] for row in individual_vals],
             })
         return out
     except Exception:

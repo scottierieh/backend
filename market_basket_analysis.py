@@ -1,5 +1,6 @@
 import sys
 import json
+import inspect
 import io
 import base64
 import warnings
@@ -17,6 +18,32 @@ from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
 
 warnings.filterwarnings("ignore")
+
+# mlxtend changed association_rules()'s signature in 0.24: num_itemsets — the
+# number of transactions in the original data — became a required positional
+# argument. The call below was written against 0.23 and had no such argument,
+# so on any image that resolved a newer mlxtend than requirements.txt pins,
+# this endpoint failed outright with
+#     association_rules() missing 1 required positional argument: 'num_itemsets'
+#
+# The argument is only read when null_values=True, so supplying it changes none
+# of the numbers here — checked against 0.25.0, where every metric column
+# (confidence, lift, leverage, conviction, zhangs_metric, jaccard, certainty,
+# kulczynski) matched to within 1e-15 whatever value was passed. It still has to
+# be passed by name and only where the installed version has the parameter,
+# because 0.23 does not accept it at all and this has to keep working on both.
+#
+# The value is the transaction count, len(onehot) — not len(frequent_itemsets),
+# which is the tempting misread of the name and the wrong number.
+_ACCEPTS_NUM_ITEMSETS = "num_itemsets" in inspect.signature(association_rules).parameters
+
+
+def _rules(frequent_itemsets, n_transactions, min_threshold):
+    kwargs = {"metric": "confidence", "min_threshold": min_threshold}
+    if _ACCEPTS_NUM_ITEMSETS:
+        kwargs["num_itemsets"] = int(n_transactions)
+    return association_rules(frequent_itemsets, **kwargs)
+
 
 NETWORK_CAP = 18  # top-N products by frequency shown in the network / heatmap
 
@@ -134,7 +161,7 @@ def main():
 
         rules_df = pd.DataFrame()
         if not frequent_itemsets.empty:
-            rules_df = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_confidence)
+            rules_df = _rules(frequent_itemsets, len(onehot), min_confidence)
             if not rules_df.empty:
                 rules_df = rules_df.sort_values("lift", ascending=False)
 
@@ -288,7 +315,7 @@ def main():
                 fi2 = apriori(oh2, min_support=max(min_support, 0.03), use_colnames=True, max_len=3)
                 top_rule_seg = None
                 if not fi2.empty:
-                    r2 = association_rules(fi2, metric="confidence", min_threshold=min_confidence)
+                    r2 = _rules(fi2, len(oh2), min_confidence)
                     if not r2.empty:
                         r2 = r2.sort_values("lift", ascending=False)
                         row = r2.iloc[0]
@@ -316,7 +343,7 @@ def main():
                 fi3 = apriori(oh3, min_support=max(min_support, 0.03), use_colnames=True, max_len=3)
                 top_rule_period = None
                 if not fi3.empty:
-                    r3 = association_rules(fi3, metric="confidence", min_threshold=min_confidence)
+                    r3 = _rules(fi3, len(oh3), min_confidence)
                     if not r3.empty:
                         r3 = r3.sort_values("lift", ascending=False)
                         row = r3.iloc[0]

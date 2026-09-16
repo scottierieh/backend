@@ -20,7 +20,7 @@ import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, KFold
 from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.inspection import permutation_importance
+from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.svm import SVC, SVR
@@ -52,7 +52,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
 
 
 warnings.filterwarnings('ignore')
@@ -388,6 +388,11 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type:
             for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
         ]
         shap_samples = _shap_samples_from_explanation(shap_values, X_sample, feature_names)
+        # The same information for many more rows, as columns: a beeswarm of
+        # 8 dots says nothing about a distribution and 8 points are not a
+        # dependence cloud.
+        shap_matrix_data = shap_matrix(
+            getattr(shap_values, 'values', shap_values), X_sample, feature_names, getattr(shap_values, 'base_values', 0.0))
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -399,9 +404,49 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str], task_type:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_base64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'shap_matrix': shap_matrix_data, 'error': None}
     except Exception as e:
         return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
+
+
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      feature_importance: Optional[List[Dict]] = None,
+                      top_n: int = 6) -> Optional[List[Dict]]:
+    """Same as random_forest_analysis.py's compute_pdp_json — top-N feature
+    selection, PDP averaged over a sample of up to 200 rows plus up to 30
+    individual ICE curves on the same grid, as JSON rather than a PNG."""
+    try:
+        if feature_importance:
+            sorted_indices = [
+                feature_names.index(f['feature'])
+                for f in feature_importance
+                if f['feature'] in feature_names
+            ][:top_n]
+        else:
+            sorted_indices = list(range(min(top_n, len(feature_names))))
+
+        n_rows = X_train.shape[0]
+        if n_rows > 200:
+            sample_idx = np.random.RandomState(42).choice(n_rows, size=200, replace=False)
+            X_sample = X_train[sample_idx]
+        else:
+            X_sample = X_train
+
+        out = []
+        for feat_idx in sorted_indices:
+            pd_res = partial_dependence(model, X_sample, [feat_idx], kind='both')
+            grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
+            avg_vals = pd_res['average'][0]
+            individual_vals = pd_res['individual'][0][:30]
+            out.append({
+                'feature': feature_names[feat_idx],
+                'grid': [_to_native_type(v) for v in grid_vals],
+                'average': [_to_native_type(v) for v in avg_vals],
+                'individual': [[_to_native_type(v) for v in row] for row in individual_vals],
+            })
+        return out
+    except Exception:
+        return None
 
 
 def perform_cross_validation(X, y, task_type: str, params: dict, cv_folds: int) -> Dict[str, Any]:
@@ -694,7 +739,30 @@ def main():
 
         result = train_ensemble(X_train, X_test, y_train, y_test, task_type, params, feature_cols)
         perm_importance = compute_permutation_importance(result['model'], X_test, y_test, feature_cols)
+        feature_importance = _perm_to_feature_importance(perm_importance)
         shap_result = compute_shap(result['model'], X_test, feature_cols, task_type)
+
+        pdp_data = compute_pdp_json(result['model'], X_train, feature_cols, feature_importance, top_n=6)
+
+        # Accumulated Local Effects, for the same features the PDP covers.
+        # PDP moves a feature across its whole range while the others keep the
+        # values they have, which manufactures rows the data never contained
+        # when the predictors are correlated -- and in research data they
+        # usually are. ALE only asks about a row against the edges of the bin
+        # it already sits in, so nothing is scored off the data's own joint
+        # distribution. Both are returned; the screen offers ALE as the more
+        # cautious reading rather than replacing PDP with it.
+        ale_data = []
+        try:
+            _ale_feats = [feature_cols.index(d['feature']) for d in (pdp_data or [])
+                          if d.get('feature') in feature_cols]
+            if _ale_feats:
+                _ale_predict = (result['model'].predict_proba if task_type == 'classification'
+                                and hasattr(result['model'], 'predict_proba') else result['model'].predict)
+                ale_data = ale_1d(_ale_predict, X_train, feature_cols, _ale_feats)
+        except Exception:
+            ale_data = []
+
         cv_result = perform_cross_validation(X_array, y, task_type, params, cv_folds)
 
         meta_learner_weights = compute_meta_learner_weights(result['model'], result['base_estimator_names']) if ensemble_method == 'stacking' else []
@@ -736,13 +804,19 @@ def main():
             'individual_scores': result['individual_scores'],
             'metrics': result['metrics'],
             'perm_importance': perm_importance,
-            'feature_importance': _perm_to_feature_importance(perm_importance),
+            'feature_importance': feature_importance,
             'meta_learner_weights': meta_learner_weights,
             'base_model_correlations': base_model_correlations,
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
             'shap_samples': shap_result.get('shap_samples'),
+            'shap_matrix': shap_result.get('shap_matrix'),
+            # How to read the contributions above: what unit they are in, and
+            # which class they explain. Not derivable from the numbers.
+            **shap_contract(SHAP_SPACE_PROBABILITY, task_type, result.get('class_labels')),
             'shap_error': shap_result.get('error'),
+            'pdp': pdp_data,
+            'ale': ale_data,
             'cv_results': cv_result,
             'comparison_plot': comparison_plot,
             'interpretation': interpretation,

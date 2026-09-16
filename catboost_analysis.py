@@ -30,7 +30,9 @@ from sklearn.metrics import (
 )
 from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples
+from analysis_common import (_compute_multiclass_auc, _to_native_type, _fig_to_base64,
+                             build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
+                             ale_1d, shap_matrix)
 
 
 warnings.filterwarnings('ignore')
@@ -261,7 +263,7 @@ def compute_permutation_importance(model, X_test, y_test, feature_names: List[st
         return []
 
 
-def _catboost_shap_samples(arr, feature_names: List[str], max_samples: int = 8):
+def _catboost_shap_samples(arr, feature_names: List[str], max_samples: int = 8, X_arr=None):
     """CatBoost's native ShapValues array already carries the bias term as its last
     column (arr[..., -1]) -- no separate explainer.expected_value to fetch. Binary/
     regression is (n_samples, n_features+1); multiclass is (n_samples, n_classes,
@@ -277,11 +279,28 @@ def _catboost_shap_samples(arr, feature_names: List[str], max_samples: int = 8):
         n = min(max_samples, arr.shape[0])
         if n == 0:
             return None
+        values = None
+        if X_arr is not None:
+            try:
+                values = np.asarray(getattr(X_arr, 'values', X_arr))
+                if values.ndim != 2 or values.shape[1] != len(feature_names):
+                    values = None
+            except Exception:
+                values = None
         return [
             {
                 'base_value': _to_native_type(arr[i, -1]),
                 'contributions': [
-                    {'feature': feature_names[j], 'shap': _to_native_type(arr[i, j])}
+                    {
+                        'feature': feature_names[j],
+                        # The row's own value, when the caller passed the frame.
+                        # Without it a waterfall bar cannot be annotated with
+                        # what the feature actually was, and a What-if screen
+                        # has no row to re-score -- every other script's samples
+                        # carry it, and this one's silently did not.
+                        **({'value': _to_native_type(values[i, j])} if values is not None else {}),
+                        'shap': _to_native_type(arr[i, j]),
+                    }
                     for j in range(len(feature_names))
                 ],
             }
@@ -290,7 +309,7 @@ def _catboost_shap_samples(arr, feature_names: List[str], max_samples: int = 8):
     except Exception:
         return None
 
-def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
+def compute_shap(model, test_pool, feature_names: List[str], X_values=None) -> Dict:
     """CatBoost computes exact SHAP values natively (no `shap` package needed)."""
     try:
         raw = model.get_feature_importance(test_pool, type='ShapValues')
@@ -306,7 +325,15 @@ def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
             {'feature': name, 'mean_abs_shap': _to_native_type(val)}
             for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
         ]
-        shap_samples = _catboost_shap_samples(arr, feature_names)
+        shap_samples = _catboost_shap_samples(arr, feature_names, X_arr=X_values)
+        # The same information for many more rows, for a beeswarm and a
+        # dependence cloud. CatBoost's array is (n, n_features + 1) with the
+        # bias term last, so the contributions are everything but that column
+        # and the bias is the base value.
+        _cat_mat = arr[:, 1, :] if arr.ndim == 3 else arr
+        shap_matrix_data = shap_matrix(
+            _cat_mat[:, :-1], X_values, feature_names,
+            float(_cat_mat[0, -1]) if _cat_mat.shape[0] else 0.0)
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -318,7 +345,8 @@ def compute_shap(model, test_pool, feature_names: List[str]) -> Dict:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_base64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot,
+                'shap_samples': shap_samples, 'shap_matrix': shap_matrix_data, 'error': None}
     except Exception as e:
         return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
@@ -691,10 +719,28 @@ def main():
 
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else y_test
         perm_importance = compute_permutation_importance(model, X_test, y_test_for_perm, feature_cols)
-        shap_result = compute_shap(model, result['test_pool'], feature_cols)
+        shap_result = compute_shap(model, result['test_pool'], feature_cols, X_values=X_test)
         interaction_importance = compute_interaction_importance(model, result['test_pool'], feature_cols)
         pdp_data = compute_pdp_json(model, X_train.values, feature_cols, feature_importance, top_n=6)
 
+        # Accumulated Local Effects, for the same features the PDP covers.
+        # PDP moves a feature across its whole range while the others keep the
+        # values they have, which manufactures rows the data never contained
+        # when the predictors are correlated -- and in research data they
+        # usually are. ALE only asks about a row against the edges of the bin
+        # it already sits in, so nothing is scored off the data's own joint
+        # distribution. Both are returned; the screen offers ALE as the more
+        # cautious reading rather than replacing PDP with it.
+        ale_data = []
+        try:
+            _ale_feats = [feature_cols.index(d['feature']) for d in (pdp_data or [])
+                          if d.get('feature') in feature_cols]
+            if _ale_feats:
+                _ale_predict = (model.predict_proba if task_type == 'classification'
+                                and hasattr(model, 'predict_proba') else model.predict)
+                ale_data = ale_1d(_ale_predict, X_train.values, feature_cols, _ale_feats)
+        except Exception:
+            ale_data = []
         cv_result = perform_cross_validation(X, y, params, task_type, cv_folds, cat_feature_indices)
 
         importance_plot = generate_feature_importance_plot(feature_importance)
@@ -737,6 +783,10 @@ def main():
             'shap_importance': shap_result.get('shap_importance'),
             'shap_plot': shap_result.get('shap_plot'),
             'shap_samples': shap_result.get('shap_samples'),
+            'shap_matrix': shap_result.get('shap_matrix'),
+            # How to read the contributions above: what unit they are in, and
+            # which class they explain. Not derivable from the numbers.
+            **shap_contract(SHAP_SPACE_LOG_ODDS, task_type, result.get('class_labels')),
             'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'best_iteration': result['best_iteration'],
@@ -745,6 +795,7 @@ def main():
             'interpretation': interpretation,
             'prediction_examples': prediction_examples,
             'pdp': pdp_data,
+            'ale': ale_data,
         }
 
         if task_type == 'classification':

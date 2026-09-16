@@ -35,7 +35,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import shap
-from analysis_common import _compute_multiclass_auc, build_error_examples
+from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d
 
 
 warnings.filterwarnings('ignore')
@@ -276,6 +276,14 @@ def compute_shap(model, X_train: np.ndarray, X_test: np.ndarray,
             shap_importance.append({'feature': name, 'mean_abs_shap': _to_native(val)})
         shap_importance.sort(key=lambda x: x['mean_abs_shap'], reverse=True)
         shap_samples = _shap_samples_from_matrix(shap_values, X_test, feature_names, explainer.expected_value)
+        # The same information for many more rows, as columns: a beeswarm of
+        # 8 dots says nothing about a distribution and 8 points are not a
+        # dependence cloud.
+        shap_matrix_data = shap_matrix(
+            getattr(shap_values, 'values', shap_values), X_test, feature_names, explainer.expected_value)
+        # Every feature pair's joint contribution, strongest first. Costs
+        # O(n*p^2) traversals, so it runs on a subsample -- enough to rank.
+        shap_interaction = shap_interaction_top(explainer, X_test, feature_names)
 
         # Bar plot
         fig, ax = plt.subplots(figsize=(10, max(5, len(feature_names) * 0.4)))
@@ -294,7 +302,7 @@ def compute_shap(model, X_train: np.ndarray, X_test: np.ndarray,
         plt.tight_layout()
         shap_plot = _fig_to_b64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'shap_matrix': shap_matrix_data, 'shap_interaction': shap_interaction}
     except Exception as e:
         return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
@@ -918,8 +926,15 @@ def main():
         if task_type == 'auto':
             task_type = detect_task_type(y)
 
+        # The original class names, kept before they are encoded away. Everything
+        # downstream sees 0/1, so `class_labels` in the result is ['0','1'] and
+        # a screen naming the explained class would print "1" instead of the
+        # outcome the reader typed.
+        original_class_names = None
         if task_type == 'classification' and not pd.api.types.is_numeric_dtype(y):
-            y = pd.Series(LabelEncoder().fit_transform(y))
+            _target_le = LabelEncoder()
+            y = pd.Series(_target_le.fit_transform(y))
+            original_class_names = [str(c) for c in _target_le.classes_]
 
         criterion = _fix_criterion(criterion, task_type)
 
@@ -977,6 +992,24 @@ def main():
         shap_result = compute_shap(model, X_train, X_test, feature_cols, task_type)
         pdp_data = compute_pdp_json(model, X_train, feature_cols, top_n=6)
 
+        # Accumulated Local Effects, for the same features the PDP covers.
+        # PDP moves a feature across its whole range while the others keep the
+        # values they have, which manufactures rows the data never contained
+        # when the predictors are correlated -- and in research data they
+        # usually are. ALE only asks about a row against the edges of the bin
+        # it already sits in, so nothing is scored off the data's own joint
+        # distribution. Both are returned; the screen offers ALE as the more
+        # cautious reading rather than replacing PDP with it.
+        ale_data = []
+        try:
+            _ale_feats = [feature_cols.index(d['feature']) for d in (pdp_data or [])
+                          if d.get('feature') in feature_cols]
+            if _ale_feats:
+                _ale_predict = (model.predict_proba if task_type == 'classification'
+                                and hasattr(model, 'predict_proba') else model.predict)
+                ale_data = ale_1d(_ale_predict, X_train, feature_cols, _ale_feats)
+        except Exception:
+            ale_data = []
         # ── PDP (top 6 features) ──
         top6_names = [d['feature'] for d in feature_importance[:6]]
         top6_idx   = [feature_cols.index(n) for n in top6_names if n in feature_cols]
@@ -1036,8 +1069,15 @@ def main():
             'shap_importance':    shap_result.get('shap_importance', []),
             'shap_plot':          shap_result.get('shap_plot'),
             'shap_samples':       shap_result.get('shap_samples'),
+            'shap_matrix':       shap_result.get('shap_matrix'),
+            'shap_interaction':       shap_result.get('shap_interaction'),
+            # How to read the contributions above: what unit they are in, and
+            # which class they explain. Not derivable from the numbers.
+            **shap_contract(SHAP_SPACE_PROBABILITY, task_type,
+                            original_class_names or result.get('class_labels')),
             'pdp_plot':           pdp_plot,
             'pdp':                pdp_data,
+            'ale':                ale_data,
             'tree_rules':         tree_rules,
             'interpretation':     interpretation,
         }

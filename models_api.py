@@ -320,6 +320,7 @@ def train_model(model_id: str, req: TrainRequest):
         _fail(400, f"Target column '{req.target}' not found in data")
 
     feature_engineer: Optional[FeatureEngineer] = None
+    raw_baseline: Optional[dict] = None
     if req.pipeline:
         # `features` names columns the recipe produces (e.g. 'income_log'),
         # not columns present in the raw `data` -- validated after the recipe
@@ -335,6 +336,15 @@ def train_model(model_id: str, req: TrainRequest):
             engineered = feature_engineer.transform(raw_features)
         except Exception as e:
             _fail(422, f"Feature pipeline failed: {e}")
+        # Kept for the response. /predict demands rows in these columns -- the
+        # recipe's INPUTS -- and the caller has no way to know what they are:
+        # `features` names the recipe's outputs ('income_log', 'city_seoul'),
+        # and asking for those at predict time earns a 400 naming the raw
+        # columns it wanted instead. Any model with a recipe was unservable
+        # for exactly that reason.
+        raw_numeric, raw_categorical = _split_feature_types(
+            raw_features, list(raw_features.columns))
+        raw_baseline = _compute_feature_baseline(raw_features, raw_numeric, raw_categorical)
         engineered[req.target] = df[req.target]
         df = engineered
 
@@ -436,6 +446,11 @@ def train_model(model_id: str, req: TrainRequest):
     return {
         'artifactUri': artifact_uri, 'metrics': metrics or None, 'shapBeeswarm': shap_beeswarm,
         'featureBaseline': feature_baseline,
+        # The columns /predict will demand, and their distributions, so the
+        # caller can build an input form for the right columns. Absent when
+        # there was no recipe, and then `features` already is that list.
+        'rawColumns': artifact['raw_columns'] if feature_engineer else None,
+        'rawBaseline': raw_baseline if feature_engineer else None,
         # Lets the caller tell "scored on the rows I sealed" from "scored on an
         # internal split", which are not the same claim.
         'evaluatedOn': 'holdout' if holdout_used else 'internal_split',

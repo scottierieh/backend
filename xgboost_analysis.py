@@ -29,7 +29,7 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d
 
 
 warnings.filterwarnings('ignore')
@@ -369,6 +369,14 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
                                     key=lambda x: x[1], reverse=True)
         ]
         shap_samples = _shap_samples_from_matrix(sv, X_test, feature_names, explainer.expected_value)
+        # The same information for many more rows, as columns: a beeswarm of
+        # 8 dots says nothing about a distribution and 8 points are not a
+        # dependence cloud.
+        shap_matrix_data = shap_matrix(
+            getattr(sv, 'values', sv), X_test, feature_names, explainer.expected_value)
+        # Every feature pair's joint contribution, strongest first. Costs
+        # O(n*p^2) traversals, so it runs on a subsample -- enough to rank.
+        shap_interaction = shap_interaction_top(explainer, X_test, feature_names)
 
         fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
         feats = [d['feature'] for d in shap_importance][::-1]
@@ -380,7 +388,7 @@ def compute_shap(model, X_test: np.ndarray, feature_names: List[str]) -> Dict:
         fig.subplots_adjust(left=0.20)
         shap_plot = _fig_to_base64(fig)
 
-        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'error': None}
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'shap_matrix': shap_matrix_data, 'shap_interaction': shap_interaction, 'error': None}
     except Exception as e:
         return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
 
@@ -914,6 +922,24 @@ def main():
         pdp_plot = compute_pdp(model, X_train.values, feature_cols, feature_importance, top_n=6)
         pdp_data = compute_pdp_json(model, X_train.values, feature_cols, feature_importance, top_n=6)
 
+        # Accumulated Local Effects, for the same features the PDP covers.
+        # PDP moves a feature across its whole range while the others keep the
+        # values they have, which manufactures rows the data never contained
+        # when the predictors are correlated -- and in research data they
+        # usually are. ALE only asks about a row against the edges of the bin
+        # it already sits in, so nothing is scored off the data's own joint
+        # distribution. Both are returned; the screen offers ALE as the more
+        # cautious reading rather than replacing PDP with it.
+        ale_data = []
+        try:
+            _ale_feats = [feature_cols.index(d['feature']) for d in (pdp_data or [])
+                          if d.get('feature') in feature_cols]
+            if _ale_feats:
+                _ale_predict = (model.predict_proba if task_type == 'classification'
+                                and hasattr(model, 'predict_proba') else model.predict)
+                ale_data = ale_1d(_ale_predict, X_train.values, feature_cols, _ale_feats)
+        except Exception:
+            ale_data = []
         class_names = result.get('class_labels') if task_type == 'classification' else None
         tree_rules = extract_tree_rules(model, feature_cols, task_type, class_names)
 
@@ -956,9 +982,15 @@ def main():
             'shap_plot': shap_result.get('shap_plot'),
             'shap_importance': shap_result.get('shap_importance'),
             'shap_samples': shap_result.get('shap_samples'),
+            'shap_matrix': shap_result.get('shap_matrix'),
+            'shap_interaction': shap_result.get('shap_interaction'),
+            # How to read the contributions above: what unit they are in, and
+            # which class they explain. Not derivable from the numbers.
+            **shap_contract(SHAP_SPACE_LOG_ODDS, task_type, result.get('class_labels')),
             'shap_error': shap_result.get('error'),
             'pdp_plot': pdp_plot,
             'pdp': pdp_data,
+            'ale': ale_data,
             'tree_rules': tree_rules,
             'interpretation': interpretation,
             'best_iteration': result.get('best_iteration'),

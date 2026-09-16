@@ -14,7 +14,8 @@ from scipy import stats
 import io
 import base64
 import warnings
-from analysis_common import build_error_examples
+from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
+                             shap_matrix, shap_interaction_top, ale_1d)
 
 warnings.filterwarnings('ignore')
 
@@ -417,6 +418,9 @@ def main():
         # and GradientBoostingClassifier, but can be slow or fail on some inputs, so a failure here
         # must not break the rest of the response (matches random_forest_analysis.py / xgboost_analysis.py).
         shap_importance = []
+        shap_samples = None
+        shap_matrix_data = None
+        shap_interaction = []
         try:
             import shap as _shap
             explainer = _shap.TreeExplainer(model)
@@ -443,8 +447,50 @@ def main():
             ax.grid(True, alpha=0.3)
             plt.tight_layout()
             plots.append({'label': 'SHAP Feature Importance', 'image': _fig_to_data_url(fig)})
+
+            # Per-row samples, for a waterfall. Every other tree script here
+            # returns these and this one did not, so the Explain screen had
+            # nothing to draw for GBM while drawing it for its neighbours.
+            # Reuses the SHAP values already computed above -- no second
+            # explainer call. Binary classification takes the positive class's
+            # slice, the same convention as the ROC curve and confusion matrix;
+            # 3+ classes are skipped rather than guessing which one to show.
+            try:
+                base = explainer.expected_value
+                mat = None
+                if sv.dtype != object and sv.ndim == 3:
+                    if sv.shape[2] == 2:
+                        mat = sv[:, :, 1]
+                        base = np.ravel(base)[1] if np.size(base) > 1 else np.ravel(base)[0]
+                elif sv.dtype != object and sv.ndim == 2:
+                    mat = sv
+                    base = np.ravel(base)[0]
+                if mat is not None:
+                    X_arr = np.asarray(getattr(X_test, 'values', X_test))
+                    n = min(8, mat.shape[0])
+                    shap_samples = [
+                        {
+                            'base_value': _to_native_type(float(base)),
+                            'contributions': [
+                                {
+                                    'feature': feature_names[j],
+                                    'value': _to_native_type(X_arr[i, j]),
+                                    'shap': _to_native_type(mat[i, j]),
+                                }
+                                for j in range(len(feature_names))
+                            ],
+                        }
+                        for i in range(n)
+                    ]
+                    shap_matrix_data = shap_matrix(mat, X_test, feature_names, base)
+                    shap_interaction = shap_interaction_top(explainer, X_test, feature_names)
+            except Exception:
+                shap_samples = None
         except Exception:
             shap_importance = []
+            shap_samples = None
+            shap_matrix_data = None
+            shap_interaction = []
 
         try:
             from guardrails import compute_guardrails
@@ -463,6 +509,17 @@ def main():
             # in gbm-page.tsx -- the SHAP Feature Importance table reads it from here, not
             # from inside 'results'.
             'shap_importance': shap_importance,
+            'shap_samples': shap_samples,
+            'shap_matrix': shap_matrix_data,
+            'shap_interaction': shap_interaction,
+            # How to read those contributions. GradientBoosting's TreeExplainer
+            # works on the raw margin, so for a classifier they are log-odds --
+            # measured, not assumed (scripts/check-shap-space.py).
+            **shap_contract(
+                SHAP_SPACE_LOG_ODDS,
+                'classification' if problem_type == 'classification' else 'regression',
+                (results.get('metrics') or {}).get('class_labels'),
+            ),
         }
 
         print(json.dumps(response, default=_to_native_type))

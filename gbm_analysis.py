@@ -15,7 +15,9 @@ import io
 import base64
 import warnings
 from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
-                             shap_matrix, shap_interaction_top, ale_1d)
+                             shap_matrix, shap_interaction_top, ale_1d, _to_native_type)
+from sklearn.inspection import partial_dependence
+from typing import List, Dict, Optional
 
 warnings.filterwarnings('ignore')
 
@@ -53,6 +55,49 @@ def perform_cross_validation(X, y, problem_type, n_estimators, learning_rate, ma
         'cv_std': _to_native_type(np.std(scores)),
         'cv_folds': cv_folds,
     }
+
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      feature_importance: Optional[List[Dict]] = None,
+                      top_n: int = 6) -> Optional[List[Dict]]:
+    """Same as random_forest_analysis.py's compute_pdp_json -- top-N feature
+    selection, PDP averaged over a sample of up to 200 rows plus up to 30
+    individual ICE curves on the same grid, as JSON rather than a PNG.
+
+    This script was the last of the nine without it, so its Explain screen had
+    an empty variable-effect tab while its neighbours did not."""
+    try:
+        if feature_importance:
+            sorted_indices = [
+                feature_names.index(f['feature'])
+                for f in feature_importance
+                if f['feature'] in feature_names
+            ][:top_n]
+        else:
+            sorted_indices = list(range(min(top_n, len(feature_names))))
+
+        n_rows = X_train.shape[0]
+        if n_rows > 200:
+            sample_idx = np.random.RandomState(42).choice(n_rows, size=200, replace=False)
+            X_sample = X_train[sample_idx]
+        else:
+            X_sample = X_train
+
+        out = []
+        for feat_idx in sorted_indices:
+            pd_res = partial_dependence(model, X_sample, [feat_idx], kind='both')
+            grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
+            avg_vals = pd_res['average'][0]
+            individual_vals = pd_res['individual'][0][:30]
+            out.append({
+                'feature': feature_names[feat_idx],
+                'grid': [_to_native_type(v) for v in grid_vals],
+                'average': [_to_native_type(v) for v in avg_vals],
+                'individual': [[_to_native_type(v) for v in row] for row in individual_vals],
+            })
+        return out
+    except Exception:
+        return None
+
 
 def main():
     try:
@@ -492,6 +537,25 @@ def main():
             shap_matrix_data = None
             shap_interaction = []
 
+        _X_train_arr = np.asarray(getattr(X_train, 'values', X_train))
+        pdp_data = compute_pdp_json(model, _X_train_arr, feature_names, feature_importance, top_n=6)
+
+        # Accumulated Local Effects, over the same features the PDP covers.
+        # PDP moves a feature across its whole range while the others keep the
+        # values they have, which manufactures rows the data never contained
+        # when the predictors are correlated; ALE only asks about a row against
+        # the edges of the bin it already sits in.
+        ale_data = []
+        try:
+            _ale_feats = [feature_names.index(d['feature']) for d in (pdp_data or [])
+                          if d.get('feature') in feature_names]
+            if _ale_feats:
+                _ale_predict = (model.predict_proba if problem_type == 'classification'
+                                and hasattr(model, 'predict_proba') else model.predict)
+                ale_data = ale_1d(_ale_predict, _X_train_arr, feature_names, _ale_feats)
+        except Exception:
+            ale_data = []
+
         try:
             from guardrails import compute_guardrails
             _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2')}
@@ -512,6 +576,8 @@ def main():
             'shap_samples': shap_samples,
             'shap_matrix': shap_matrix_data,
             'shap_interaction': shap_interaction,
+            'pdp': pdp_data,
+            'ale': ale_data,
             # How to read those contributions. GradientBoosting's TreeExplainer
             # works on the raw margin, so for a classifier they are log-odds --
             # measured, not assumed (scripts/check-shap-space.py).

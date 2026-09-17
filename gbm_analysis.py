@@ -16,7 +16,7 @@ import base64
 import warnings
 from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
                              shap_matrix, shap_interaction_top, ale_1d, _to_native_type)
-from sklearn.inspection import partial_dependence
+from sklearn.inspection import partial_dependence, permutation_importance
 from typing import List, Dict, Optional
 
 warnings.filterwarnings('ignore')
@@ -97,6 +97,24 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         return out
     except Exception:
         return None
+
+
+def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
+                                    n_repeats: int = 10, random_state: int = 42) -> List[Dict]:
+    """Same pattern as random_forest_analysis.py -- this was the third of nine
+    scripts missing it, alongside naive_bayes and discriminant_analysis."""
+    try:
+        perm = permutation_importance(model, X_test, y_test, n_repeats=n_repeats,
+                                       random_state=random_state, n_jobs=-1)
+        result = []
+        for name, mean, std in zip(feature_names, perm.importances_mean, perm.importances_std):
+            result.append({'feature': name, 'importance_mean': _to_native_type(mean), 'importance_std': _to_native_type(std)})
+        result.sort(key=lambda x: x['importance_mean'], reverse=True)
+        for i, item in enumerate(result):
+            item['rank'] = i + 1
+        return result
+    except Exception:
+        return []
 
 
 def main():
@@ -273,6 +291,7 @@ def main():
         ]
         feature_importance.sort(key=lambda x: x['importance'], reverse=True)
         results['feature_importance'] = feature_importance
+        results['perm_importance'] = compute_permutation_importance(model, X_test, y_test, feature_names)
         results['prediction_examples'] = prediction_examples
 
         # --- Plotting ---

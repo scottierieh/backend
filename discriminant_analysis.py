@@ -24,6 +24,7 @@ from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
+from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc,
@@ -31,6 +32,7 @@ from sklearn.metrics import (
 )
 from scipy import stats
 import warnings
+from analysis_common import shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -994,6 +996,149 @@ def generate_interpretation(result: Dict, method: str, feature_importance: List[
 
 
 # ──────────────────────────────────────────────
+# Explain: permutation importance, model-agnostic SHAP, PDP, ALE
+#
+# LDA/QDA have no split-based importance the way a tree does, so unlike the
+# tree scripts this is the ONLY importance signal — not an addition next to
+# one already there. Same reason SHAP goes through the generic
+# shap.Explainer(predict_proba) path (identical to adaboost_analysis.py's
+# compute_shap) rather than TreeExplainer, and shap_interaction_top is not
+# offered at all: it needs a tree's interaction tensor, which neither model
+# has.
+# ──────────────────────────────────────────────
+
+def compute_permutation_importance(model, X_test, y_test, feature_names: List[str],
+                                    n_repeats: int = 10, random_state: int = 42) -> List[Dict[str, Any]]:
+    try:
+        perm = permutation_importance(model, X_test, y_test, n_repeats=n_repeats,
+                                       random_state=random_state, n_jobs=-1)
+        result = []
+        for name, mean, std in zip(feature_names, perm.importances_mean, perm.importances_std):
+            result.append({'feature': name, 'importance_mean': _to_native_type(mean), 'importance_std': _to_native_type(std)})
+        result.sort(key=lambda x: x['importance_mean'], reverse=True)
+        for i, item in enumerate(result):
+            item['rank'] = i + 1
+        return result
+    except Exception:
+        return []
+
+
+def _shap_samples_from_explanation(shap_values, X_sample, feature_names: List[str], max_samples: int = 8):
+    try:
+        sv = np.asarray(shap_values.values)
+        base = np.asarray(shap_values.base_values)
+        if sv.ndim == 3:
+            n_classes = sv.shape[2]
+            if n_classes != 2:
+                return None
+            sv = sv[:, :, 1]
+            base = base[:, 1] if base.ndim == 2 else base
+        elif sv.ndim != 2:
+            return None
+        n = min(max_samples, sv.shape[0])
+        if n == 0:
+            return None
+        X_arr = np.asarray(X_sample)
+        return [
+            {
+                'base_value': _to_native_type(base[i] if base.ndim >= 1 and base.shape[0] == sv.shape[0] else base),
+                'contributions': [
+                    {'feature': feature_names[j], 'value': _to_native_type(X_arr[i, j]), 'shap': _to_native_type(sv[i, j])}
+                    for j in range(len(feature_names))
+                ],
+            }
+            for i in range(n)
+        ]
+    except Exception:
+        return None
+
+
+def compute_shap(model, X_test: np.ndarray, feature_names: List[str],
+                  max_background: int = 50, max_samples: int = 100) -> Dict:
+    """Model-agnostic SHAP (Permutation explainer) over predict_proba — LDA/QDA
+    have no tree structure for shap.TreeExplainer to use."""
+    try:
+        try:
+            import shap as _shap
+        except ImportError:
+            return {'shap_importance': [], 'shap_plot': None, 'error': 'shap package not installed. Run: pip install shap'}
+
+        X_arr = np.asarray(X_test)
+        n = len(X_arr)
+        rng = np.random.RandomState(42)
+        background = X_arr[rng.choice(n, size=min(max_background, n), replace=False)]
+        X_sample = X_arr[rng.choice(n, size=min(max_samples, n), replace=False)]
+
+        explainer = _shap.Explainer(model.predict_proba, _shap.maskers.Independent(background))
+        shap_values = explainer(X_sample)
+
+        sv = np.array(shap_values.values)
+        mean_shap = np.abs(sv).mean(axis=(0, 2)) if sv.ndim == 3 else np.abs(sv).mean(axis=0)
+
+        shap_importance = [
+            {'feature': name, 'mean_abs_shap': _to_native_type(val)}
+            for name, val in sorted(zip(feature_names, mean_shap), key=lambda x: x[1], reverse=True)
+        ]
+        shap_samples = _shap_samples_from_explanation(shap_values, X_sample, feature_names)
+        shap_matrix_data = shap_matrix(
+            getattr(shap_values, 'values', shap_values), X_sample, feature_names, getattr(shap_values, 'base_values', 0.0))
+
+        fig, ax = plt.subplots(figsize=(10, max(6, len(feature_names) * 0.35)))
+        feats = [d['feature'] for d in shap_importance][::-1]
+        vals = [d['mean_abs_shap'] for d in shap_importance][::-1]
+        ax.barh(feats, vals, color='#f59e0b', edgecolor='none')
+        ax.set_xlabel('Mean |SHAP Value|', fontsize=11)
+        ax.set_title('SHAP Feature Importance', fontsize=13, fontweight='bold')
+        ax.grid(True, linestyle='--', alpha=0.3, axis='x')
+        fig.subplots_adjust(left=0.20)
+        shap_plot = _fig_to_data_url(fig)
+
+        return {'shap_importance': shap_importance, 'shap_plot': shap_plot, 'shap_samples': shap_samples, 'shap_matrix': shap_matrix_data, 'error': None}
+    except Exception as e:
+        return {'shap_importance': [], 'shap_plot': None, 'shap_samples': None, 'error': str(e)}
+
+
+def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
+                      feature_importance: Optional[List[Dict]] = None,
+                      top_n: int = 6) -> Optional[List[Dict]]:
+    """Same pattern as adaboost_analysis.py/random_forest_analysis.py: top-N
+    feature selection, PDP averaged over a sample of up to 200 rows plus up to
+    30 individual ICE curves on the same grid."""
+    try:
+        if feature_importance:
+            sorted_indices = [
+                feature_names.index(f['feature'])
+                for f in feature_importance
+                if f['feature'] in feature_names
+            ][:top_n]
+        else:
+            sorted_indices = list(range(min(top_n, len(feature_names))))
+
+        n_rows = X_train.shape[0]
+        if n_rows > 200:
+            sample_idx = np.random.RandomState(42).choice(n_rows, size=200, replace=False)
+            X_sample = X_train[sample_idx]
+        else:
+            X_sample = X_train
+
+        out = []
+        for feat_idx in sorted_indices:
+            pd_res = partial_dependence(model, X_sample, [feat_idx], kind='both')
+            grid_vals = pd_res.get('grid_values', pd_res.get('values', [None]))[0]
+            avg_vals = pd_res['average'][0]
+            individual_vals = pd_res['individual'][0][:30]
+            out.append({
+                'feature': feature_names[feat_idx],
+                'grid': [_to_native_type(v) for v in grid_vals],
+                'average': [_to_native_type(v) for v in avg_vals],
+                'individual': [[_to_native_type(v) for v in row] for row in individual_vals],
+            })
+        return out
+    except Exception:
+        return None
+
+
+# ──────────────────────────────────────────────
 # Main entry point
 # ──────────────────────────────────────────────
 
@@ -1085,6 +1230,25 @@ def main():
         else:
             result = train_qda(X_train, X_test, y_train, y_test, params, feature_cols)
 
+        model = result['model']
+        X_test_arr = np.array(X_test)
+        X_train_arr = np.array(X_train)
+        perm_importance = compute_permutation_importance(model, X_test_arr, result['y_test_encoded'], feature_cols)
+        shap_result = compute_shap(model, X_test_arr, feature_cols)
+        pdp_data = compute_pdp_json(model, X_train_arr, feature_cols, result['feature_importance'], top_n=6)
+
+        # Accumulated Local Effects, for the same features the PDP covers --
+        # see adaboost_analysis.py's compute_shap-adjacent comment for why
+        # both are returned rather than ALE replacing PDP.
+        ale_data = []
+        try:
+            _ale_feats = [feature_cols.index(d['feature']) for d in (pdp_data or [])
+                          if d.get('feature') in feature_cols]
+            if _ale_feats:
+                ale_data = ale_1d(model.predict_proba, X_train_arr, feature_cols, _ale_feats)
+        except Exception:
+            ale_data = []
+
         cv_result = perform_cross_validation(np.array(X), y, params, method, cv_folds)
 
         prediction_examples = generate_prediction_examples(result, n_examples=15)
@@ -1158,6 +1322,17 @@ def main():
             },
             'metrics': result['metrics'],
             'feature_importance': result['feature_importance'],
+            'perm_importance': perm_importance,
+            'shap_importance': shap_result.get('shap_importance'),
+            'shap_plot': shap_result.get('shap_plot'),
+            'shap_samples': shap_result.get('shap_samples'),
+            'shap_matrix': shap_result.get('shap_matrix'),
+            # How to read the contributions above: what unit they are in, and
+            # which class they explain. Not derivable from the numbers.
+            **shap_contract(SHAP_SPACE_PROBABILITY, 'classification', result.get('class_labels')),
+            'shap_error': shap_result.get('error'),
+            'pdp': pdp_data,
+            'ale': ale_data,
             'cv_results': cv_result,
             'plots': plots,
             'per_class_metrics': result['per_class_metrics'],

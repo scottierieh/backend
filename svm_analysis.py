@@ -62,6 +62,25 @@ def _fig_to_base64(fig) -> str:
     return image_base64
 
 
+def _perm_importance_rows(perm_result, feature_names: List[str]) -> List[Dict[str, Any]]:
+    """SVM has no split-based importance the way a tree does -- permutation
+    importance (computed a few lines above this call, for the `feature_importance`
+    field's own `importance`/`std` shape) is reshaped here into the
+    `{feature, importance_mean, importance_std, rank}` contract every other
+    script's `perm_importance` field uses, rather than computed twice. Without
+    this, the frontend's dedicated Permutation Importance panel (which reads
+    only `perm_importance`, not `feature_importance`) showed "not reported"
+    for a value that was in fact already sitting in the response, mislabelled."""
+    rows = [
+        {'feature': name, 'importance_mean': _to_native_type(mean), 'importance_std': _to_native_type(std)}
+        for name, mean, std in zip(feature_names, perm_result.importances_mean, perm_result.importances_std)
+    ]
+    rows.sort(key=lambda x: x['importance_mean'], reverse=True)
+    for i, item in enumerate(rows):
+        item['rank'] = i + 1
+    return rows
+
+
 def detect_task_type(y: pd.Series) -> str:
     """Auto-detect classification vs regression"""
     unique_ratio = len(y.unique()) / len(y)
@@ -227,6 +246,7 @@ def train_svm_classifier(X_train, X_test, y_train, y_test, params: dict,
         'pr_data': pr_data,
         'support_per_class': support_per_class,
         'feature_importance': feature_importance,
+        'perm_importance': _perm_importance_rows(perm_importance, feature_names),
         'label_encoder': le,
         'y_test_encoded': y_test_encoded,
         'y_pred': y_pred,
@@ -293,7 +313,8 @@ def train_svm_regressor(X_train, X_test, y_train, y_test, params: dict,
         'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred,
-        'feature_importance': feature_importance
+        'feature_importance': feature_importance,
+        'perm_importance': _perm_importance_rows(perm_importance, feature_names)
     }
 
 
@@ -948,6 +969,7 @@ def main():
             },
             'metrics': result['metrics'],
             'feature_importance': result['feature_importance'],
+            'perm_importance': result['perm_importance'],
             'cv_results': cv_result,
             'importance_plot': importance_plot,
             'interpretation': interpretation,

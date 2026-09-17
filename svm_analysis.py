@@ -81,6 +81,19 @@ def _perm_importance_rows(perm_result, feature_names: List[str]) -> List[Dict[st
     return rows
 
 
+# No compute_shap here, deliberately -- SVC.predict_proba is not cheap enough
+# for shap.Explainer's repeated calls the way it is for a tree or KNN.
+# Benchmarked before deciding, not assumed: on 400 rows with probability=True,
+# shap.Explainer(model.predict_proba) over 100 samples / 50 background rows
+# took 12s at 3 features, 74s at 10, 60s at 20 -- Platt-scaling calibration
+# makes each predict_proba call expensive, and it only gets called more as
+# feature count grows. KNeighborsClassifier's equivalent predict_proba call
+# took well under a second at the same sizes (see knn_analysis.py's
+# compute_shap), which is why KNN has the full SHAP/PDP/ALE contract and SVM
+# has perm_importance only. Revisit if this script ever moves to an
+# async/background job model rather than one synchronous request.
+
+
 def detect_task_type(y: pd.Series) -> str:
     """Auto-detect classification vs regression"""
     unique_ratio = len(y.unique()) / len(y)

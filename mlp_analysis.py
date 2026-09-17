@@ -109,6 +109,19 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
         if macro_auc is not None:
             metrics['auc'] = macro_auc
 
+    # Precision-recall AUC, beside `auc` above. This script computed it only
+    # inside generate_precision_recall_plot, to annotate the picture, so a
+    # ranking policy asking for PR-AUC on an imbalanced target had nothing to
+    # rank on — the number existed and was thrown away with the figure.
+    if n_classes == 2:
+        metrics['average_precision'] = _to_native_type(
+            average_precision_score(y_test_encoded, y_pred_proba[:, 1]))
+    else:
+        _aps = [average_precision_score((y_test_encoded == i).astype(int), y_pred_proba[:, i])
+                for i in range(n_classes)]
+        if _aps:
+            metrics['average_precision_macro'] = _to_native_type(float(np.mean(_aps)))
+
     return {
         'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],

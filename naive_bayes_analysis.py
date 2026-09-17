@@ -161,6 +161,10 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
         # ── Precision-Recall curve + average precision (binary) ─────
         precision_vals, recall_vals, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
         ap_score = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        # Kept on `metrics`, the way `auc` already is a few lines up. It was
+        # computed for the PR curve and then dropped, so a ranking policy
+        # asking for PR-AUC on an imbalanced target had nothing to rank on.
+        metrics['average_precision'] = _to_native_type(ap_score)
         pr_data['binary'] = {
             'precision':  [_to_native_type(x) for x in precision_vals],
             'recall':     [_to_native_type(x) for x in recall_vals],

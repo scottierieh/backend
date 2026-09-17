@@ -123,6 +123,10 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
     if n_classes == 2:
         precision, recall, _ = precision_recall_curve(y_test_encoded, y_pred_proba[:, 1])
         ap = average_precision_score(y_test_encoded, y_pred_proba[:, 1])
+        # Kept on `metrics`, the way `auc` already is a few lines up. It was
+        # computed for the PR curve and then dropped, so a ranking policy
+        # asking for PR-AUC on an imbalanced target had nothing to rank on.
+        metrics['average_precision'] = _to_native_type(ap)
         base_rate = float(np.mean(y_test_encoded))
         pr_data['binary'] = {
             'precision': [_to_native_type(x) for x in precision],

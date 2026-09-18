@@ -16,6 +16,8 @@ from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.decomposition import PCA
+from analysis_common import cluster_projection
+
 from sklearn.feature_selection import f_classif
 from scipy.spatial import ConvexHull
 from scipy import stats
@@ -740,6 +742,9 @@ def main():
                     'silhouette_scores': silhouette_scores,
                     'recommended_k': recommended_k,
                 },
+                # gmm.means_ are already in the scaled space the points live
+                # in, so they go through the same fitted transform.
+                'projection': cluster_projection(cluster_data_scaled, labels, gmm.means_),
                 'clustering_summary': {
                     'n_components': n_components,
                     'covariance_type': covariance_type,

@@ -7,6 +7,8 @@ import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster, cophenet
 from scipy.spatial.distance import pdist, squareform
 from scipy.spatial import ConvexHull
+from analysis_common import cluster_projection
+
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score, adjusted_rand_score
@@ -181,6 +183,22 @@ class HierarchicalClusterAnalysis:
         self.results['distance_metric'] = self.distance_metric
         self.results['n_clusters'] = n_clusters
         self.results['cluster_labels'] = self.cluster_labels.tolist()
+        # The PCA projection, kept rather than only drawn. Nothing new is
+        # computed; the scatter below already fits this PCA and discards it.
+        #
+        # HCA has no centre vectors of its own, so the centres are the
+        # per-cluster means of the scaled matrix, built in ascending label
+        # order to match the contract cluster_projection documents. (fcluster
+        # labels from 1, which the helper normalises to 0-based.)
+        _hca_ids = sorted(np.unique(self.cluster_labels).tolist())
+        _hca_centres = np.array([
+            self.cluster_data_scaled.values[self.cluster_labels == lbl].mean(axis=0)
+            for lbl in _hca_ids
+        ])
+        self.results['projection'] = cluster_projection(
+            self.cluster_data_scaled, self.cluster_labels, _hca_centres,
+        )
+
         self.results['clustering_summary'] = {
             'n_clusters': n_clusters,
             'linkage': linkage_method,

@@ -7,6 +7,8 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
+from analysis_common import cluster_projection
+
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.feature_selection import f_classif
 from scipy.spatial import ConvexHull
@@ -501,6 +503,11 @@ def main():
             fig3d.tight_layout()
 
             plots.append({'label': 'Clusters (3D PCA)', 'image': _fig_to_data_url(fig3d)})
+
+        # Noise keeps its -1 label: the frontend reads -1 as unassigned and
+        # draws it grey rather than as a cluster, and centroids are omitted
+        # because DBSCAN has none to give.
+        summary['projection'] = cluster_projection(X_scaled, labels, None)
 
         response = {
             'results': summary,

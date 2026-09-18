@@ -9,6 +9,8 @@ sns.set_theme(style="darkgrid")
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
 from sklearn.feature_selection import f_classif
+from analysis_common import cluster_projection
+
 from sklearn.decomposition import PCA
 from sklearn.cluster import kmeans_plusplus
 from sklearn_extra.cluster import KMedoids
@@ -124,6 +126,17 @@ class KMedoidsAnalysis:
         kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method, max_iter=max_iter, random_state=42, metric=self.distance_metric)
         self.cluster_labels = kmedoids.fit_predict(self.cluster_data_scaled)
         self.medoid_indices_ = kmedoids.medoid_indices_
+
+        # The PCA projection, kept rather than only drawn. Every clustering
+        # script fits one for its scatter and drops the coordinates with the
+        # figure; nothing new is computed here.
+        # A medoid is an actual row, so its position comes from the scaled
+        # matrix rather than from a centre vector the model computed.
+        self.results['projection'] = cluster_projection(
+            self.cluster_data_scaled,
+            self.cluster_labels,
+            self.cluster_data_scaled.values[kmedoids.medoid_indices_],
+        )
 
         self.results['clustering_summary'] = {
             'n_clusters': n_clusters,

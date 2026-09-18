@@ -10,6 +10,8 @@ sns.set_theme(style="darkgrid")
 from sklearn.cluster import KMeans, kmeans_plusplus
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
 from sklearn.feature_selection import f_classif
+from analysis_common import cluster_projection
+
 from sklearn.decomposition import PCA
 from scipy.spatial import ConvexHull
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the '3d' projection)
@@ -128,6 +130,18 @@ class KMeansAnalysis:
                 "especially near ambiguous cluster boundaries."
             ),
         }
+
+        # Keep the PCA projection instead of only drawing it. The 3D scatter
+        # below already fits PCA(n_components=3) on this same scaled matrix,
+        # projects these centroids through it and reads
+        # explained_variance_ratio_ -- and then puts all of it into a PNG and
+        # drops the numbers, so a screen that wants an interactive scatter has
+        # nothing to plot. Set here rather than in the plotting function so it
+        # does not inherit that function's `len(feature_cols) >= 3` guard: a
+        # 2-feature run still has a 2-D projection worth sending.
+        self.results['projection'] = cluster_projection(
+            self.cluster_data_scaled, self.cluster_labels, kmeans.cluster_centers_,
+        )
 
         self.analyze_clusters()
         return self.results

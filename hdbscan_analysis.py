@@ -8,6 +8,8 @@ sns.set_theme(style="darkgrid")
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
+from analysis_common import cluster_projection
+
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.feature_selection import f_classif
@@ -552,6 +554,8 @@ def main():
 
         summary = {
             'clustering_summary': clustering_summary,
+            # Noise keeps -1; HDBSCAN reports no centroids.
+            'projection': cluster_projection(X_scaled, labels, None),
             'probabilities': probabilities.tolist(),
             'outlier_scores': outlier_scores.tolist(),
             'profiles': profiles,

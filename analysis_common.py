@@ -354,3 +354,96 @@ def shap_interaction_top(explainer, X_arr, feature_names, top_n: int = 10,
         return rows
     except Exception:
         return []
+
+
+def cluster_projection(X_scaled, labels, centroids=None, max_points: int = 5000):
+    """
+    Keep the PCA projection the clustering scripts already compute.
+
+    Every clustering script fits a PCA to draw its scatter and then throws the
+    coordinates away with the figure -- the response carries
+    `clustering_summary`, `per_cluster_silhouette`, `profiles` and a PNG, and
+    no per-point position. So the Clustering Lab has a screen whose whole
+    content is a scatter and nothing to plot. Same shape as
+    `average_precision` going out with the PR curve: the number was made and
+    then dropped.
+
+    Nothing new is computed here. sklearn's PCA is a deterministic SVD, so
+    fitting it on the same scaled matrix reproduces the fit the plot used, and
+    the JSON and the PNG therefore show the same projection rather than two
+    mirror images of it. (That is also why the frontend must not refit: the
+    browser does not have this scaled matrix, and component sign and order are
+    only stable for a given input.)
+
+    Returns None when there is nothing to project, so a caller can set the key
+    unconditionally and the frontend reads its absence as "this script sends
+    none" rather than as an empty scatter.
+
+    `max_points` caps the payload: 5,000 points is roughly 220 KB of JSON at
+    this rounding, and a scatter stops being readable long before that many
+    marks. Past the cap, rows are sampled per cluster so every cluster keeps
+    its shape -- including small ones -- and `sampled`/`n_total` say so. A
+    plain head-N would have dropped whole clusters, because the labels arrive
+    grouped.
+    """
+    from sklearn.decomposition import PCA
+
+    X = np.asarray(X_scaled, dtype=float)
+    y = np.asarray(labels).astype(int).ravel()
+    if X.ndim != 2 or X.shape[0] < 2 or X.shape[1] < 2 or y.shape[0] != X.shape[0]:
+        return None
+
+    # Labels are normalised to dense 0-based ids, with -1 left alone.
+    #
+    # The scripts do not agree on a convention: KMeans and GMM are 0-based,
+    # while HCA's fcluster() returns 1..k. A consumer indexing a colour ramp by
+    # the label would then give HCA's first cluster the second colour and run
+    # its last cluster off the end of the ramp -- the final cluster silently
+    # loses its colour, on one algorithm only. Normalising here means no
+    # consumer has to know which script it is reading. -1 is preserved because
+    # DBSCAN and HDBSCAN use it for "unassigned", which is not a cluster and
+    # must not become cluster 0.
+    uniq = sorted({int(v) for v in y if int(v) != -1})
+    remap = {lab: i for i, lab in enumerate(uniq)}
+    y = np.array([-1 if int(v) == -1 else remap[int(v)] for v in y], dtype=int)
+
+    dims = min(3, X.shape[1])
+    pca = PCA(n_components=dims)
+    coords = pca.fit_transform(X)
+
+    keep = np.arange(X.shape[0])
+    if X.shape[0] > max_points:
+        rng = np.random.default_rng(42)
+        picks = []
+        for lab in np.unique(y):
+            idx = np.flatnonzero(y == lab)
+            take = min(len(idx), max(1, int(round(len(idx) * max_points / X.shape[0]))))
+            picks.append(rng.choice(idx, size=take, replace=False))
+        keep = np.sort(np.concatenate(picks))
+
+    out = {
+        'coords': [[round(float(v), 4) for v in row] for row in coords[keep]],
+        'labels': [int(v) for v in y[keep]],
+        'explained': [round(float(v), 6) for v in pca.explained_variance_ratio_],
+        'dims': int(dims),
+        'n_total': int(X.shape[0]),
+        'sampled': bool(len(keep) < X.shape[0]),
+    }
+
+    # Centroids go through the SAME fitted transform. Fitting a second PCA on
+    # the centroids alone would put them in a different space from the points,
+    # and the markers would land where the clusters are not.
+    #
+    # CONTRACT: row i must be the centre of the i-th cluster in ASCENDING
+    # original-label order, which is what KMeans.cluster_centers_,
+    # GaussianMixture.means_ and KMedoids.medoid_indices_ all give. The label
+    # remap above is ascending too, so the correspondence survives it. Pass
+    # None rather than a differently ordered matrix: a centre drawn on the
+    # wrong cluster is worse than no centre at all.
+    if centroids is not None:
+        C = np.asarray(centroids, dtype=float)
+        if C.ndim == 2 and C.shape[1] == X.shape[1]:
+            out['centroids'] = [
+                [round(float(v), 4) for v in row] for row in pca.transform(C)
+            ]
+    return out

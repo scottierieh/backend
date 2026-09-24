@@ -447,3 +447,43 @@ def cluster_projection(X_scaled, labels, centroids=None, max_points: int = 5000)
                 [round(float(v), 4) for v in row] for row in pca.transform(C)
             ]
     return out
+
+
+def unscale_linear_model(coef, intercept, scaler, feature_names):
+    """Put a linear model's coefficients back on the data's own scale.
+
+    Ridge/Lasso/ElasticNet here are fit on StandardScaler-transformed X, so
+    ``model.coef_`` is "per one standard deviation" and ``model.intercept_``
+    is the mean of y. Anything that draws the model in the data's own units —
+    a regression plane over two of the raw columns, a hand-written prediction —
+    needs the original-scale form:
+
+        y = b0 + sum_j b_j * x_j        b_j = coef_j / scale_j
+                                        b0  = intercept - sum_j b_j * mean_j
+
+    The caller cannot reconstruct this: ``scaler`` is fit on the *training*
+    split after rows with missing values are dropped, so re-deriving the mean
+    and sd from the full dataset gives a different (wrong) answer.
+
+    A column with no variance gets ``scale_ = 1.0`` from StandardScaler, so the
+    division is safe; the guard below is for a scaler that reports something
+    else. Returns ``(dict(name -> coefficient), intercept)`` on the original
+    scale, or ``(None, None)`` if the inputs do not line up.
+    """
+    try:
+        coef = np.asarray(coef, dtype=float).ravel()
+        scale = np.asarray(getattr(scaler, 'scale_', None), dtype=float).ravel()
+        mean = np.asarray(getattr(scaler, 'mean_', None), dtype=float).ravel()
+    except (TypeError, ValueError):
+        return None, None
+    names = list(feature_names)
+    if not (len(coef) == len(scale) == len(mean) == len(names)):
+        return None, None
+    if not np.all(np.isfinite(scale)) or np.any(scale == 0):
+        return None, None
+
+    raw = coef / scale
+    b0 = float(intercept) - float(np.sum(raw * mean))
+    if not np.all(np.isfinite(raw)) or not np.isfinite(b0):
+        return None, None
+    return {n: float(v) for n, v in zip(names, raw)}, b0

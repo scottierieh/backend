@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import Ridge, LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from scipy import stats as scipy_stats
+from analysis_common import unscale_linear_model
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -214,6 +215,9 @@ def main():
             train_metrics['r2_score'], test_metrics['r2_score'], test_metrics['rmse'],
         )
         cv_results = _compute_cv_results(X, y, alpha, cv_folds=cv_folds)
+        raw_coefs, raw_intercept = unscale_linear_model(
+            model.coef_, model.intercept_, scaler, final_features)
+
 
         results = {
             'metrics': {
@@ -222,6 +226,13 @@ def main():
             },
             'coefficients': dict(zip(final_features, model.coef_)),
             'intercept': model.intercept_,
+            # The two fields above are on the standardized scale (coef_ is
+            # per standard deviation, intercept_ is mean(y)). Anything drawing
+            # the model over the raw columns — the 3D regression plane — needs
+            # these instead; the frontend cannot derive them because the scaler
+            # is fit on the training split.
+            'coefficients_original_scale': raw_coefs,
+            'intercept_original_scale': raw_intercept,
             'alpha': alpha,
             'alpha_source': alpha_source,
             'cv_folds': cv_results['n_folds'],

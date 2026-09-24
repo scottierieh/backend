@@ -11,6 +11,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import ElasticNet, ElasticNetCV, LinearRegression, Lasso
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from scipy import stats as scipy_stats
+from analysis_common import unscale_linear_model
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -360,12 +361,22 @@ def main():
             n_iter_val = None
         max_iter_val = 10000
         converged_val = None if n_iter_val is None else bool(n_iter_val < max_iter_val)
+        raw_coefs, raw_intercept = unscale_linear_model(
+            model.coef_, model.intercept_, scaler, final_features)
+
 
         results = {
             'metrics': {'test': test_metrics, 'train': train_metrics},
             'cv_results': cv_result,
             'coefficients': dict(zip(final_features, model.coef_)),
             'intercept': model.intercept_,
+            # The two fields above are on the standardized scale (coef_ is
+            # per standard deviation, intercept_ is mean(y)). Anything drawing
+            # the model over the raw columns — the 3D regression plane — needs
+            # these instead; the frontend cannot derive them because the scaler
+            # is fit on the training split.
+            'coefficients_original_scale': raw_coefs,
+            'intercept_original_scale': raw_intercept,
             'alpha': alpha,
             'l1_ratio': l1_ratio,
             'l1_ratio_interpretation': _l1_ratio_interpretation(l1_ratio),

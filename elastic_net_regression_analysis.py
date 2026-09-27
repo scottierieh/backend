@@ -234,8 +234,14 @@ def main():
     try:
         payload = json.load(sys.stdin)
         data = payload.get('data')
-        target = payload.get('target')
-        features = payload.get('features')
+        # AutoML's automl-client.ts sends target_col/feature_cols (the shape
+        # every other AutoML script reads); the standalone Elastic Net page
+        # sends target/features. Accepting both means neither caller has to
+        # change -- previously AutoML's Elastic Net candidate always failed
+        # with "Missing data, target, or features", confirmed reproducible
+        # against production with the exact payload automl-client.ts sends.
+        target = payload.get('target_col') or payload.get('target')
+        features = payload.get('feature_cols') or payload.get('features')
         alpha = float(payload.get('alpha', 1.0))
         l1_ratio = float(payload.get('l1_ratio', 0.5))
         test_size = float(payload.get('test_size', 0.2))

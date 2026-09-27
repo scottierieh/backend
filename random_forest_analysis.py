@@ -31,7 +31,7 @@ from sklearn.metrics import (
 )
 from sklearn.tree import export_text
 import warnings
-from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d
+from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
 
 
 warnings.filterwarnings('ignore')
@@ -574,15 +574,18 @@ def extract_tree_rules(model, feature_names: List[str], task_type: str,
         return None
 
 
-def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
-    """Perform cross-validation"""
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/encoding via cv_pipeline (a fresh, unfitted preprocessor
+    Pipeline'd with the model) — see docs/automl-preprocessing-leakage.md.
+    X_train_raw/y_train never touch the holdout rows."""
     max_features = params.get('max_features', 'sqrt')
     if max_features == 'None':
         max_features = None
 
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
         model = RandomForestClassifier(
             n_estimators=params['n_estimators'], max_depth=params['max_depth'],
             min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'],
@@ -598,12 +601,12 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             max_features=max_features, bootstrap=params['bootstrap'],
             random_state=params['random_state'], n_jobs=-1
         )
-        cv_target = y
+        cv_target = y_train
         cv_task = 'regression'
 
     # Shared CV (cv_strategy.py) — same StratifiedKFold(clf)/KFold(reg) behavior as
     # before, now centralized so time/group splits can be added in one place.
-    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -866,24 +869,19 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        for col in X.columns:
-            if not pd.api.types.is_numeric_dtype(X[col]):
-                X[col] = LabelEncoder().fit_transform(X[col].astype(str))
-            else:
-                X[col] = pd.to_numeric(X[col], errors='coerce')
-
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-
-        if len(X) < 50:
-            raise ValueError("At least 50 valid samples required.")
-
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
+
+        # Split BEFORE any imputation statistic is computed, so median/mode
+        # values come from the train rows alone, and impute rather than drop
+        # rows with missing features. See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare(df, feature_cols, target_col, task_type, test_size, random_state)
+        X_train, X_test, y_train, y_test = prep['X_train'], prep['X_test'], prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
+
+        if row_counts['n_train'] < 50:
+            raise ValueError("At least 50 valid samples required.")
 
         params = {
             'n_estimators': n_estimators,
@@ -895,16 +893,6 @@ def main():
             'oob_score': oob_score_flag,
             'random_state': random_state,
         }
-
-        try:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=random_state,
-                stratify=y if task_type == 'classification' else None
-            )
-        except ValueError:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=random_state
-            )
 
         if task_type == 'classification':
             result = train_rf_classifier(X_train, X_test, y_train, y_test, params)
@@ -926,7 +914,8 @@ def main():
             model, X_test.values, y_test_for_perm, feature_cols
         )
 
-        cv_result = perform_cross_validation(X, y, params, task_type, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds)
 
         shap_result = compute_shap(model, X_train.values, X_test.values, feature_cols)
 
@@ -994,17 +983,18 @@ def main():
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type': task_type,
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'parameters': {
                 'n_estimators': params['n_estimators'],
                 'max_depth': params['max_depth'] if params['max_depth'] else 'None',

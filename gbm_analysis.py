@@ -15,7 +15,8 @@ import io
 import base64
 import warnings
 from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
-                             shap_matrix, shap_interaction_top, ale_1d, _to_native_type)
+                             shap_matrix, shap_interaction_top, ale_1d, _to_native_type,
+                             leak_safe_prepare_onehot)
 from sklearn.inspection import partial_dependence, permutation_importance
 from typing import List, Dict, Optional
 
@@ -34,21 +35,24 @@ def _to_native_type(obj):
         return bool(obj)
     return obj
 
-def perform_cross_validation(X, y, problem_type, n_estimators, learning_rate, max_depth, cv_folds=5):
-    """5-fold CV on the full dataset with a fresh (unfitted) model — same contract as
-    random_forest_analysis.py / xgboost_analysis.py etc.: cv_scores/cv_mean/cv_std/cv_folds."""
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, problem_type, n_estimators,
+                              learning_rate, max_depth, cv_folds=5):
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/one-hot encoding via cv_pipeline. See docs/automl-preprocessing-leakage.md."""
     if problem_type == 'classification':
         model = GradientBoostingClassifier(
             n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=42
         )
+        pipeline = cv_pipeline(model)
         cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        scores = cross_val_score(model, X, y, cv=cv_splitter, scoring='accuracy')
+        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_splitter, scoring='accuracy')
     else:
         model = GradientBoostingRegressor(
             n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth,
             random_state=42, validation_fraction=0.1, n_iter_no_change=5, tol=0.01
         )
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        pipeline = cv_pipeline(model)
+        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_folds, scoring='r2')
     return {
         'cv_scores': [_to_native_type(s) for s in scores],
         'cv_mean': _to_native_type(np.mean(scores)),
@@ -137,31 +141,20 @@ def main():
         df = pd.DataFrame(data)
 
         # --- Data Preparation ---
-        X = df[features]
-        y = df[target]
-
-        # One-hot encode categorical features
-        X = pd.get_dummies(X, drop_first=True)
-        feature_names = X.columns.tolist()
-
         # GradientBoosting (unlike every other tree model here) has no native
         # missing-value support and fails outright with "Input X contains
-        # NaN" — every numeric column gets median-imputed before it ever
-        # reaches train_test_split/cross_val_score. get_dummies already
-        # turned every categorical column into 0/1 indicators with no NaNs
-        # of its own, so this only ever touches genuinely numeric gaps.
-        if X.isna().any().any():
-            X = X.fillna(X.median(numeric_only=True))
-
-        try:
-             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=42, stratify=y if problem_type == 'classification' else None
-            )
-        except ValueError:
-            # Fallback for small classes
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=42
-            )
+        # NaN" -- every numeric column gets median-imputed, and categorical
+        # columns one-hot encoded, using statistics fit on the TRAIN split
+        # alone (never the combined train+holdout set this used to fit on).
+        # See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, features, target, problem_type, test_size, 42)
+        X_train, X_test = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_names = prep['feature_cols_out']
+        row_counts = prep['row_counts']
+        # For sorting the full set of class labels below (metadata, not a
+        # statistic that influences the model or its evaluation).
+        y = pd.concat([y_train, y_test])
 
         # --- Model Training ---
         if problem_type == 'regression':
@@ -185,7 +178,8 @@ def main():
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         y_train_pred = model.predict(X_train)
-        cv_result = perform_cross_validation(X, y, problem_type, n_estimators, learning_rate, max_depth)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], problem_type, n_estimators, learning_rate, max_depth)
 
         # --- Evaluation ---
         results = {}
@@ -578,11 +572,13 @@ def main():
         try:
             from guardrails import compute_guardrails
             _norm_metrics = {'accuracy': results['metrics'].get('accuracy'), 'r2': results['metrics'].get('r2')}
-            guardrails = compute_guardrails(X, y, features, problem_type, _norm_metrics)
+            guardrails = compute_guardrails(X_train, y_train, feature_names, problem_type, _norm_metrics)
         except Exception:
             guardrails = []
 
         results['cv_results'] = cv_result
+        results['row_counts'] = row_counts
+        results['n_samples'] = row_counts['n_train'] + row_counts['n_holdout']
 
         response = {
             'results': results,

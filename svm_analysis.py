@@ -29,7 +29,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance
 import warnings
-from analysis_common import _compute_multiclass_auc
+from analysis_common import _compute_multiclass_auc, leak_safe_prepare_onehot
 
 
 warnings.filterwarnings('ignore')
@@ -331,8 +331,11 @@ def train_svm_regressor(X_train, X_test, y_train, y_test, params: dict,
     }
 
 
-def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
-    """Perform cross-validation"""
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str,
+                              cv_folds: int, scale_features: bool) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/one-hot encoding (and scaling, if requested) via cv_pipeline.
+    See docs/automl-preprocessing-leakage.md."""
     gamma = params['gamma']
     if gamma not in ['scale', 'auto']:
         try:
@@ -342,7 +345,7 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
 
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
 
         model = SVC(
             kernel=params['kernel'],
@@ -360,9 +363,13 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             degree=params['degree'],
             epsilon=params['epsilon']
         )
-        cv_target, cv_task = y, 'regression'
+        cv_target, cv_task = y_train, 'regression'
 
-    cv = run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    pipeline = cv_pipeline(model)
+    if scale_features:
+        pipeline.steps.insert(-1, ('scale', StandardScaler()))
+
+    cv = run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
     cv['cv_metric'] = cv['cv_scoring']  # preserve svm's original field name
     return cv
 
@@ -855,34 +862,9 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        # Prepare features
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        # Handle categorical features — one-hot encoding (safer than LabelEncoder for nominals)
-        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
-        num_cols = [c for c in X.columns if X[c].dtype != 'object']
-
-        for col in num_cols:
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-
-        if cat_cols:
-            X = pd.get_dummies(X, columns=cat_cols, drop_first=True).astype(float)
-
-        # Drop rows with NaN
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-
-        # Update feature_cols to reflect one-hot expanded columns
-        feature_cols = list(X.columns)
-
-        if len(X) < 30:
-            raise ValueError("At least 30 valid samples required.")
-
         # Auto-detect task type
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
 
         # Parameters
         params = {
@@ -897,23 +879,23 @@ def main():
         cv_folds = int(payload.get('cv_folds', 5))
         scale_features = bool(payload.get('scale_features', True))
 
-        # Scale features
-        scaler = None
-        X_array = X.values
-        if scale_features:
-            scaler = StandardScaler()
-            X_array = scaler.fit_transform(X_array)
+        # Split BEFORE any imputation/one-hot/scaling statistic is computed,
+        # so those values come from the train rows alone -- most consequential
+        # for the scaler here, since it was previously fit on 100% of the
+        # data (train+holdout) before anything else happened.
+        # See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, feature_cols, target_col, task_type, test_size, params['random_state'])
+        X_train_df, X_test_df = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
 
-        # Split data
-        try:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_array, y, test_size=test_size, random_state=params['random_state'],
-                stratify=y if task_type == 'classification' else None
-            )
-        except ValueError:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_array, y, test_size=test_size, random_state=params['random_state']
-            )
+        if row_counts['n_train'] < 30:
+            raise ValueError("At least 30 valid samples required.")
+
+        scaler = StandardScaler().fit(X_train_df) if scale_features else None
+        X_train = scaler.transform(X_train_df) if scaler else X_train_df.values
+        X_test = scaler.transform(X_test_df) if scaler else X_test_df.values
 
         # Train model
         if task_type == 'classification':
@@ -924,7 +906,14 @@ def main():
         model = result['model']
 
         # Cross-validation
-        cv_result = perform_cross_validation(X_array, y, params, task_type, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds, scale_features)
+
+        # For the decision-boundary plot only (not a metric) — every row, imputed
+        # and scaled by the statistics already fit on train alone above, never
+        # refit on the combined set.
+        X_array = np.vstack([X_train, X_test])
+        y = pd.concat([y_train, y_test])
 
         # Generate visualizations
         importance_plot = generate_feature_importance_plot(result['feature_importance'])
@@ -962,17 +951,18 @@ def main():
         # Prepare response
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train_df, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type': task_type,
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'parameters': {
                 'kernel': params['kernel'],
                 'C': params['C'],

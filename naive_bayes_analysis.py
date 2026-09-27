@@ -18,6 +18,7 @@ sns.set_theme(style="darkgrid")
 import io
 import base64
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from sklearn.base import BaseEstimator, TransformerMixin
 from cv_strategy import run_cv
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
@@ -28,7 +29,7 @@ from sklearn.metrics import (
     precision_recall_curve, average_precision_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
+from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
 
 
 warnings.filterwarnings('ignore')
@@ -259,32 +260,61 @@ def get_feature_importance_nb(model, feature_names: List[str], nb_type: str) -> 
     return importance_data
 
 
-def perform_cross_validation(X, y, params: dict, cv_folds: int) -> Dict[str, Any]:
-    """Perform cross-validation with StratifiedKFold."""
+class _NBTypeTransform(BaseEstimator, TransformerMixin):
+    """The nb_type-specific step (shift-to-nonnegative for multinomial,
+    binarize for bernoulli) as an sklearn transformer, so a Pipeline refits
+    it on each CV fold's own train portion -- not a statistic (min/median)
+    computed on the whole dataset ahead of the fold split.
+    See docs/automl-preprocessing-leakage.md."""
+
+    def __init__(self, nb_type='gaussian', binarize_threshold=None):
+        self.nb_type = nb_type
+        self.binarize_threshold = binarize_threshold
+
+    def fit(self, X, y=None):
+        X = np.asarray(X, dtype=float)
+        if self.nb_type == 'multinomial':
+            train_min = X.min(axis=0)
+            neg_mask = train_min < 0
+            self.shift_ = np.where(neg_mask, -train_min + 1e-6, 0.0)
+        elif self.nb_type == 'bernoulli':
+            self.threshold_ = (float(self.binarize_threshold)
+                                if self.binarize_threshold is not None else float(np.median(X)))
+        return self
+
+    def transform(self, X):
+        X = np.asarray(X, dtype=float)
+        if self.nb_type == 'multinomial':
+            X = np.maximum(X + self.shift_, 1e-10)
+        elif self.nb_type == 'bernoulli':
+            X = (X >= self.threshold_).astype(float)
+        return X
+
+
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, cv_folds: int) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only. cv_pipeline builds a fresh
+    Pipeline([('prep', <leak-safe preprocessor>), ('model', model)]) per
+    call; the nb_type-specific step is inserted between them so it too
+    refits per CV fold rather than using a whole-dataset statistic computed
+    ahead of time. See docs/automl-preprocessing-leakage.md."""
     le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
+    y_encoded = le.fit_transform(y_train)
 
     nb_type = params['nb_type']
     if nb_type == 'gaussian':
         model = GaussianNB(var_smoothing=params['var_smoothing'])
     elif nb_type == 'multinomial':
-        train_min = X.min(axis=0)
-        neg_mask  = train_min < 0
-        if neg_mask.any():
-            shift = np.where(neg_mask, -train_min + 1e-6, 0.0)
-            X = X + shift
-        X = np.maximum(X, 1e-10)
         model = MultinomialNB(alpha=params['alpha'], fit_prior=params['fit_prior'])
     elif nb_type == 'bernoulli':
-        threshold = params.get('binarize_threshold')
-        if threshold is None:
-            threshold = float(np.median(X))
-        X = (X >= threshold).astype(float)
         model = BernoulliNB(alpha=params['alpha'], fit_prior=params['fit_prior'])
     else:
         model = GaussianNB(var_smoothing=params['var_smoothing'])
 
-    cv = run_cv(model, X, y_encoded, 'classification', cv_folds, 42)
+    pipeline = cv_pipeline(model)
+    pipeline.steps.insert(-1, ('nbtype', _NBTypeTransform(
+        nb_type=nb_type, binarize_threshold=params.get('binarize_threshold'))))
+
+    cv = run_cv(pipeline, X_train_raw, y_encoded, 'classification', cv_folds, 42)
     cv['cv_metric'] = 'accuracy'  # preserve naive_bayes's original field name
     return cv
 
@@ -803,24 +833,17 @@ def main():
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
         # ── Prepare features ────────────────────────────────────────
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
+        # Split BEFORE any imputation/one-hot statistic is computed, so the
+        # unseen-category and median values come from the train rows alone,
+        # and impute rather than drop rows with missing features. See
+        # docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, feature_cols, target_col, 'classification', test_size, random_state)
+        X_train_df, X_test_df = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']  # update after one-hot expansion
+        row_counts = prep['row_counts']
 
-        # Categorical → one-hot (safer than LabelEncoder for NB)
-        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
-        num_cols = [c for c in X.columns if X[c].dtype != 'object']
-        for col in num_cols:
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-        if cat_cols:
-            X = pd.get_dummies(X, columns=cat_cols, drop_first=True).astype(float)
-
-        # Drop rows with NaN
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-        feature_cols = list(X.columns)  # update after one-hot expansion
-
-        if len(X) < 50:
+        if row_counts['n_train'] < 50:
             raise ValueError("At least 50 valid samples required.")
 
         # ── Parameters ──────────────────────────────────────────────
@@ -833,12 +856,8 @@ def main():
             'random_state':        random_state
         }
 
-        # ── Split data ──────────────────────────────────────────────
-        X_array = X.values
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_array, y, test_size=test_size,
-            random_state=random_state, stratify=y
-        )
+        X_train = X_train_df.values
+        X_test = X_test_df.values
 
         # ── Train model ─────────────────────────────────────────────
         result = train_naive_bayes(X_train, X_test, y_train, y_test, params, feature_cols)
@@ -865,7 +884,8 @@ def main():
             ale_data = []
 
         # ── Cross-validation ────────────────────────────────────────
-        cv_result = perform_cross_validation(X_array, y, params, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, cv_folds)
 
         # ── Prediction examples ─────────────────────────────────────
         prediction_examples = generate_prediction_examples(result, n_examples=15)
@@ -886,17 +906,18 @@ def main():
         # ── Response ────────────────────────────────────────────────
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, 'classification', result['metrics'])
+            guardrails = compute_guardrails(X_train_df, y_train, feature_cols, 'classification', result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type':           'classification',
-            'n_samples':           len(X),
+            'n_samples':           row_counts['n_train'] + row_counts['n_holdout'],
             'n_features':          len(feature_cols),
             'n_train':             len(X_train),
             'n_test':              len(X_test),
+            'row_counts':          row_counts,
             'n_classes':           result['n_classes'],
             'parameters':          params,
             'metrics':             result['metrics'],

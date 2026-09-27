@@ -18,6 +18,12 @@ import base64
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
+from sklearn.base import clone
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.model_selection import train_test_split
 
 
 def _compute_multiclass_auc(y_true, y_pred_proba):
@@ -487,3 +493,211 @@ def unscale_linear_model(coef, intercept, scaler, feature_names):
     if not np.all(np.isfinite(raw)) or not np.isfinite(b0):
         return None, None
     return {n: float(v) for n, v in zip(names, raw)}, b0
+
+
+def build_feature_preprocessor(X: pd.DataFrame, feature_cols: list) -> tuple:
+    """A ColumnTransformer that imputes (never drops rows) and encodes
+    categoricals with one output column per input feature — no one-hot
+    expansion — so a caller that zips ``model.feature_importances_`` (or PDP,
+    SHAP, tree rules, error examples) against its feature-name list doesn't
+    need to change shape. Unseen categories, seen only at holdout/CV-fold
+    time, encode to -1 rather than crashing or ever having been visible to
+    the fit that produced the encoding.
+
+    See docs/automl-preprocessing-leakage.md — this replaces the
+    fit-on-everything-then-drop-NaN-rows pattern every *_analysis.py script
+    had. Callers must fit this ONLY on the train split (or a CV fold's train
+    portion via a cloned copy in a Pipeline); fitting it on the full dataset
+    before a split reproduces the exact leak this function exists to close.
+
+    Returns ``(preprocessor, ordered_cols)`` — an unfitted ColumnTransformer
+    and the column order its output will have (numeric columns first, then
+    categorical), since ColumnTransformer does not preserve input order.
+    """
+    numeric_cols = [c for c in feature_cols if pd.api.types.is_numeric_dtype(X[c])]
+    categorical_cols = [c for c in feature_cols if c not in numeric_cols]
+    transformers = []
+    if numeric_cols:
+        transformers.append(('num', SimpleImputer(strategy='median'), numeric_cols))
+    if categorical_cols:
+        cat_pipe = Pipeline([
+            ('impute', SimpleImputer(strategy='most_frequent')),
+            ('encode', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)),
+        ])
+        transformers.append(('cat', cat_pipe, categorical_cols))
+    preprocessor = ColumnTransformer(transformers)
+    return preprocessor, numeric_cols + categorical_cols
+
+
+def leak_safe_prepare(
+    df: pd.DataFrame, feature_cols: list, target_col: str, task_type: str,
+    test_size: float, random_state: int = 42,
+) -> dict:
+    """Split BEFORE any statistic is computed, so every imputation/median/
+    encoding value comes from the train rows alone — see
+    docs/automl-preprocessing-leakage.md. Coerces numeric-looking columns
+    with :func:`pandas.to_numeric` first (unparseable values become NaN, for
+    the imputer to fill), same as the per-script logic this replaces.
+
+    Only rows missing the *target* are dropped (unscoreable either way);
+    rows with missing *features* are imputed, never dropped, so a caller
+    that used to lose rows to ``valid_mask`` keeps every input row it can.
+
+    Returns a dict:
+      X_train, X_test     -- DataFrames, imputed + encoded, column order is
+                              ``feature_cols_out`` (not necessarily the
+                              caller's original order — use the returned list,
+                              not the original ``feature_cols``, downstream)
+      y_train, y_test
+      feature_cols_out
+      X_train_raw, X_test_raw -- untransformed slices (for building a fresh
+                              per-CV-fold Pipeline; see ``cv_pipeline``)
+      preprocessor         -- fitted on X_train only; reusable for scoring
+                              new rows the same way (e.g. a predict endpoint)
+      cv_pipeline(model)   -- Pipeline(fresh preprocessor, model), for
+                              ``cross_val_score(cv_pipeline(model), X_train_raw,
+                              y_train, ...)`` so each CV fold fits its own
+                              preprocessing on that fold's train portion only
+      row_counts           -- {n_input, n_target_missing_dropped, n_train,
+                              n_holdout, n_train_used, n_holdout_used}
+    """
+    n_input = len(df)
+    X_raw = df[feature_cols].copy()
+    y = df[target_col].copy()
+    for col in X_raw.columns:
+        if pd.api.types.is_numeric_dtype(X_raw[col]):
+            X_raw[col] = pd.to_numeric(X_raw[col], errors='coerce')
+    if task_type == 'regression':
+        y = pd.to_numeric(y, errors='coerce')
+
+    target_mask = ~y.isna()
+    n_target_missing_dropped = int((~target_mask).sum())
+    X_raw = X_raw[target_mask]
+    y = y[target_mask]
+
+    stratify = y if task_type == 'classification' else None
+    try:
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            X_raw, y, test_size=test_size, random_state=random_state, stratify=stratify)
+    except ValueError:
+        # e.g. a class with only 1 member can't be stratified.
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            X_raw, y, test_size=test_size, random_state=random_state)
+
+    preprocessor, feature_cols_out = build_feature_preprocessor(X_train_raw, feature_cols)
+    X_train_arr = preprocessor.fit_transform(X_train_raw)
+    X_test_arr = preprocessor.transform(X_test_raw)
+    X_train = pd.DataFrame(X_train_arr, columns=feature_cols_out, index=X_train_raw.index)
+    X_test = pd.DataFrame(X_test_arr, columns=feature_cols_out, index=X_test_raw.index)
+
+    def cv_pipeline(model):
+        fresh_preprocessor, _ = build_feature_preprocessor(X_train_raw, feature_cols)
+        return Pipeline([('prep', fresh_preprocessor), ('model', model)])
+
+    return {
+        'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test,
+        'feature_cols_out': feature_cols_out,
+        'X_train_raw': X_train_raw, 'X_test_raw': X_test_raw,
+        'preprocessor': preprocessor, 'cv_pipeline': cv_pipeline,
+        'row_counts': {
+            'n_input': n_input,
+            'n_target_missing_dropped': n_target_missing_dropped,
+            'n_train': len(X_train_raw), 'n_holdout': len(X_test_raw),
+            'n_train_used': len(X_train), 'n_holdout_used': len(X_test),
+        },
+    }
+
+
+def build_onehot_preprocessor(X: pd.DataFrame, feature_cols: list) -> tuple:
+    """A ColumnTransformer that imputes (never drops rows) and one-hot
+    encodes categoricals — for the several *_analysis.py scripts that
+    already used ``pd.get_dummies`` and need to keep doing so (their
+    downstream feature-importance / coefficient reporting is built around
+    one indicator column per category, unlike the tree scripts that use
+    :func:`build_feature_preprocessor`'s single ordinal column instead).
+
+    ``drop='first'`` matches ``pd.get_dummies(..., drop_first=True)``'s
+    output shape. ``handle_unknown='ignore'`` means a category seen only at
+    holdout/CV-fold time — never visible to this fit — encodes to all-zero
+    indicator columns instead of crashing or (the leak this replaces)
+    having already been baked into the one-hot columns fit on everything.
+    See docs/automl-preprocessing-leakage.md §2.
+
+    Returns ``(preprocessor, numeric_cols, categorical_cols)`` — unfitted;
+    fit it on X_train ONLY (see :func:`leak_safe_prepare_onehot`).
+    """
+    numeric_cols = [c for c in feature_cols if pd.api.types.is_numeric_dtype(X[c])]
+    categorical_cols = [c for c in feature_cols if c not in numeric_cols]
+    transformers = []
+    if numeric_cols:
+        transformers.append(('num', SimpleImputer(strategy='median'), numeric_cols))
+    if categorical_cols:
+        cat_pipe = Pipeline([
+            ('impute', SimpleImputer(strategy='most_frequent')),
+            ('encode', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False)),
+        ])
+        transformers.append(('cat', cat_pipe, categorical_cols))
+    preprocessor = ColumnTransformer(transformers, verbose_feature_names_out=False)
+    return preprocessor, numeric_cols, categorical_cols
+
+
+def leak_safe_prepare_onehot(
+    df: pd.DataFrame, feature_cols: list, target_col: str, task_type: str,
+    test_size: float, random_state: int = 42,
+) -> dict:
+    """Same contract as :func:`leak_safe_prepare`, but one-hot encodes
+    categoricals (via :func:`build_onehot_preprocessor`) instead of the
+    ordinal single-column encoding — for scripts that used
+    ``pd.get_dummies`` and need that column shape preserved. See
+    docs/automl-preprocessing-leakage.md.
+
+    ``feature_cols_out`` here is the *expanded* one-hot column list (e.g.
+    ``cat1_b``, ``cat1_c``), same naming ``OneHotEncoder.get_feature_names_out``
+    produces — read it back from the returned dict rather than assuming the
+    caller's original ``feature_cols``, exactly as with the ordinal variant.
+    """
+    n_input = len(df)
+    X_raw = df[feature_cols].copy()
+    y = df[target_col].copy()
+    for col in X_raw.columns:
+        if pd.api.types.is_numeric_dtype(X_raw[col]):
+            X_raw[col] = pd.to_numeric(X_raw[col], errors='coerce')
+    if task_type == 'regression':
+        y = pd.to_numeric(y, errors='coerce')
+
+    target_mask = ~y.isna()
+    n_target_missing_dropped = int((~target_mask).sum())
+    X_raw = X_raw[target_mask]
+    y = y[target_mask]
+
+    stratify = y if task_type == 'classification' else None
+    try:
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            X_raw, y, test_size=test_size, random_state=random_state, stratify=stratify)
+    except ValueError:
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            X_raw, y, test_size=test_size, random_state=random_state)
+
+    preprocessor, numeric_cols, categorical_cols = build_onehot_preprocessor(X_train_raw, feature_cols)
+    X_train_arr = preprocessor.fit_transform(X_train_raw)
+    X_test_arr = preprocessor.transform(X_test_raw)
+    feature_cols_out = list(preprocessor.get_feature_names_out())
+    X_train = pd.DataFrame(X_train_arr, columns=feature_cols_out, index=X_train_raw.index)
+    X_test = pd.DataFrame(X_test_arr, columns=feature_cols_out, index=X_test_raw.index)
+
+    def cv_pipeline(model):
+        fresh_preprocessor, _, _ = build_onehot_preprocessor(X_train_raw, feature_cols)
+        return Pipeline([('prep', fresh_preprocessor), ('model', model)])
+
+    return {
+        'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test,
+        'feature_cols_out': feature_cols_out,
+        'X_train_raw': X_train_raw, 'X_test_raw': X_test_raw,
+        'preprocessor': preprocessor, 'cv_pipeline': cv_pipeline,
+        'row_counts': {
+            'n_input': n_input,
+            'n_target_missing_dropped': n_target_missing_dropped,
+            'n_train': len(X_train_raw), 'n_holdout': len(X_test_raw),
+            'n_train_used': len(X_train), 'n_holdout_used': len(X_test),
+        },
+    }

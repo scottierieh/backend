@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import ElasticNet, ElasticNetCV, LinearRegression, Lasso
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from scipy import stats as scipy_stats
-from analysis_common import unscale_linear_model
+from analysis_common import unscale_linear_model, leak_safe_prepare_onehot
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -75,18 +75,20 @@ def _l1_ratio_interpretation(l1_ratio):
     else:
         return "near-Ridge (favors grouped shrinkage of correlated predictors)"
 
-def perform_cross_validation(X, y, alpha, l1_ratio, cv_folds=5):
-    """K-fold CV on the full (unscaled) dataset via a scaler+model Pipeline, so each
-    fold's scaler only ever sees its own training portion. Shape matches the
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, alpha, l1_ratio, cv_folds=5):
+    """Cross-validate on the TRAIN split only. cv_pipeline builds a fresh
+    Pipeline([('prep', <leak-safe preprocessor>), ('model', model)]) per call;
+    the scaler is inserted between them so imputation, one-hot encoding AND
+    scaling all refit on each fold's own train portion alone -- not the
+    combined train+holdout set this used to run on. Shape matches the
     {r2_mean, r2_std, rmse_mean, rmse_std, n_folds, scores} contract the frontend's
-    CvResults interface and the DOCX export route already expect for this analysis."""
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),
-        ('model', ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=10000)),
-    ])
+    CvResults interface and the DOCX export route already expect for this analysis.
+    See docs/automl-preprocessing-leakage.md."""
+    pipeline = cv_pipeline(ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=10000))
+    pipeline.steps.insert(-1, ('scaler', StandardScaler()))
     kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
     cv_out = cross_validate(
-        pipeline, X, y, cv=kf,
+        pipeline, X_train_raw, y_train, cv=kf,
         scoring={'r2': 'r2', 'rmse': 'neg_root_mean_squared_error'},
     )
     r2_scores = cv_out['test_r2']
@@ -244,26 +246,18 @@ def main():
             raise ValueError("Missing data, target, or features")
 
         df = pd.DataFrame(data)
-        n_total_rows = len(df)
 
-        X = df[features]
-        y = df[target]
-
-        X = pd.get_dummies(X, drop_first=True)
-        final_features = X.columns.tolist()
-
-        y = pd.to_numeric(y, errors='coerce')
-
-        combined = pd.concat([X, y], axis=1).dropna()
-        X = combined[final_features]
-        y = combined[target]
-
-        if X.empty or y.empty:
-            raise ValueError("Not enough valid data after cleaning.")
-
-        n_dropped = n_total_rows - len(combined)
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        # Split BEFORE any imputation/one-hot/scaling statistic is computed,
+        # so those values come from the train rows alone, and impute rather
+        # than drop rows with missing features -- previously any row missing
+        # so much as one feature was dropped outright, on top of the scaler
+        # and one-hot columns having been fit on the full train+holdout set.
+        # See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, features, target, 'regression', test_size, 42)
+        X_train, X_test = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        final_features = prep['feature_cols_out']
+        row_counts = prep['row_counts']
 
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
@@ -297,7 +291,8 @@ def main():
         }
 
         interpretation = _generate_interpretation(train_metrics['r2_score'], test_metrics['r2_score'], l1_ratio)
-        cv_result = perform_cross_validation(X, y, alpha, l1_ratio, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], alpha, l1_ratio, cv_folds)
 
         # ── Feature selection: which coefficients ElasticNet shrunk to exactly zero ──
         selected_features = [f for f, c in zip(final_features, model.coef_) if c != 0]
@@ -386,10 +381,11 @@ def main():
             'model_comparison': model_comparison,
             'residual_diagnostics': residual_diagnostics,
             'interpretation': interpretation,
-            'n_dropped': int(n_dropped),
-            'n_total': int(len(combined)),
+            'n_dropped': int(row_counts['n_target_missing_dropped']),
+            'n_total': int(row_counts['n_train'] + row_counts['n_holdout']),
             'n_train': int(len(X_train)),
             'n_test': int(len(X_test)),
+            'row_counts': row_counts,
             'n_iter': n_iter_val,
             'max_iter': max_iter_val,
             'converged': converged_val,
@@ -467,7 +463,7 @@ def main():
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, features, 'regression', {'r2': test_metrics['r2_score']})
+            guardrails = compute_guardrails(X_train, y_train, final_features, 'regression', {'r2': test_metrics['r2_score']})
         except Exception:
             guardrails = []
 

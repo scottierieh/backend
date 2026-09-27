@@ -32,7 +32,7 @@ from sklearn.metrics import (
 )
 from scipy import stats
 import warnings
-from analysis_common import shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
+from analysis_common import shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -644,9 +644,12 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
 # Cross Validation — Pipeline to avoid leakage
 # ──────────────────────────────────────────────
 
-def perform_cross_validation(X_raw, y, params: dict, method: str, cv_folds: int) -> Dict[str, Any]:
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, method: str, cv_folds: int) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation and scaling via cv_pipeline. See docs/automl-preprocessing-leakage.md."""
+    X_raw = X_train_raw
     le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
+    y_encoded = le.fit_transform(y_train)
 
     if method == 'lda':
         n_classes = len(le.classes_)
@@ -673,10 +676,8 @@ def perform_cross_validation(X_raw, y, params: dict, method: str, cv_folds: int)
             priors=params.get('priors')
         )
 
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),
-        ('model', base_model)
-    ])
+    pipeline = cv_pipeline(base_model)
+    pipeline.steps.insert(-1, ('scaler', StandardScaler()))
 
     min_class_count = int(np.min(np.bincount(y_encoded)))
     cv_folds = max(2, min(cv_folds, min_class_count))
@@ -1170,49 +1171,39 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
         categorical_features = []
-        for col in X.columns:
-            if not pd.api.types.is_numeric_dtype(X[col]):
-                unique_count = X[col].nunique()
+        for col in feature_cols:
+            if not pd.api.types.is_numeric_dtype(df[col]):
                 categorical_features.append({
                     'feature': col,
-                    'unique_values': int(unique_count),
+                    'unique_values': int(df[col].nunique()),
                     'note': 'Label encoded — ordinal assumption applied. Consider One-Hot Encoding for nominal variables.'
                 })
-                X[col] = LabelEncoder().fit_transform(X[col].astype(str))
-            else:
-                X[col] = pd.to_numeric(X[col], errors='coerce')
 
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
+        # Split BEFORE any imputation/scaling statistic is computed, so those
+        # values come from the train rows alone, and impute rather than drop
+        # rows with missing features. See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare(df, feature_cols, target_col, 'classification', test_size, random_state)
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
+        y_train, y_test = prep['y_train'], prep['y_test']
 
-        if len(X) < 50:
+        if row_counts['n_train'] < 50:
             raise ValueError("At least 50 valid samples required.")
-        n_unique = y.nunique()
+        n_unique = df[target_col].nunique()
         if n_unique < 2:
             raise ValueError("Target must have at least 2 classes.")
         if n_unique > 50:
             raise ValueError("Target has too many unique values.")
 
-        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
-            X, y,
-            test_size=test_size,
-            random_state=random_state,
-            stratify=y
-        )
-
         scaler = StandardScaler()
         X_train = pd.DataFrame(
-            scaler.fit_transform(X_train_raw),
-            columns=X.columns, index=X_train_raw.index
+            scaler.fit_transform(prep['X_train']),
+            columns=feature_cols, index=prep['X_train'].index
         )
         X_test = pd.DataFrame(
-            scaler.transform(X_test_raw),
-            columns=X.columns, index=X_test_raw.index
+            scaler.transform(prep['X_test']),
+            columns=feature_cols, index=prep['X_test'].index
         )
 
         parsed_shrinkage = _parse_shrinkage(shrinkage)
@@ -1249,7 +1240,8 @@ def main():
         except Exception:
             ale_data = []
 
-        cv_result = perform_cross_validation(np.array(X), y, params, method, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, method, cv_folds)
 
         prediction_examples = generate_prediction_examples(result, n_examples=15)
 
@@ -1299,18 +1291,19 @@ def main():
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, 'classification', result['metrics'])
+            guardrails = compute_guardrails(X_train, y_train, feature_cols, 'classification', result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'method': method.upper(),
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_classes': len(result['class_labels']),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'parameters': {
                 'method': method.upper(),
                 'solver': actual_solver if method == 'lda' else 'N/A',

@@ -35,7 +35,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import shap
-from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d
+from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
 
 
 warnings.filterwarnings('ignore')
@@ -741,10 +741,12 @@ def train_regressor(X_train, X_test, y_train, y_test,
 # Cross-Validation
 # ─────────────────────────────────────────────
 
-def perform_cv(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+def perform_cv(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/encoding via cv_pipeline. See docs/automl-preprocessing-leakage.md."""
     if task_type == 'classification':
         le = LabelEncoder()
-        y_enc = le.fit_transform(y)
+        y_enc = le.fit_transform(y_train)
         model = DecisionTreeClassifier(
             max_depth=params['max_depth'],
             min_samples_split=params['min_samples_split'],
@@ -767,9 +769,9 @@ def perform_cv(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, A
             max_leaf_nodes=params['max_leaf_nodes'],
             random_state=params['random_state']
         )
-        cv_target, cv_task = y, 'regression'
+        cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 # ─────────────────────────────────────────────
@@ -904,36 +906,38 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        # Encode categorical features
-        categorical_features = []
-        for col in X.columns:
-            if not pd.api.types.is_numeric_dtype(X[col]):
-                categorical_features.append(col)
-                X[col] = LabelEncoder().fit_transform(X[col].astype(str))
-            else:
-                X[col] = pd.to_numeric(X[col], errors='coerce')
-
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask].reset_index(drop=True)
-        y = y[valid_mask].reset_index(drop=True)
-
-        if len(X) < 50:
-            raise ValueError("At least 50 valid samples required.")
+        # categorical_features -- kept for the response payload below, same
+        # meaning as before (which of feature_cols was not already numeric).
+        categorical_features = [c for c in feature_cols if not pd.api.types.is_numeric_dtype(df[c])]
 
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
+
+        # Split BEFORE any imputation statistic is computed, so median/mode
+        # values come from the train rows alone, and impute rather than drop
+        # rows with missing features. See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare(df, feature_cols, target_col, task_type, test_size, random_state)
+        X_train_df, X_test_df = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
+
+        if row_counts['n_train'] < 50:
+            raise ValueError("At least 50 valid samples required.")
 
         # The original class names, kept before they are encoded away. Everything
         # downstream sees 0/1, so `class_labels` in the result is ['0','1'] and
         # a screen naming the explained class would print "1" instead of the
-        # outcome the reader typed.
+        # outcome the reader typed. Fit on train+test together (same set of
+        # classes must map to the same codes on both sides) -- this is a label
+        # vocabulary, not a feature statistic, so seeing both splits here isn't
+        # the leak the imputation/scaling values above would be.
         original_class_names = None
-        if task_type == 'classification' and not pd.api.types.is_numeric_dtype(y):
+        if task_type == 'classification' and not pd.api.types.is_numeric_dtype(y_train):
             _target_le = LabelEncoder()
-            y = pd.Series(_target_le.fit_transform(y))
+            _target_le.fit(pd.concat([y_train, y_test]))
+            y_train = pd.Series(_target_le.transform(y_train), index=y_train.index)
+            y_test = pd.Series(_target_le.transform(y_test), index=y_test.index)
             original_class_names = [str(c) for c in _target_le.classes_]
 
         criterion = _fix_criterion(criterion, task_type)
@@ -951,13 +955,8 @@ def main():
             'random_state':      random_state,
         }
 
-        X_arr = X.values.astype(float)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_arr, y,
-            test_size=test_size,
-            random_state=random_state,
-            stratify=y if task_type == 'classification' else None
-        )
+        X_train = X_train_df.values.astype(float)
+        X_test = X_test_df.values.astype(float)
 
         if task_type == 'classification':
             result = train_classifier(X_train, X_test, y_train, y_test,
@@ -973,7 +972,8 @@ def main():
         feature_importance = get_feature_importance(model, feature_cols)
 
         # ── CV ──
-        cv_result = perform_cv(X_arr, y, params, task_type, cv_folds)
+        cv_result = perform_cv(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds)
 
         # ── Permutation Importance (unbiased vs. Gini above) ──
         if task_type == 'classification':
@@ -1045,17 +1045,18 @@ def main():
         # ── Build response ──
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train_df, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type':          task_type,
-            'n_samples':          len(X),
+            'n_samples':          row_counts['n_train'] + row_counts['n_holdout'],
             'n_features':         len(feature_cols),
             'n_train':            len(X_train),
             'n_test':             len(X_test),
+            'row_counts':         row_counts,
             'parameters':         {k: _to_native(v) for k, v in params.items()},
             'metrics':            result['metrics'],
             'feature_importance': feature_importance,

@@ -52,7 +52,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
 
 
 warnings.filterwarnings('ignore')
@@ -449,7 +449,11 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         return None
 
 
-def perform_cross_validation(X, y, task_type: str, params: dict, cv_folds: int) -> Dict[str, Any]:
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, task_type: str, params: dict,
+                              cv_folds: int, scale_features: bool) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/one-hot encoding (and scaling, if requested) via cv_pipeline.
+    See docs/automl-preprocessing-leakage.md."""
     estimators = build_estimators(task_type, params['base_estimators'], params['random_state'])
     if params['ensemble_method'] == 'stacking':
         registry = BASE_ESTIMATORS[task_type]
@@ -463,12 +467,16 @@ def perform_cross_validation(X, y, task_type: str, params: dict, cv_folds: int) 
 
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
         cv_target, cv_task = y_encoded, 'classification'
     else:
-        cv_target, cv_task = y, 'regression'
+        cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    pipeline = cv_pipeline(model)
+    if scale_features:
+        pipeline.steps.insert(-1, ('scale', StandardScaler()))
+
+    return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_comparison_plot(individual_scores: Dict[str, float], model_label: str, task_type: str) -> str:
@@ -697,37 +705,28 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
-        num_cols = [c for c in X.columns if pd.api.types.is_numeric_dtype(X[c])]
-        for col in num_cols:
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-        if cat_cols:
-            X = pd.get_dummies(X, columns=cat_cols, drop_first=True).astype(float)
-
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-        feature_cols = list(X.columns)
-
-        if len(X) < 30:
-            raise ValueError("At least 30 valid samples required.")
-
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
         if ensemble_method not in ('voting', 'stacking'):
             raise ValueError("ensemble_method must be 'voting' or 'stacking'.")
 
-        X_array = X.values
-        if scale_features:
-            X_array = StandardScaler().fit_transform(X_array)
+        # Split BEFORE any imputation/one-hot/scaling statistic is computed,
+        # so those values come from the train rows alone -- most consequential
+        # for the scaler here, since it was previously fit on 100% of the
+        # data (train+holdout) before anything else happened.
+        # See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, feature_cols, target_col, task_type, test_size, random_state)
+        X_train_df, X_test_df = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_array, y, test_size=test_size, random_state=random_state,
-            stratify=y if task_type == 'classification' else None
-        )
+        if row_counts['n_train'] < 30:
+            raise ValueError("At least 30 valid samples required.")
+
+        scaler = StandardScaler().fit(X_train_df) if scale_features else None
+        X_train = scaler.transform(X_train_df) if scaler else X_train_df.values
+        X_test = scaler.transform(X_test_df) if scaler else X_test_df.values
 
         params = {
             'ensemble_method': ensemble_method,
@@ -763,7 +762,8 @@ def main():
         except Exception:
             ale_data = []
 
-        cv_result = perform_cross_validation(X_array, y, task_type, params, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], task_type, params, cv_folds, scale_features)
 
         meta_learner_weights = compute_meta_learner_weights(result['model'], result['base_estimator_names']) if ensemble_method == 'stacking' else []
         fresh_estimators = build_estimators(task_type, base_estimators, random_state)
@@ -787,7 +787,7 @@ def main():
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train_df, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
@@ -796,10 +796,11 @@ def main():
             'task_type': task_type,
             'ensemble_method': ensemble_method,
             'model_label': result['model_label'],
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'base_estimators': result['base_estimator_names'],
             'individual_scores': result['individual_scores'],
             'metrics': result['metrics'],

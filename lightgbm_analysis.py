@@ -30,7 +30,7 @@ from sklearn.metrics import (
 )
 import lightgbm as lgb
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
 
 
 warnings.filterwarnings('ignore')
@@ -384,18 +384,20 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         return None
 
 
-def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/encoding via cv_pipeline. See docs/automl-preprocessing-leakage.md."""
     cv_params = _common_params(params)
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
         model = lgb.LGBMClassifier(**cv_params)
         cv_target, cv_task = y_encoded, 'classification'
     else:
         model = lgb.LGBMRegressor(**cv_params)
-        cv_target, cv_task = y, 'regression'
+        cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -613,24 +615,23 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        for col in X.columns:
-            if not pd.api.types.is_numeric_dtype(X[col]):
-                X[col] = LabelEncoder().fit_transform(X[col].astype(str))
-            else:
-                X[col] = pd.to_numeric(X[col], errors='coerce')
-
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-
-        if len(X) < 50:
-            raise ValueError("At least 50 valid samples required.")
+        test_size = payload.get('test_size', 0.2)
+        random_state = payload.get('random_state', 42)
+        cv_folds = payload.get('cv_folds', 5)
 
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
+
+        # Split BEFORE any imputation statistic is computed, so median/mode
+        # values come from the train rows alone, and impute rather than drop
+        # rows with missing features. See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare(df, feature_cols, target_col, task_type, test_size, random_state)
+        X_train, X_test, y_train, y_test = prep['X_train'], prep['X_test'], prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
+
+        if row_counts['n_train'] < 50:
+            raise ValueError("At least 50 valid samples required.")
 
         params = {
             'n_estimators': payload.get('n_estimators', 200),
@@ -646,15 +647,6 @@ def main():
             'early_stopping_rounds': payload.get('early_stopping_rounds', 20)
         }
 
-        test_size = payload.get('test_size', 0.2)
-        random_state = payload.get('random_state', 42)
-        cv_folds = payload.get('cv_folds', 5)
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state,
-            stratify=y if task_type == 'classification' else None
-        )
-
         if task_type == 'classification':
             result = train_lightgbm_classifier(X_train, X_test, y_train, y_test, params)
         else:
@@ -667,7 +659,8 @@ def main():
         y_test_for_perm = result['label_encoder'].transform(y_test) if task_type == 'classification' else (y_test.values if hasattr(y_test, 'values') else y_test)
         perm_importance = compute_permutation_importance(model, X_test.values, y_test_for_perm, feature_cols)
 
-        cv_result = perform_cross_validation(X, y, params, task_type, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds)
         shap_result = compute_shap(model, X_test.values, feature_cols)
         pdp_data = compute_pdp_json(model, X_train.values, feature_cols, feature_importance, top_n=6)
 
@@ -708,17 +701,18 @@ def main():
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type': task_type,
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'parameters': params,
             'metrics': result['metrics'],
             'feature_importance': feature_importance,

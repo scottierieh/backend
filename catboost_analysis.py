@@ -417,15 +417,29 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         return None
 
 
-def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, cat_features: List[int]) -> Dict[str, Any]:
+def perform_cross_validation(X_train_raw, y_train, params: dict, task_type: str, cv_folds: int,
+                              cat_features: List[int], numeric_cols: List[str]) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only; each fold imputes numeric NaNs
+    from its OWN fold-train median (not the outer train's), so no fold's
+    validation score benefits from a statistic derived from its own held-out
+    rows. See docs/automl-preprocessing-leakage.md."""
     cv_params = _common_params(params)
+
+    def _impute_fold(X_tr_raw, X_te_raw):
+        X_tr, X_te = X_tr_raw.copy(), X_te_raw.copy()
+        if numeric_cols:
+            medians = X_tr_raw[numeric_cols].median()
+            X_tr[numeric_cols] = X_tr_raw[numeric_cols].fillna(medians)
+            X_te[numeric_cols] = X_te_raw[numeric_cols].fillna(medians)
+        return X_tr, X_te
+
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
         cv_splitter = make_cv_splitter('classification', cv_folds, params['random_state'])
         scores = []
-        for train_idx, test_idx in cv_splitter.split(X, y_encoded):
-            X_tr, X_te = X.iloc[train_idx], X.iloc[test_idx]
+        for train_idx, test_idx in cv_splitter.split(X_train_raw, y_encoded):
+            X_tr, X_te = _impute_fold(X_train_raw.iloc[train_idx], X_train_raw.iloc[test_idx])
             y_tr, y_te = y_encoded[train_idx], y_encoded[test_idx]
             m = CatBoostClassifier(**cv_params)
             m.fit(Pool(X_tr, y_tr, cat_features=cat_features), verbose=False)
@@ -433,9 +447,9 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int, 
     else:
         scores = []
         kf = make_cv_splitter('regression', cv_folds, params['random_state'])
-        for train_idx, test_idx in kf.split(X):
-            X_tr, X_te = X.iloc[train_idx], X.iloc[test_idx]
-            y_tr, y_te = y.iloc[train_idx], y.iloc[test_idx]
+        for train_idx, test_idx in kf.split(X_train_raw):
+            X_tr, X_te = _impute_fold(X_train_raw.iloc[train_idx], X_train_raw.iloc[test_idx])
+            y_tr, y_te = y_train.iloc[train_idx], y_train.iloc[test_idx]
             m = CatBoostRegressor(**cv_params, loss_function='RMSE')
             m.fit(Pool(X_tr, y_tr, cat_features=cat_features), verbose=False)
             scores.append(r2_score(y_te, m.predict(Pool(X_te, cat_features=cat_features))))
@@ -671,26 +685,40 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
+        # CatBoost handles categorical columns natively (via cat_features
+        # indices into the Pool), so unlike the other AutoML scripts these
+        # are kept as raw strings rather than encoded -- only the *numeric*
+        # columns need an imputed statistic, and that statistic must come
+        # from the train split alone. See docs/automl-preprocessing-leakage.md.
+        X_raw = df[feature_cols].copy()
         y = df[target_col].copy()
 
-        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
+        cat_cols = [c for c in X_raw.columns if not pd.api.types.is_numeric_dtype(X_raw[c])]
+        numeric_cols = [c for c in X_raw.columns if c not in cat_cols]
         for c in cat_cols:
-            X[c] = X[c].astype(str).fillna('missing')
-        for c in [col for col in X.columns if col not in cat_cols]:
-            X[c] = pd.to_numeric(X[c], errors='coerce')
+            # Missing categories get an explicit 'missing' level, not dropped
+            # and not silently folded into a real category. (.astype(str)
+            # first would turn NaN into the literal string 'nan', which
+            # fillna() can no longer see -- so the order here matters.)
+            X_raw[c] = X_raw[c].where(X_raw[c].notna(), 'missing').astype(str)
+        for c in numeric_cols:
+            X_raw[c] = pd.to_numeric(X_raw[c], errors='coerce')
 
-        valid_mask = ~(X[[c for c in X.columns if c not in cat_cols]].isna().any(axis=1) | y.isna())
-        X = X[valid_mask].reset_index(drop=True)
-        y = y[valid_mask].reset_index(drop=True)
+        if task_type == 'regression':
+            y = pd.to_numeric(y, errors='coerce')
+        target_mask = ~y.isna()
+        n_target_missing_dropped = int((~target_mask).sum())
+        n_input = len(X_raw)
+        X_raw = X_raw[target_mask].reset_index(drop=True)
+        y = y[target_mask].reset_index(drop=True)
 
-        if len(X) < 30:
+        if len(X_raw) < 30:
             raise ValueError("At least 30 valid samples required.")
 
         if task_type == 'auto':
             task_type = detect_task_type(y)
 
-        cat_feature_indices = [X.columns.get_loc(c) for c in cat_cols]
+        cat_feature_indices = [X_raw.columns.get_loc(c) for c in cat_cols]
 
         params = {
             'iterations': iterations,
@@ -702,16 +730,30 @@ def main():
         }
 
         try:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=random_state,
+            X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+                X_raw, y, test_size=test_size, random_state=random_state,
                 stratify=y if task_type == 'classification' else None
             )
         except ValueError:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=random_state
+            X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+                X_raw, y, test_size=test_size, random_state=random_state
             )
-        X_train = X_train.reset_index(drop=True); X_test = X_test.reset_index(drop=True)
+        X_train_raw = X_train_raw.reset_index(drop=True); X_test_raw = X_test_raw.reset_index(drop=True)
         y_train = y_train.reset_index(drop=True); y_test = y_test.reset_index(drop=True)
+
+        # Impute numeric NaNs from the TRAIN split's own median, then apply
+        # that same value to holdout -- never the other way around.
+        train_medians = X_train_raw[numeric_cols].median() if numeric_cols else None
+        X_train = X_train_raw.copy(); X_test = X_test_raw.copy()
+        if numeric_cols:
+            X_train[numeric_cols] = X_train_raw[numeric_cols].fillna(train_medians)
+            X_test[numeric_cols] = X_test_raw[numeric_cols].fillna(train_medians)
+
+        row_counts = {
+            'n_input': n_input, 'n_target_missing_dropped': n_target_missing_dropped,
+            'n_train': len(X_train_raw), 'n_holdout': len(X_test_raw),
+            'n_train_used': len(X_train), 'n_holdout_used': len(X_test),
+        }
 
         if task_type == 'classification':
             result = train_catboost_classifier(X_train, X_test, y_train, y_test, params, cat_feature_indices)
@@ -745,7 +787,8 @@ def main():
                 ale_data = ale_1d(_ale_predict, X_train.values, feature_cols, _ale_feats)
         except Exception:
             ale_data = []
-        cv_result = perform_cross_validation(X, y, params, task_type, cv_folds, cat_feature_indices)
+        cv_result = perform_cross_validation(
+            X_train_raw, y_train, params, task_type, cv_folds, cat_feature_indices, numeric_cols)
 
         importance_plot = generate_feature_importance_plot(feature_importance)
         learning_plot = generate_learning_curve_plot(result['train_history'], result['eval_metric'], result['best_iteration'])
@@ -766,17 +809,18 @@ def main():
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type': task_type,
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'n_categorical_features': len(cat_cols),
             'categorical_features': cat_cols,
             'parameters': params,

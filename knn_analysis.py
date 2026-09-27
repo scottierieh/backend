@@ -28,7 +28,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance, partial_dependence
 import warnings
-from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
+from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
 
 
 warnings.filterwarnings('ignore')
@@ -345,11 +345,14 @@ def train_knn_regressor(X_train, X_test, y_train, y_test, params: dict,
     }
 
 
-def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
-    """Perform cross-validation (StratifiedKFold for classification)."""
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str,
+                              cv_folds: int, scale_features: bool) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/one-hot encoding (and scaling, if requested) via cv_pipeline.
+    See docs/automl-preprocessing-leakage.md."""
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
         model = KNeighborsClassifier(
             n_neighbors=params['n_neighbors'],
             weights=params['weights'],
@@ -357,8 +360,11 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             p=params['p'],
             n_jobs=-1
         )
+        pipeline = cv_pipeline(model)
+        if scale_features:
+            pipeline.steps.insert(-1, ('scale', StandardScaler()))
         cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        scores = cross_val_score(model, X, y_encoded, cv=cv, scoring='accuracy')
+        scores = cross_val_score(pipeline, X_train_raw, y_encoded, cv=cv, scoring='accuracy')
     else:
         model = KNeighborsRegressor(
             n_neighbors=params['n_neighbors'],
@@ -367,7 +373,10 @@ def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) 
             p=params['p'],
             n_jobs=-1
         )
-        scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+        pipeline = cv_pipeline(model)
+        if scale_features:
+            pipeline.steps.insert(-1, ('scale', StandardScaler()))
+        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_folds, scoring='r2')
 
     return {
         'cv_scores': [_to_native_type(s) for s in scores],
@@ -1048,48 +1057,29 @@ def main():
         # ── Input validation ────────────────────────────────────────
         k_range = validate_inputs(metric, k_range, n_neighbors_req)
 
-        # ── Prepare features ────────────────────────────────────────
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        # Categorical → one-hot (safer than LabelEncoder for distance-based KNN)
-        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
-        num_cols = [c for c in X.columns if X[c].dtype != 'object']
-        for col in num_cols:
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-        if cat_cols:
-            X = pd.get_dummies(X, columns=cat_cols, drop_first=True).astype(float)
-
-        # Drop NaN
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-        feature_cols = list(X.columns)  # update after one-hot expansion
-
-        if len(X) < 30:
-            raise ValueError("At least 30 valid samples required.")
-
         # ── Auto-detect task type ───────────────────────────────────
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
 
-        # ── Scale features ──────────────────────────────────────────
-        scaler = None
-        X_array = X.values
-        if scale_features:
-            scaler = StandardScaler()
-            X_array = scaler.fit_transform(X_array)
+        # ── Prepare features ────────────────────────────────────────
+        # Split BEFORE any imputation/one-hot/scaling statistic is computed,
+        # so those values come from the train rows alone -- most consequential
+        # for the scaler here, since it was previously fit on 100% of the
+        # data (train+holdout) before anything else happened, which for a
+        # distance-based model like KNN skews every distance computed.
+        # See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, feature_cols, target_col, task_type, test_size, random_state)
+        X_train_df, X_test_df = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']  # update after one-hot expansion
+        row_counts = prep['row_counts']
 
-        # ── Split data ──────────────────────────────────────────────
-        try:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_array, y, test_size=test_size, random_state=random_state,
-                stratify=y if task_type == 'classification' else None
-            )
-        except ValueError:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_array, y, test_size=test_size, random_state=random_state
-            )
+        if row_counts['n_train'] < 30:
+            raise ValueError("At least 30 valid samples required.")
+
+        scaler = StandardScaler().fit(X_train_df) if scale_features else None
+        X_train = scaler.transform(X_train_df) if scaler else X_train_df.values
+        X_test = scaler.transform(X_test_df) if scaler else X_test_df.values
 
         # ── Clamp n_neighbors to valid range ────────────────────────
         max_k = len(X_train) - 1
@@ -1140,7 +1130,14 @@ def main():
             ale_data = []
 
         # ── Cross-validation ────────────────────────────────────────
-        cv_result = perform_cross_validation(X_array, y, params, task_type, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds, scale_features)
+
+        # For the decision-boundary plot only (not a metric) — every row,
+        # imputed and scaled by the statistics already fit on train alone
+        # above, never refit on the combined set.
+        X_array = np.vstack([X_train, X_test])
+        y = pd.concat([y_train, y_test])
 
         # ── Prediction examples ─────────────────────────────────────
         example_idx = _select_example_indices(len(X_test), n_examples=15)
@@ -1181,17 +1178,18 @@ def main():
         # ── Response ────────────────────────────────────────────────
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train_df, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type': task_type,
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'parameters': {
                 'n_neighbors': params['n_neighbors'],
                 'weights': params['weights'],

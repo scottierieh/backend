@@ -29,7 +29,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
+from analysis_common import leak_safe_prepare_onehot, _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
 
 
 warnings.filterwarnings('ignore')
@@ -305,18 +305,24 @@ def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
         return None
 
 
-def perform_cross_validation(X, y, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str, cv_folds: int) -> Dict[str, Any]:
+    """Cross-validate on the TRAIN split only, each fold refitting its own
+    imputation/one-hot encoding and scaling via cv_pipeline.
+    See docs/automl-preprocessing-leakage.md."""
     cv_params = _common_params(params)
     if task_type == 'classification':
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        y_encoded = le.fit_transform(y_train)
         model = MLPClassifier(**cv_params)
         cv_target, cv_task = y_encoded, 'classification'
     else:
         model = MLPRegressor(**cv_params)
-        cv_target, cv_task = y, 'regression'
+        cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(model, X, cv_target, cv_task, cv_folds, params['random_state'])
+    pipeline = cv_pipeline(model)
+    pipeline.steps.insert(-1, ('scale', StandardScaler()))
+
+    return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
 
 
 def generate_loss_curve_plot(model) -> str:
@@ -623,29 +629,25 @@ def main():
         if missing:
             raise ValueError(f"Columns not found: {', '.join(missing)}")
 
-        X = df[feature_cols].copy()
-        y = df[target_col].copy()
-
-        cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
-        num_cols = [c for c in X.columns if pd.api.types.is_numeric_dtype(X[c])]
-        for col in num_cols:
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-        if cat_cols:
-            X = pd.get_dummies(X, columns=cat_cols, drop_first=True).astype(float)
-
-        valid_mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[valid_mask]
-        y = y[valid_mask]
-        feature_cols = list(X.columns)
-
-        if len(X) < 30:
-            raise ValueError("At least 30 valid samples required.")
-
         if not hidden_layer_sizes:
             raise ValueError("hidden_layer_sizes must be a non-empty list.")
 
         if task_type == 'auto':
-            task_type = detect_task_type(y)
+            task_type = detect_task_type(df[target_col])
+
+        # Split BEFORE any imputation/one-hot/scaling statistic is computed,
+        # so those values come from the train rows alone -- most consequential
+        # for the scaler here, since it was previously fit on 100% of the
+        # data (train+holdout) before anything else happened.
+        # See docs/automl-preprocessing-leakage.md.
+        prep = leak_safe_prepare_onehot(df, feature_cols, target_col, task_type, test_size, random_state)
+        X_train_df, X_test_df = prep['X_train'], prep['X_test']
+        y_train, y_test = prep['y_train'], prep['y_test']
+        feature_cols = prep['feature_cols_out']
+        row_counts = prep['row_counts']
+
+        if row_counts['n_train'] < 30:
+            raise ValueError("At least 30 valid samples required.")
 
         params = {
             'hidden_layer_sizes': hidden_layer_sizes,
@@ -658,13 +660,9 @@ def main():
             'random_state': random_state
         }
 
-        scaler = StandardScaler()
-        X_array = scaler.fit_transform(X.values)
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_array, y, test_size=test_size, random_state=random_state,
-            stratify=y if task_type == 'classification' else None
-        )
+        scaler = StandardScaler().fit(X_train_df)
+        X_train = scaler.transform(X_train_df)
+        X_test = scaler.transform(X_test_df)
 
         if task_type == 'classification':
             result = train_mlp_classifier(X_train, X_test, y_train, y_test, params)
@@ -699,7 +697,8 @@ def main():
         except Exception:
             ale_data = []
 
-        cv_result = perform_cross_validation(X_array, y, params, task_type, cv_folds)
+        cv_result = perform_cross_validation(
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds)
 
         plots = [{'label': 'Training Loss Curve', 'image': generate_loss_curve_plot(model)}]
 
@@ -724,22 +723,25 @@ def main():
         if shap_result.get('shap_plot'):
             plots.append({'label': 'SHAP Feature Importance', 'image': shap_result['shap_plot']})
 
-        interpretation = generate_interpretation(result, task_type, model, params, len(X), len(feature_cols))
+        interpretation = generate_interpretation(
+            result, task_type, model, params,
+            row_counts['n_train'] + row_counts['n_holdout'], len(feature_cols))
         prediction_examples = generate_prediction_examples(result, task_type)
 
         try:
             from guardrails import compute_guardrails
-            guardrails = compute_guardrails(X, y, feature_cols, task_type, result['metrics'])
+            guardrails = compute_guardrails(X_train_df, y_train, feature_cols, task_type, result['metrics'])
         except Exception:
             guardrails = []
 
         response = {
             'guardrails': guardrails,
             'task_type': task_type,
-            'n_samples': len(X),
+            'n_samples': row_counts['n_train'] + row_counts['n_holdout'],
             'n_features': len(feature_cols),
             'n_train': len(X_train),
             'n_test': len(X_test),
+            'row_counts': row_counts,
             'parameters': params,
             'n_iterations': int(model.n_iter_),
             'final_loss': _to_native_type(model.loss_),

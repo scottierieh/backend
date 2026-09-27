@@ -202,8 +202,17 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
         metrics['auc_macro'] = _to_native_type(float(np.mean(auc_values)))
 
     # ── Class priors ────────────────────────────────────────────────
+    # GaussianNB exposes class_prior_ (a probability) directly; Multinomial/
+    # BernoulliNB only expose class_log_prior_ (its log), so referencing
+    # class_prior_ unconditionally crashed those two variants -- confirmed
+    # reachable from the standalone Naive Bayes page's type selector, not
+    # just a theoretical gap. See docs/automl-preprocessing-leakage.md.
+    if hasattr(model, 'class_prior_'):
+        prior_source = model.class_prior_
+    else:
+        prior_source = np.exp(model.class_log_prior_)
     class_priors = {
-        str(cls): _to_native_type(model.class_prior_[i])
+        str(cls): _to_native_type(prior_source[i])
         for i, cls in enumerate(le.classes_)
     }
 

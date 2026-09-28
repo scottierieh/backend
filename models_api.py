@@ -500,7 +500,17 @@ def predict_model(model_id: str, req: PredictRequest):
         predictions = list(label_encoder.inverse_transform(raw_pred)) if label_encoder is not None else list(raw_pred)
         try:
             proba = pipeline.predict_proba(X)
-            probabilities = [_to_native_type(float(row.max())) for row in proba]
+            # Every row's FULL per-class distribution, not just the winning
+            # class's own probability -- predict-client.ts already declares
+            # `probabilities: number[][]` and every consumer (deploy-section's
+            # Math.max(...probs), explain-section's p[p.length-1]) already
+            # reads it as one array per row. Collapsing to a single float here
+            # made those correct only by accident for two classes (row.max()
+            # is trivially the winning probability regardless of class count,
+            # but downstream code expects to index the array), and wrong for
+            # three or more. Column order matches pipeline.predict_proba's own
+            # (== label_encoder.classes_, sorted), unchanged from before.
+            probabilities = [[_to_native_type(float(v)) for v in row] for row in proba]
         except Exception:
             probabilities = None
     else:

@@ -221,6 +221,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/homogeneity-test",            "homogeneity_test.py",                     False),
     ("/api/analysis/hyperparameter-tuning",       "hyperparameter_tuning_analysis.py",       True),
     ("/api/analysis/tune",                        "tune_analysis.py",                        True),
+    ("/api/analysis/autogluon",                   "autogluon_analysis.py",                   True),
     ("/api/analysis/feature-engineering",         "feature_engineering_analysis.py",         True),
     ("/api/analysis/drift-stats",                 "drift_stats_analysis.py",                 True),
     ("/api/analysis/ipa",                         "ipa_analysis.py",                         False),

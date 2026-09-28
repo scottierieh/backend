@@ -30,6 +30,13 @@ catboost==1.2.7
 lightgbm==4.7.0
 xgboost==2.1.3
 shap==0.46.0
+# autogluon.tabular: Auto Compare의 엔진 하나. lightgbm/catboost extra만
+# 받습니다 — torch는 fastai/tabm/tabpfnmix/mitra/all/tabarena extra에만
+# 들어 있어서 이 조합에는 오지 않고, xgboost extra는 리눅스에서
+# xgboost-cpu를 당기므로 위의 xgboost==2.1.3을 그대로 씁니다(요구는
+# >=2.1.1). 1.6.3 기준 numpy<2.6/scipy<1.19/pandas<2.4/scikit-learn<1.10
+# 이라 위의 핀과 전부 맞습니다 — 바꿀 핀이 없습니다.
+autogluon.tabular[lightgbm,catboost]==1.6.3
 # tensorflow-cpu, not tensorflow: the plain wheel is 621 MB against 247 MB
 # because it ships GPU kernels, and Cloud Run has no GPU to run them on. Same
 # import surface — lstm_forecasting_analysis.py's `import tensorflow as tf` and

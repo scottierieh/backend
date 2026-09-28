@@ -104,7 +104,15 @@ def _model_space(model_key, task_type):
     if key in ('xgboost', 'xgb'):
         if not _HAS_XGB:
             raise ValueError("XGBoost is not installed on the server")
-        common = dict(random_state=42, n_jobs=-1, verbosity=0)
+        # n_jobs=1, not -1: RandomizedSearchCV below already parallelizes
+        # across candidates/folds with its own n_jobs=-1. Nesting a second
+        # n_jobs=-1 inside each candidate is fork+OpenMP oversubscription at
+        # best and a genuine deadlock at worst — confirmed hanging (no error,
+        # no output, still running past 300s) against the live Cloud Run
+        # container on the very first deploy of this, though it never showed
+        # up locally (Windows' spawn-based multiprocessing doesn't hit the
+        # same fork/thread-pool interaction Linux does).
+        common = dict(random_state=42, n_jobs=1, verbosity=0)
         est = (XGBClassifier(eval_metric='logloss', **common) if is_clf
                else XGBRegressor(**common))
         space = {
@@ -120,7 +128,9 @@ def _model_space(model_key, task_type):
     if key in ('lightgbm', 'lgbm', 'lgb'):
         if not _HAS_LGB:
             raise ValueError("LightGBM is not installed on the server")
-        common = dict(random_state=42, n_jobs=-1, verbose=-1)
+        # n_jobs=1 — see the XGBoost branch above for why nesting under
+        # RandomizedSearchCV's own n_jobs=-1 is refused here.
+        common = dict(random_state=42, n_jobs=1, verbose=-1)
         est = (lgb.LGBMClassifier(**common) if is_clf else lgb.LGBMRegressor(**common))
         space = {
             'n_estimators': [100, 200, 300, 400, 500],
@@ -140,7 +150,10 @@ def _model_space(model_key, task_type):
         # corrupt this script's one-JSON-line-on-stdout contract, and it
         # writes scratch files to disk by default, which a stateless Cloud
         # Run container has no lasting place for.
-        common = dict(random_state=42, verbose=False, allow_writing_files=False)
+        # thread_count=1 for the same reason n_jobs is pinned to 1 above —
+        # CatBoost's own default (all cores) would otherwise nest under
+        # RandomizedSearchCV's n_jobs=-1 too.
+        common = dict(random_state=42, verbose=False, allow_writing_files=False, thread_count=1)
         est = (CatBoostClassifier(**common) if is_clf else CatBoostRegressor(**common))
         space = {
             'iterations': [100, 200, 300, 400],

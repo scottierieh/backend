@@ -25,11 +25,13 @@ CLI contract, same as every *_analysis.py here: one JSON object on stdin, one
 JSON object on stdout; on failure print {"error": ...} to stderr and exit(1).
 """
 
+import os
 import sys
 import json
 import time
 import shutil
 import tempfile
+import contextlib
 
 import numpy as np
 import pandas as pd
@@ -85,6 +87,64 @@ _NEGATED = {'root_mean_squared_error', 'mean_absolute_error'}
 _DEFAULT_METRIC = {'classification': 'accuracy', 'regression': 'root_mean_squared_error'}
 
 
+# AutoGluon's default lineup includes two torch models. requirements.txt
+# deliberately carries the GBM extras only -- the torch wheels are large, the
+# service has no GPU, and on tabular data of this size the boosted trees win
+# anyway -- so asking for them spends part of the budget failing to import and
+# then prints nine lines about it. Naming them here is how the exclusion stays
+# a decision rather than a side effect of what happens to be installed.
+_NO_TORCH = ['NN_TORCH', 'FASTAI']
+
+
+class _StderrSink:
+    """Holds whatever AutoGluon writes to stderr while it is fitting.
+
+    Every *_analysis.py here has the same CLI contract: stdout carries the
+    answer, and anything on stderr means the run failed. AutoGluon does not
+    work that way -- it reports skipped models and third-party import warnings
+    on stderr and still returns a leaderboard -- so a successful run left
+    nineteen lines behind that read, to the caller and to the logs, as a
+    failure that also happened to succeed.
+
+    The stream is taken at the file-descriptor level rather than by rebinding
+    `sys.stderr`, because the noise comes from C extensions and from logging
+    handlers that captured the stream when they were imported, and
+    `contextlib.redirect_stderr` reaches neither.
+
+    Nothing is thrown away: on failure the tail goes into the error message,
+    which is the one place it was ever worth reading.
+    """
+
+    def __init__(self):
+        self._file = tempfile.TemporaryFile()
+
+    def tail(self, limit: int = 1500) -> str:
+        try:
+            self._file.flush()
+            self._file.seek(0)
+            return self._file.read().decode('utf-8', 'replace').strip()[-limit:]
+        except Exception:
+            return ''
+
+    def close(self):
+        try:
+            self._file.close()
+        except Exception:
+            pass
+
+    @contextlib.contextmanager
+    def capturing(self):
+        saved = os.dup(2)
+        try:
+            sys.stderr.flush()
+            os.dup2(self._file.fileno(), 2)
+            yield
+        finally:
+            sys.stderr.flush()
+            os.dup2(saved, 2)
+            os.close(saved)
+
+
 def _detect_task_type(y: pd.Series) -> str:
     vals = y.dropna()
     if vals.empty:
@@ -110,7 +170,27 @@ def main():
         # limit needs the request timeout raised, and a much longer one needs a
         # job queue, neither of which this script decides).
         time_limit = int(payload.get('time_limit') or 300)
-        preset = payload.get('preset') or 'medium_quality'
+        # 'best_quality', not AutoGluon's gentler default, because the budget
+        # has to be real. Measured on the app's own example (971 training rows,
+        # PR-AUC, this script, this machine):
+        #
+        #   medium_quality, 300s budget -> 20.5s used, hit_limit False, PR-AUC .419
+        #   best_quality,   120s budget -> 120.3s used, hit_limit True,  PR-AUC .497
+        #   best_quality,   300s budget -> 300.2s used, hit_limit True,  PR-AUC .505
+        #
+        # Two things follow. The smallest budget under best_quality beats the
+        # largest under the old default, so this is not a trade. And under the
+        # old default the budget was decoration: the search stopped after a
+        # fifteenth of it whatever the caller asked for, which makes the lab's
+        # "you say how long it may look" untrue and leaves `hit_limit` always
+        # False -- the very flag the design says should decide whether to raise
+        # the request timeout.
+        #
+        # What this does change is that a 300-second budget now takes 300
+        # seconds of request. The design already assumes that (stage 1 is
+        # 240-500s inside the current Cloud Run timeout); it was simply not
+        # happening. A caller that needs the old behaviour sends preset itself.
+        preset = payload.get('preset') or 'best_quality'
 
         df_all = pd.DataFrame(data)
         missing_cols = [c for c in [target] + list(features) if c not in df_all.columns]
@@ -151,18 +231,25 @@ def main():
             )
 
         work_dir = tempfile.mkdtemp(prefix='ag_')
+        sink = _StderrSink()
         started = time.time()
         try:
-            predictor = TabularPredictor(
-                label=target,
-                problem_type=('regression' if task_type == 'regression' else None),
-                eval_metric=eval_metric,
-                path=work_dir,
-                verbosity=0,
-            ).fit(df, time_limit=time_limit, presets=preset)
+            with sink.capturing():
+                predictor = TabularPredictor(
+                    label=target,
+                    problem_type=('regression' if task_type == 'regression' else None),
+                    eval_metric=eval_metric,
+                    path=work_dir,
+                    verbosity=0,
+                ).fit(
+                    df,
+                    time_limit=time_limit,
+                    presets=preset,
+                    excluded_model_types=_NO_TORCH,
+                )
 
-            seconds_used = round(time.time() - started, 1)
-            board = predictor.leaderboard(silent=True)
+                seconds_used = round(time.time() - started, 1)
+                board = predictor.leaderboard(silent=True)
 
             # One row per model AutoGluon kept, in its own ranking order.
             #
@@ -251,7 +338,16 @@ def main():
                 'error': None,
             }
             print(json.dumps(response, default=_to_native_type))
+        except Exception as e:
+            # AutoGluon's own account of what went wrong was captured rather
+            # than printed, so carry the tail of it into the one line the
+            # caller does read. Without this the message is whatever the
+            # Python exception says, which for a fit that ran out of memory or
+            # found no usable model is far less specific than what it logged.
+            detail = sink.tail()
+            raise RuntimeError(f'{e}\n{detail}' if detail else str(e)) from e
         finally:
+            sink.close()
             shutil.rmtree(work_dir, ignore_errors=True)
 
     except Exception as e:  # noqa: BLE001 — CLI contract: any failure -> stderr + exit(1)

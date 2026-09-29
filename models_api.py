@@ -67,6 +67,7 @@ from sklearn.metrics import accuracy_score, f1_score, r2_score, mean_absolute_er
 
 from analysis_common import _to_native_type, balanced_weighting
 from algorithm_registry import build_estimator
+from blend_registry import build_blend, UnknownEstimators
 from feature_pipeline import FeatureEngineer
 import model_store
 
@@ -117,6 +118,13 @@ class TrainRequest(BaseModel):
     # and the improvement the person was shown would belong to nothing they
     # can use. Omitted keeps the defaults.
     params: Optional[dict[str, Any]] = None
+
+    # Which models a blend is made of, when `algorithm` is the ensemble.
+    # Auto Compare blends the top of its own board, so the members are chosen
+    # by the reader -- without this the sealed-row score and the deployed
+    # model would both be the fixed three in algorithm_registry, which is a
+    # different ensemble from the one on the leaderboard wearing its name.
+    ensemble: Optional[dict[str, Any]] = None
 
     # ---- AutoGluon ---------------------------------------------------------
     # An explicit field, not a string match on `algorithm`. That field carries
@@ -178,7 +186,8 @@ def _build_preprocessor(numeric_features: list[str], categorical_features: list[
 def _build_pipeline(algorithm: str, task: Task, numeric_features: list[str],
                     categorical_features: list[str], y_train=None,
                     class_weight: Optional[str] = 'balanced',
-                    params: Optional[dict] = None) -> tuple[Pipeline, dict, Optional[dict]]:
+                    params: Optional[dict] = None,
+                    ensemble: Optional[dict] = None) -> tuple[Pipeline, dict, Optional[dict]]:
     """The served pipeline, weighted the way this estimator supports it.
 
     Returns (pipeline, fit_kwargs, report). `fit_kwargs` is what has to reach
@@ -190,12 +199,28 @@ def _build_pipeline(algorithm: str, task: Task, numeric_features: list[str],
     passing y_train for one would make the helper answer a question nobody
     asked.
     """
+    fit_kwargs: dict = {}
+    report: Optional[dict] = None
+
+    if ensemble:
+        # A blend is weighted member by member (a member whose only route is
+        # fit(sample_weight=) cannot be weighted inside an ensemble at all --
+        # see blend_registry), so it does not go through balanced_weighting
+        # here and carries its own report.
+        estimator, _members, report = build_blend(
+            task, ensemble.get('members'), ensemble.get('method', 'voting'),
+            ensemble.get('finalEstimator', 'logistic_regression'),
+            ensemble.get('votingType', 'soft'),
+            42, y_train if task == 'classification' else None, class_weight)
+        return Pipeline([
+            ('pre', _build_preprocessor(numeric_features, categorical_features)),
+            ('est', estimator),
+        ]), fit_kwargs, report
+
     # Tuned parameters first, class weighting second: the weighting is a
     # separate contract the response reports on, and a tuned value for the
     # same parameter must not silently take it over.
     estimator = build_estimator(algorithm, task, params)
-    fit_kwargs: dict = {}
-    report: Optional[dict] = None
     if task == 'classification' and y_train is not None:
         estimator, raw_kwargs, report = balanced_weighting(estimator, y_train, class_weight)
         fit_kwargs = {f'est__{k}': v for k, v in raw_kwargs.items()}
@@ -758,8 +783,14 @@ def train_model(model_id: str, req: TrainRequest):
         _fail(400, f"Not enough valid rows to train ({len(X)} after dropping missing targets, need >= {MIN_TRAINING_ROWS})")
 
     try:
-        estimator = build_estimator(req.algorithm, req.task, req.params)
-    except ValueError as e:
+        if req.ensemble:
+            # Validated here, before either fit, so an unbuildable member list
+            # is a 400 naming it rather than a 500 from deep inside training.
+            build_blend(req.task, (req.ensemble or {}).get('members'),
+                        (req.ensemble or {}).get('method', 'voting'))
+        else:
+            estimator = build_estimator(req.algorithm, req.task, req.params)
+    except (ValueError, UnknownEstimators) as e:
         _fail(400, str(e))
 
     # Honest metrics from a held-out split first...
@@ -797,7 +828,7 @@ def train_model(model_id: str, req: TrainRequest):
             )
         eval_pipeline, eval_fit_kwargs, _ = _build_pipeline(
             req.algorithm, req.task, numeric_features, categorical_features,
-            y_train, req.classWeight, req.params)
+            y_train, req.classWeight, req.params, req.ensemble)
         eval_pipeline.fit(X_train, y_train, **eval_fit_kwargs)
         y_pred = eval_pipeline.predict(X_test)
         if req.task == 'classification':
@@ -828,7 +859,7 @@ def train_model(model_id: str, req: TrainRequest):
     # eval fit used — the weights belong to the data the model is given.
     pipeline, fit_kwargs, class_weighting = _build_pipeline(
         req.algorithm, req.task, numeric_features, categorical_features, y,
-        req.classWeight, req.params)
+        req.classWeight, req.params, req.ensemble)
     try:
         pipeline.fit(X, y, **fit_kwargs)
     except Exception as e:

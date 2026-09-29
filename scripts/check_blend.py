@@ -141,6 +141,62 @@ def main():
           'naming nothing still gets the default blend, so an older caller is unaffected',
           (res or {}).get('base_estimators'))
 
+    # ------------------------------ the blend that is served is the blend
+    # Stage 2 scores the shortlist on the sealed rows through /train, and the
+    # deploy step serves what that fitted. If /train built the fixed three
+    # from algorithm_registry, the sealed-row number would describe a
+    # different ensemble from the one on the leaderboard, under its name.
+    import types
+    store: dict = {}
+    fake = types.ModuleType('model_store')
+    fake.save_pipeline = lambda mid, art: (
+        store.__setitem__(f'gs://check/{mid}', art) or f'gs://check/{mid}')
+    fake.load_pipeline = lambda uri: store[uri]
+    fake.delete_artifact = lambda uri: store.pop(uri, None)
+    sys.modules['model_store'] = fake
+    import models_api  # noqa: E402
+    models_api.model_store = fake
+
+    got = models_api.train_model('m-blend', models_api.TrainRequest(
+        data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
+        features=FEATURES, task='classification',
+        ensemble={'members': asked, 'method': 'voting', 'votingType': 'soft'}))
+    est = store[got['artifactUri']]['pipeline'].named_steps['est']
+    served = [n for n, _ in getattr(est, 'estimators', [])]
+    check(served == asked,
+          f'/train serves the members that were blended, not a fixed three: {served}', asked)
+    check((got.get('classWeighting') or {}).get('applied') is True,
+          'and the served blend is class-weighted member by member',
+          got.get('classWeighting'))
+
+    fixed = models_api.train_model('m-fixed', models_api.TrainRequest(
+        data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
+        features=FEATURES, task='classification'))
+    fixed_est = store[fixed['artifactUri']]['pipeline'].named_steps['est']
+    check([n for n, _ in getattr(fixed_est, 'estimators', [])] != served,
+          'while no member list still gets the old fixed ensemble, so the two differ',
+          [n for n, _ in getattr(fixed_est, 'estimators', [])])
+
+    stacked = models_api.train_model('m-stack', models_api.TrainRequest(
+        data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
+        features=FEATURES, task='classification',
+        ensemble={'members': ['random_forest', 'knn'], 'method': 'stacking',
+                  'finalEstimator': 'logistic_regression'}))
+    st_est = store[stacked['artifactUri']]['pipeline'].named_steps['est']
+    check(type(st_est).__name__ == 'StackingClassifier',
+          f'a stacking blend is served as one, not voted instead: {type(st_est).__name__}')
+
+    try:
+        models_api.train_model('m-bad-blend', models_api.TrainRequest(
+            data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
+            features=FEATURES, task='classification',
+            ensemble={'members': ['autogluon']}))
+        check(False, 'an unbuildable member list is refused')
+    except Exception as e:
+        detail = str(getattr(e, 'detail', e))
+        check(getattr(e, 'status_code', None) == 400 and 'autogluon' in detail,
+              f'an unbuildable member list is a 400 naming it: "{detail[:60]}"', e)
+
     print(f'\n{_ok} ok, {_failed} failure(s)')
     return 1 if _failed else 0
 

@@ -19,12 +19,17 @@ stdin, print one JSON object to stdout; on error print {"error": ...} to stderr
 and exit(1).
 """
 
+import os
 import sys
 import json
 import time
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import RandomizedSearchCV
+from joblib import Parallel, delayed
+from sklearn.base import clone
+from sklearn.model_selection import (
+    ParameterSampler, cross_val_score, KFold, StratifiedKFold,
+)
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import get_scorer
 from sklearn.ensemble import (
@@ -59,14 +64,23 @@ from guardrails import compute_guardrails
 # docs/automl-preprocessing-leakage.md) — this script had the same
 # fit-on-everything-then-split leak (get_dummies before train_test_split) plus
 # no imputation at all, so a missing input value crashed the whole search.
-from analysis_common import leak_safe_prepare_onehot
+from analysis_common import balanced_weighting, leak_safe_prepare_onehot
 
 
 def _to_native(o):
+    # Plain Python scalars pass through untouched. They used to fall to the
+    # str() below -- best_params came back as {"n_estimators": "300",
+    # "max_depth": "None"}, every number a string and a null spelled out as
+    # one. Harmless as a json.dumps `default=` (which is only called for what
+    # json cannot serialize), but best_params calls this on every value.
+    if o is None or isinstance(o, (bool, int, float, str)):
+        return o
     if isinstance(o, (np.integer,)):
         return int(o)
     if isinstance(o, (np.floating,)):
         return float(o)
+    if isinstance(o, (np.bool_,)):
+        return bool(o)
     if isinstance(o, np.ndarray):
         return o.tolist()
     return str(o)
@@ -164,8 +178,33 @@ def _model_space(model_key, task_type):
         return est, space
 
     raise ValueError(
-        f"Unsupported model '{model_key}' — tunable models are xgboost, random-forest, gbm, lightgbm, catboost"
+        f"Unsupported model '{model_key}' — tunable models are "
+        + ', '.join(e['key'] for e in tunable_models() if e['available'])
     )
+
+
+# Which models this script can tune, and whether the library is actually on
+# this server. The screen has to know BEFORE it draws anything: a "Tune"
+# button on a row this script would reject with a ValueError is a button that
+# only fails. Hard-coding the list in the frontend would drift the moment a
+# model is added here, so it is served from the one place that decides it --
+# `{"list_only": true}` answers with just this and reads no data.
+_CATALOG = [
+    ('random-forest', 'Random Forest', True,
+     ('random_forest', 'randomforest', 'rf')),
+    ('gbm', 'Gradient Boosting', True,
+     ('gradient-boosting', 'gradient_boosting', 'gradientboosting')),
+    ('xgboost', 'XGBoost', _HAS_XGB, ('xgb',)),
+    ('lightgbm', 'LightGBM', _HAS_LGB, ('lgbm', 'lgb')),
+    ('catboost', 'CatBoost', _HAS_CB, ('cb',)),
+]
+
+
+def tunable_models():
+    return [
+        {'key': key, 'label': label, 'available': bool(available), 'aliases': list(aliases)}
+        for key, label, available, aliases in _CATALOG
+    ]
 
 
 # Preset -> search effort. RandomizedSearchCV has no native wall-clock budget, so the
@@ -173,10 +212,98 @@ def _model_space(model_key, task_type):
 # envelope these produce on typical Model Lab datasets. Kept well within the backend's
 # 600s Cloud Run request timeout even for 'thorough'.
 _PRESETS = {
-    'fast':     {'n_iter': 15, 'cv': 3, 'label': 'Fast'},
-    'balanced': {'n_iter': 40, 'cv': 5, 'label': 'Balanced'},
-    'thorough': {'n_iter': 80, 'cv': 5, 'label': 'Thorough'},
+    'fast':     {'n_iter': 15, 'cv': 3, 'label': 'Fast', 'budget_seconds': 60},
+    'balanced': {'n_iter': 40, 'cv': 5, 'label': 'Balanced', 'budget_seconds': 180},
+    'thorough': {'n_iter': 80, 'cv': 5, 'label': 'Thorough', 'budget_seconds': 420},
 }
+
+# The request's own ceiling, whatever a caller asks for. Cloud Run cuts the
+# request at 600s and the reply is then lost along with the whole search, so a
+# budget that could reach it is not a budget.
+_MAX_BUDGET_SECONDS = 480
+
+
+def _score_candidate(pipeline, params, X_raw, y, splitter, scoring, fit_params):
+    """One candidate's cross-validated score. Runs in a worker process."""
+    try:
+        pipeline = clone(pipeline).set_params(**params)
+        scores = cross_val_score(
+            pipeline, X_raw, y, cv=splitter, scoring=scoring, n_jobs=1,
+            params=fit_params or None, error_score=np.nan,
+        )
+        mean = float(np.nanmean(scores))
+        return mean if np.isfinite(mean) else None
+    except Exception:
+        # A candidate that cannot be fitted is a dead point in the space, not
+        # a failed search -- a max_features the data is too narrow for, say.
+        # It scores nothing and the rest carry on.
+        return None
+
+
+def _budgeted_search(build_pipeline, space, X_raw, y, splitter, scoring,
+                     n_iter, budget_seconds, fit_params, seed=42):
+    """RandomizedSearchCV's sampling, under a wall-clock budget.
+
+    RandomizedSearchCV has no wall-clock stop: `thorough` is 80 x 5 = 400 fits
+    and on a large enough frame that runs past the 600s request timeout, which
+    loses the whole search rather than returning the best of what it had. So
+    the candidates are drawn the same way and evaluated in parallel chunks,
+    with the clock read between chunks -- the answer is the best candidate
+    actually scored, and the response says how many that was out of how many
+    were planned.
+
+    The stop is predictive: a chunk is started only if the time the last one
+    took would still fit. Stopping after overrunning would make the budget a
+    suggestion.
+    """
+    candidates = list(ParameterSampler(space, n_iter=n_iter, random_state=seed))
+    workers = max(1, min(len(candidates), os.cpu_count() or 1))
+
+    started = time.time()
+    best_score, best_params = None, None
+    evaluated, failed = 0, 0
+    stopped_early = False
+    chunk_seconds = 0.0
+
+    for i in range(0, len(candidates), workers):
+        elapsed = time.time() - started
+        # After the first chunk we know roughly what one costs.
+        if i and elapsed + chunk_seconds > budget_seconds:
+            stopped_early = True
+            break
+
+        chunk = candidates[i:i + workers]
+        chunk_started = time.time()
+        scores = Parallel(n_jobs=len(chunk))(
+            delayed(_score_candidate)(
+                build_pipeline(), params, X_raw, y, splitter, scoring, fit_params)
+            for params in chunk
+        )
+        chunk_seconds = time.time() - chunk_started
+
+        for params, score in zip(chunk, scores):
+            evaluated += 1
+            if score is None:
+                failed += 1
+                continue
+            if best_score is None or score > best_score:
+                best_score, best_params = score, params
+
+    if best_params is None:
+        raise ValueError(
+            'No candidate could be fitted on this data — the search space and the '
+            'data disagree about something (too few rows for the folds, or a '
+            'parameter no column supports).'
+        )
+
+    return {
+        'best_params': best_params,
+        'best_cv_score': best_score,
+        'n_trials': evaluated,
+        'n_candidates': len(candidates),
+        'n_failed': failed,
+        'stopped_early': stopped_early,
+    }
 
 
 def _detect_task_type(y: pd.Series) -> str:
@@ -191,6 +318,13 @@ def _detect_task_type(y: pd.Series) -> str:
 def main():
     try:
         payload = json.load(sys.stdin)
+
+        # The screen asks this before it has anything to tune, to know which
+        # rows may carry a Tune button at all. No data, no model, no search.
+        if payload.get('list_only'):
+            print(json.dumps({'tunable_models': tunable_models()}))
+            return
+
         data = payload.get('data')
         target = payload.get('target_col') or payload.get('target')
         features = payload.get('feature_cols') or payload.get('features')
@@ -251,8 +385,28 @@ def main():
         # (a single fit, not cross-validated, so there's no fold to leak
         # into).
         baseline_est, _ = _model_space(model_key, task_type)
-        baseline_est.fit(X_tr_df, y_tr)
+
+        # The same balancing Auto Compare now applies, on both sides of the
+        # before/after. Tuning the one model on the board that was fitted as
+        # if the classes were even would put its gain and that difference in
+        # the same number -- see docs/automl-class-imbalance.md.
+        if task_type == 'classification':
+            requested_weighting = payload.get('class_weight', 'balanced')
+            baseline_est, baseline_fit_kwargs, class_weighting = balanced_weighting(
+                baseline_est, y_tr, requested_weighting)
+            estimator, search_fit_kwargs, _ = balanced_weighting(
+                estimator, y_tr, requested_weighting)
+        else:
+            # Regression has no classes to balance. Reporting it as "turned
+            # off" would describe a choice nobody made.
+            baseline_fit_kwargs, search_fit_kwargs, class_weighting = {}, {}, None
+
+        baseline_est.fit(X_tr_df, y_tr, **baseline_fit_kwargs)
         baseline_score = float(scorer(baseline_est, X_te_df, y_te))
+        # A Pipeline routes fit parameters to a named step; unprefixed, its
+        # fit raises rather than ignoring them, and every fold would fail.
+        fit_params = ({'model__sample_weight': np.asarray(search_fit_kwargs['sample_weight'])}
+                      if search_fit_kwargs.get('sample_weight') is not None else None)
 
         # The search itself DOES need to be leakage-safe per fold: each of
         # RandomizedSearchCV's CV folds must fit its own imputer/encoder on
@@ -260,25 +414,39 @@ def main():
         # wraps the estimator in a fresh Pipeline(prep, model) each call, so
         # search.fit on the RAW (unimputed) train frame does exactly that —
         # see docs/automl-preprocessing-leakage.md §2.
-        pipeline_estimator = prep['cv_pipeline'](estimator)
         space_prefixed = {f'model__{k}': v for k, v in space.items()}
 
-        n_iter = preset['n_iter']
+        # One splitter for every candidate, so they are compared on identical
+        # folds -- a candidate that merely drew an easier split would
+        # otherwise win on that.
+        n_splits = preset['cv']
+        if task_type == 'classification':
+            smallest = int(np.min(np.bincount(y_tr))) if len(y_tr) else 0
+            n_splits = max(2, min(n_splits, smallest))
+            splitter = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        else:
+            splitter = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+        budget_seconds = payload.get('budget_seconds') or preset['budget_seconds']
+        budget_seconds = max(10, min(float(budget_seconds), _MAX_BUDGET_SECONDS))
+
         started = time.time()
-        search = RandomizedSearchCV(
-            pipeline_estimator, space_prefixed, n_iter=n_iter, cv=preset['cv'],
-            scoring=scoring, random_state=42, n_jobs=-1, refit=True,
+        found = _budgeted_search(
+            lambda: prep['cv_pipeline'](clone(estimator)), space_prefixed,
+            prep['X_train_raw'], y_tr, splitter, scoring,
+            preset['n_iter'], budget_seconds, fit_params,
         )
-        search.fit(prep['X_train_raw'], y_tr)
         seconds_used = round(time.time() - started, 1)
 
-        # search.best_estimator_ is the whole fitted Pipeline (refit on the
-        # full raw train frame), so it takes the raw test frame too.
-        best_model = search.best_estimator_
+        # Refit the winner on the whole raw train frame -- the search scored
+        # it on folds, and the number reported next to the baseline has to
+        # come from a model fitted on the same rows the baseline was.
+        best_model = prep['cv_pipeline'](clone(estimator)).set_params(**found['best_params'])
+        best_model.fit(prep['X_train_raw'], y_tr, **(fit_params or {}))
         tuned_score = float(scorer(best_model, prep['X_test_raw'], y_te))
         best_params = {
             (k[len('model__'):] if k.startswith('model__') else k): _to_native(v)
-            for k, v in search.best_params_.items()
+            for k, v in found['best_params'].items()
         }
 
         # Post-tuning guardrail re-check — identical logic to Auto Compare's pre-tuning
@@ -295,8 +463,17 @@ def main():
             'best_score': tuned_score,
             'improvement': tuned_score - baseline_score,
             'best_params': best_params,
-            'n_trials': int(len(search.cv_results_['params'])),
+            'best_cv_score': found['best_cv_score'],
+            'class_weighting': class_weighting,
+            # "80 of 80 ran" and "the budget ran out at 43" are different
+            # answers and the screen has to be able to tell them apart.
+            'n_trials': found['n_trials'],
+            'n_candidates': found['n_candidates'],
+            'n_failed': found['n_failed'],
+            'stopped_early': found['stopped_early'],
+            'budget_seconds': budget_seconds,
             'seconds_used': seconds_used,
+            'tunable_models': tunable_models(),
             'model_id': None,  # no model persistence yet — panel treats this as optional
             'guardrails': guardrails,
             'row_counts': row_counts,

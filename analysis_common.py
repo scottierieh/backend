@@ -822,6 +822,15 @@ def balanced_weighting(estimator, y_train, requested='balanced'):
     # priors are the same intent by the only route this estimator has.
     if _accepts(estimator, 'priors'):
         classes = _np.unique(_np.asarray(y_train))
+        # Only when the caller left them unset. A caller who passed priors
+        # chose a prior belief about how common each class is, and silently
+        # replacing it with a uniform one answers a question they did not ask.
+        already = estimator.get_params(deep=False).get('priors')
+        if already is not None:
+            return estimator, {}, {
+                'applied': False, 'method': None,
+                'reason': 'class priors were supplied by the caller and were left alone',
+            }
         if len(classes) >= 2:
             estimator.set_params(priors=[1.0 / len(classes)] * len(classes))
             return estimator, {}, {

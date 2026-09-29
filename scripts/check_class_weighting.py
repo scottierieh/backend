@@ -9,10 +9,12 @@ class — and then every model was fitted as if the classes were even.
 
 `class_weight='balanced'` on all of them raises TypeError on about half, so
 the difficulty is entirely in the per-estimator route. That is what this
-pins down: which route each one takes, and — for the three that have none —
-that the response says so rather than going quiet. Eleven weighted models and
-three unweighted ones on one PR-AUC leaderboard is a comparison under two
-conditions, and the screen can only mark it if it is told.
+pins down: which route each one takes, and — for the two that have none —
+that the response says so rather than going quiet. Ten weighted models and
+two unweighted ones on one PR-AUC leaderboard is a comparison under two
+conditions, and the screen can only mark it if it is told. (Elastic Net is
+regression only, so there is nothing to balance; the ensemble reports member
+by member, since a blend can be weighted in part.)
 
 See docs/automl-class-imbalance.md for the table this checks against.
 """
@@ -165,6 +167,48 @@ def main() -> int:
     krep = knn.get('classWeighting') or {}
     check(krep.get('applied') is False and 'KNeighbors' in (krep.get('reason') or ''),
           f"and KNN comes back unweighted with its reason: \"{(krep.get('reason') or '')[:46]}\"", krep)
+
+    # Discriminant analysis is the one estimator whose route — the class
+    # priors — is also something a caller can set deliberately. Replacing a
+    # supplied prior with a uniform one answers a question nobody asked.
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+    y_sk = np.array([0] * 870 + [1] * 130)
+    _, _, unset = balanced_weighting(LinearDiscriminantAnalysis(), y_sk)
+    check(unset.get('applied') is True and 'priors' in (unset.get('method') or ''),
+          f"discriminant with priors unset: {unset.get('method')}", unset)
+
+    _, _, given = balanced_weighting(LinearDiscriminantAnalysis(priors=[0.9, 0.1]), y_sk)
+    check(given.get('applied') is False and 'caller' in (given.get('reason') or ''),
+          'and a caller-supplied prior is left alone, not overwritten', given)
+
+    # An ensemble can be weighted in part: members with a parameter route get
+    # it, members whose only route is fit(sample_weight=) cannot, because the
+    # weights would reach every member and count the correction twice on the
+    # ones already carrying class_weight.
+    import ensemble_stacking_analysis as ens
+    y_ens = np.array(['no'] * 780 + ['yes'] * 120)
+
+    _, full = ens.build_estimators(
+        'classification', ['logistic_regression', 'decision_tree', 'random_forest'], 42, y_ens)
+    full_rep = ens._ensemble_weighting_report(full)
+    check(full_rep.get('applied') is True and all(r['applied'] for r in full.values()),
+          f"ensemble, all members weightable: {full_rep.get('method')}", full_rep)
+
+    _, mixed = ens.build_estimators(
+        'classification', ['logistic_regression', 'gbm', 'knn'], 42, y_ens)
+    mixed_rep = ens._ensemble_weighting_report(mixed)
+    check(mixed_rep.get('applied') is False
+          and 'gbm' in (mixed_rep.get('reason') or '')
+          and 'knn' in (mixed_rep.get('reason') or ''),
+          f"and a partly weighted blend is NOT applied: \"{mixed_rep.get('reason')}\"", mixed_rep)
+    check('sample_weight' in (mixed['gbm'].get('reason') or '')
+          and 'route' in (mixed['knn'].get('reason') or '')
+          or 'neither' in (mixed['knn'].get('reason') or ''),
+          'and each member says which of the two reasons it is', mixed['gbm'], mixed['knn'])
+
+    reg_members = ens.build_estimators('regression', ['ridge', 'random_forest'], 42)[1]
+    check(reg_members == {},
+          'regression members report no weighting at all, rather than a false one')
 
     print(f'\n{_ok} ok, {_failed} failure(s)')
     return 1 if _failed else 0

@@ -29,7 +29,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import leak_safe_prepare_onehot, _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d
+from analysis_common import leak_safe_prepare_onehot, _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -65,7 +65,15 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
     n_classes = len(le.classes_)
 
     model = MLPClassifier(**_common_params(params))
-    model.fit(X_train, y_train_encoded)
+    # Balanced by default, from the TRAIN half only. This estimator has no
+    # route to it -- neither class_weight nor fit(sample_weight=) -- so what
+    # the helper returns here is the REASON, and that is the point: eleven
+    # weighted models and three unweighted ones on one PR-AUC leaderboard is a
+    # comparison under two conditions, and the screen can only mark it if the
+    # response says so. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
+    model.fit(X_train, y_train_encoded, **_fit_kwargs)
 
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
@@ -123,7 +131,8 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
             metrics['average_precision_macro'] = _to_native_type(float(np.mean(_aps)))
 
     return {
-        'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
+        'model': model, 'class_weighting': class_weighting,
+        'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'label_encoder': le,
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
@@ -314,15 +323,20 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
         le = LabelEncoder()
         y_encoded = le.fit_transform(y_train)
         model = MLPClassifier(**cv_params)
+        model, _cv_fit_kwargs, _ = balanced_weighting(
+            model, y_encoded, params.get('class_weight', 'balanced'))
+        cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
         cv_target, cv_task = y_encoded, 'classification'
     else:
         model = MLPRegressor(**cv_params)
+        cv_sample_weight = None
         cv_target, cv_task = y_train, 'regression'
 
     pipeline = cv_pipeline(model)
     pipeline.steps.insert(-1, ('scale', StandardScaler()))
 
-    return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds,
+                  params['random_state'], sample_weight=cv_sample_weight)
 
 
 def generate_loss_curve_plot(model) -> str:
@@ -657,7 +671,10 @@ def main():
             'learning_rate_init': learning_rate_init,
             'max_iter': max_iter,
             'early_stopping': early_stopping,
-            'random_state': random_state
+            'random_state': random_state,
+            # 'balanced' when the caller says nothing: a default that flips
+            # on an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
 
         scaler = StandardScaler().fit(X_train_df)
@@ -742,6 +759,10 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting': result.get('class_weighting'),
+
             'parameters': params,
             'n_iterations': int(model.n_iter_),
             'final_loss': _to_native_type(model.loss_),

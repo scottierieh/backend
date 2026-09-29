@@ -29,7 +29,7 @@ from sklearn.metrics import (
     precision_recall_curve, average_precision_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
+from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -112,7 +112,12 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
         model = GaussianNB(var_smoothing=params['var_smoothing'])
 
     # ── Fit & predict ───────────────────────────────────────────────
-    model.fit(X_train_nb, y_train_encoded)
+    # Balanced by default, from the TRAIN half only -- the split already
+    # happened, and weights derived from the holdout would carry it into the
+    # fit. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
+    model.fit(X_train_nb, y_train_encoded, **_fit_kwargs)
     y_pred        = model.predict(X_test_nb)
     y_pred_proba  = model.predict_proba(X_test_nb)
     y_train_pred  = model.predict(X_train_nb)
@@ -218,6 +223,7 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
 
     return {
         'model':             model,
+        'class_weighting':   class_weighting,
         'metrics':           metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix':  cm.tolist(),
@@ -319,11 +325,19 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, cv
     else:
         model = GaussianNB(var_smoothing=params['var_smoothing'])
 
+    # The same balancing as the reported fit -- Naive Bayes has no
+    # class_weight, so the weights reach it at fit time and run_cv prefixes
+    # them for the Pipeline step.
+    model, _cv_fit_kwargs, _ = balanced_weighting(
+        model, y_encoded, params.get('class_weight', 'balanced'))
+    cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
+
     pipeline = cv_pipeline(model)
     pipeline.steps.insert(-1, ('nbtype', _NBTypeTransform(
         nb_type=nb_type, binarize_threshold=params.get('binarize_threshold'))))
 
-    cv = run_cv(pipeline, X_train_raw, y_encoded, 'classification', cv_folds, 42)
+    cv = run_cv(pipeline, X_train_raw, y_encoded, 'classification', cv_folds, 42,
+                sample_weight=cv_sample_weight)
     cv['cv_metric'] = 'accuracy'  # preserve naive_bayes's original field name
     return cv
 
@@ -862,7 +876,10 @@ def main():
             'alpha':               alpha,
             'fit_prior':           fit_prior,
             'binarize_threshold':  binarize_threshold,
-            'random_state':        random_state
+            'random_state':        random_state,
+            # 'balanced' when the caller says nothing: a default that flips
+            # on an older client makes two runs of the same data incomparable.
+            'class_weight':        payload.get('class_weight', 'balanced'),
         }
 
         X_train = X_train_df.values
@@ -927,6 +944,10 @@ def main():
             'n_train':             len(X_train),
             'n_test':              len(X_test),
             'row_counts':          row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting':     result.get('class_weighting'),
+
             'n_classes':           result['n_classes'],
             'parameters':          params,
             'metrics':             result['metrics'],

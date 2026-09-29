@@ -32,7 +32,7 @@ from sklearn.metrics import (
 )
 from scipy import stats
 import warnings
-from analysis_common import shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare
+from analysis_common import balanced_weighting, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -312,7 +312,10 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         n_components=n_components,
         priors=params.get('priors')
     )
-    model.fit(X_train, y_train_encoded)
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced')
+    )
+    model.fit(X_train, y_train_encoded, **_fit_kwargs)
 
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
@@ -460,6 +463,7 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
 
     return {
         'model': model,
+        'class_weighting': class_weighting,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -494,14 +498,23 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         reg_param=reg_param,
         priors=params.get('priors')
     )
+    requested_weighting = params.get('class_weight', 'balanced')
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, requested_weighting
+    )
     try:
-        model.fit(X_train, y_train_encoded)
+        model.fit(X_train, y_train_encoded, **_fit_kwargs)
     except Exception:
         model = QuadraticDiscriminantAnalysis(
             reg_param=max(reg_param, 0.1),
             priors=params.get('priors')
         )
-        model.fit(X_train, y_train_encoded)
+        # The retry builds a fresh estimator, so the weighting has to be
+        # re-applied -- it was set on the one that failed.
+        model, _fit_kwargs, class_weighting = balanced_weighting(
+            model, y_train_encoded, requested_weighting
+        )
+        model.fit(X_train, y_train_encoded, **_fit_kwargs)
 
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
@@ -625,6 +638,7 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
 
     return {
         'model': model,
+        'class_weighting': class_weighting,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -676,13 +690,18 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, me
             priors=params.get('priors')
         )
 
+    base_model, cv_fit_kwargs, _ = balanced_weighting(
+        base_model, y_encoded, params.get('class_weight', 'balanced')
+    )
+
     pipeline = cv_pipeline(base_model)
     pipeline.steps.insert(-1, ('scaler', StandardScaler()))
 
     min_class_count = int(np.min(np.bincount(y_encoded)))
     cv_folds = max(2, min(cv_folds, min_class_count))
 
-    return run_cv(pipeline, X_raw, y_encoded, 'classification', cv_folds, 42)
+    return run_cv(pipeline, X_raw, y_encoded, 'classification', cv_folds, 42,
+                  sample_weight=cv_fit_kwargs.get('sample_weight'))
 
 
 def generate_prediction_examples(
@@ -1213,6 +1232,7 @@ def main():
             'n_components': n_components,
             'reg_param': reg_param,
             'priors': priors,
+            'class_weight': payload.get('class_weight', 'balanced'),
             'random_state': random_state
         }
 
@@ -1304,6 +1324,7 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            'class_weighting': result.get('class_weighting'),
             'parameters': {
                 'method': method.upper(),
                 'solver': actual_solver if method == 'lda' else 'N/A',

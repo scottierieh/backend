@@ -28,7 +28,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance, partial_dependence
 import warnings
-from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
+from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -169,7 +169,15 @@ def train_knn_classifier(X_train, X_test, y_train, y_test, params: dict,
         n_jobs=-1
     )
 
-    model.fit(X_train, y_train_encoded)
+    # Balanced by default, from the TRAIN half only. This estimator has no
+    # route to it -- neither class_weight nor fit(sample_weight=) -- so what
+    # the helper returns here is the REASON, and that is the point: eleven
+    # weighted models and three unweighted ones on one PR-AUC leaderboard is a
+    # comparison under two conditions, and the screen can only mark it if the
+    # response says so. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
+    model.fit(X_train, y_train_encoded, **_fit_kwargs)
 
     # Predictions
     y_pred = model.predict(X_test)
@@ -275,6 +283,7 @@ def train_knn_classifier(X_train, X_test, y_train, y_test, params: dict,
 
     return {
         'model': model,
+        'class_weighting': class_weighting,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -1102,7 +1111,10 @@ def main():
             'weights': weights,
             'metric': metric,
             'p': p,
-            'algorithm': algorithm
+            'algorithm': algorithm,
+            # 'balanced' when the caller says nothing: a default that flips
+            # on an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
 
         # ── Train model ─────────────────────────────────────────────
@@ -1190,6 +1202,10 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting': result.get('class_weighting'),
+
             'parameters': {
                 'n_neighbors': params['n_neighbors'],
                 'weights': params['weights'],

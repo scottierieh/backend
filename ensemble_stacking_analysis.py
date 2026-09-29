@@ -52,7 +52,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
+from analysis_common import balanced_weighting, _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
 
 
 warnings.filterwarnings('ignore')
@@ -94,12 +94,72 @@ DEFAULT_ESTIMATORS = {
 }
 
 
-def build_estimators(task_type: str, names: Optional[List[str]], random_state: int):
+def _weight_member(estimator, y_train, requested):
+    """Class-weight one ensemble member, parameter routes only.
+
+    An ensemble takes a single sample_weight and hands the same array to every
+    member, so a member whose only route is fit(sample_weight=) cannot be
+    weighted on its own -- passing it at the ensemble level would also weight
+    the members that already carry class_weight='balanced', counting the
+    correction twice. Such a member is left unweighted and says so.
+    """
+    estimator, fit_kwargs, report = balanced_weighting(estimator, y_train, requested)
+    if fit_kwargs.get('sample_weight') is not None:
+        report = {
+            'applied': False, 'method': None,
+            'reason': f'{type(estimator).__name__} can only be weighted through '
+                      f'fit(sample_weight=), which an ensemble cannot route to one member',
+        }
+    return estimator, report
+
+
+def build_estimators(task_type: str, names: Optional[List[str]], random_state: int,
+                     y_train=None, class_weight='balanced'):
+    """Returns (estimators, weighting_reports). The reports are empty for
+    regression and whenever y_train is not supplied."""
     registry = BASE_ESTIMATORS[task_type]
     chosen = [n for n in (names or DEFAULT_ESTIMATORS[task_type]) if n in registry]
     if not chosen:
         chosen = DEFAULT_ESTIMATORS[task_type]
-    return [(name, registry[name](random_state)) for name in chosen]
+    built = [(name, registry[name](random_state)) for name in chosen]
+    if task_type != 'classification' or y_train is None:
+        return built, {}
+
+    weighted, reports = [], {}
+    for name, est in built:
+        est, report = _weight_member(est, y_train, class_weight)
+        weighted.append((name, est))
+        reports[name] = report
+    return weighted, reports
+
+
+def _ensemble_weighting_report(member_reports: Dict[str, Any], final_name=None,
+                               final_report=None) -> Dict[str, Any]:
+    """Fold the per-member reports into the {applied, method, reason} shape the
+    Compare screen reads. `applied` is true only when EVERY member was
+    weighted: a blend with one unweighted member is not on the same footing as
+    a fully weighted model, and the screen's footnote exists to say so."""
+    reports = dict(member_reports)
+    if final_report is not None:
+        reports[f'{final_name} (meta)'] = final_report
+    if not reports:
+        return {'applied': False, 'method': None, 'reason': 'not a classification task'}
+
+    missed = [n for n, r in reports.items() if not r.get('applied')]
+    done = [n for n, r in reports.items() if r.get('applied')]
+    if not missed:
+        return {
+            'applied': True,
+            'method': f'class-weighted every member ({len(done)})',
+            'reason': None, 'members': reports,
+        }
+    return {
+        'applied': False,
+        'method': (f'class-weighted {len(done)} of {len(reports)} members'
+                   if done else None),
+        'reason': ('unweighted: ' + ', '.join(missed)),
+        'members': reports,
+    }
 
 
 def _to_native_scalar_list(arr):
@@ -107,7 +167,12 @@ def _to_native_scalar_list(arr):
 
 
 def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dict, feature_names: List[str]) -> Dict[str, Any]:
-    estimators = build_estimators(task_type, params['base_estimators'], params['random_state'])
+    requested_weighting = params.get('class_weight', 'balanced')
+    estimators, member_weighting = build_estimators(
+        task_type, params['base_estimators'], params['random_state'],
+        y_train if task_type == 'classification' else None, requested_weighting)
+    final_weighting = None
+    final_weighted_name = None
 
     individual_scores = {}
     for name, est in estimators:
@@ -123,6 +188,12 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
         registry = BASE_ESTIMATORS[task_type]
         final_estimator = registry.get(final_est_name, registry[DEFAULT_ESTIMATORS[task_type][0]])(params['random_state'])
         if task_type == 'classification':
+            # The meta-learner trains on the base models' out-of-fold
+            # predictions against the SAME uneven target, so it needs the
+            # correction as much as they do.
+            final_estimator, final_weighting = _weight_member(
+                final_estimator, y_train, requested_weighting)
+            final_weighted_name = final_est_name
             model = StackingClassifier(estimators=estimators, final_estimator=final_estimator, cv=5, n_jobs=-1)
         else:
             model = StackingRegressor(estimators=estimators, final_estimator=final_estimator, cv=5, n_jobs=-1)
@@ -140,7 +211,13 @@ def train_ensemble(X_train, X_test, y_train, y_test, task_type: str, params: dic
         accuracy_score(y_test, y_pred) if task_type == 'classification' else r2_score(y_test, y_pred)
     )
 
-    result = {'model': model, 'model_label': model_label, 'individual_scores': individual_scores, 'base_estimator_names': [n for n, _ in estimators]}
+    result = {
+        'model': model, 'model_label': model_label,
+        'individual_scores': individual_scores,
+        'base_estimator_names': [n for n, _ in estimators],
+        'class_weighting': _ensemble_weighting_report(
+            member_weighting, final_weighted_name, final_weighting),
+    }
 
     if task_type == 'classification':
         le = LabelEncoder().fit(y_train)
@@ -454,10 +531,15 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, task_type: str, 
     """Cross-validate on the TRAIN split only, each fold refitting its own
     imputation/one-hot encoding (and scaling, if requested) via cv_pipeline.
     See docs/automl-preprocessing-leakage.md."""
-    estimators = build_estimators(task_type, params['base_estimators'], params['random_state'])
+    requested_weighting = params.get('class_weight', 'balanced')
+    estimators, _ = build_estimators(
+        task_type, params['base_estimators'], params['random_state'],
+        y_train if task_type == 'classification' else None, requested_weighting)
     if params['ensemble_method'] == 'stacking':
         registry = BASE_ESTIMATORS[task_type]
         final_estimator = registry.get(params['final_estimator'], registry[DEFAULT_ESTIMATORS[task_type][0]])(params['random_state'])
+        if task_type == 'classification':
+            final_estimator, _ = _weight_member(final_estimator, y_train, requested_weighting)
         model = (StackingClassifier if task_type == 'classification' else StackingRegressor)(estimators=estimators, final_estimator=final_estimator, cv=5)
     else:
         if task_type == 'classification':
@@ -733,6 +815,7 @@ def main():
             'voting_type': voting_type,
             'base_estimators': base_estimators,
             'final_estimator': final_estimator,
+            'class_weight': payload.get('class_weight', 'balanced'),
             'random_state': random_state,
         }
 
@@ -766,7 +849,10 @@ def main():
             prep['X_train_raw'], y_train, prep['cv_pipeline'], task_type, params, cv_folds, scale_features)
 
         meta_learner_weights = compute_meta_learner_weights(result['model'], result['base_estimator_names']) if ensemble_method == 'stacking' else []
-        fresh_estimators = build_estimators(task_type, base_estimators, random_state)
+        fresh_estimators, _ = build_estimators(
+            task_type, base_estimators, random_state,
+            y_train if task_type == 'classification' else None,
+            payload.get('class_weight', 'balanced'))
         base_model_correlations = compute_base_model_correlations(X_train, y_train, task_type, fresh_estimators, cv_folds=min(3, cv_folds))
 
         comparison_plot = generate_comparison_plot(result['individual_scores'], result['model_label'], task_type)
@@ -801,6 +887,7 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            'class_weighting': result.get('class_weighting'),
             'base_estimators': result['base_estimator_names'],
             'individual_scores': result['individual_scores'],
             'metrics': result['metrics'],

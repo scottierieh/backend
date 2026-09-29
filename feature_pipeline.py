@@ -185,6 +185,39 @@ def _text_length(s: str) -> int:
     return len(s.encode('utf-16-le')) // 2
 
 
+# Enough components to carry this much of the variance between them. The
+# frontend engine uses the same constant (transforms.ts PCA_VARIANCE_TARGET);
+# a different number on the two sides is a different number of columns.
+_PCA_VARIANCE_TARGET = 0.95
+
+
+def _fix_sign(vec: np.ndarray) -> np.ndarray:
+    """An eigenvector and its negative describe the same axis, and which one
+    an implementation returns is arbitrary -- so two implementations of PCA
+    agree about the axes and disagree about the SIGN of every score, silently.
+    Both engines fix it the same way: largest-magnitude loading positive.
+    (sklearn's own `svd_flip` exists for this reason.)"""
+    at = int(np.argmax(np.abs(vec)))
+    return -vec if vec[at] < 0 else vec
+
+
+def _pca_names(headers, k: int) -> list:
+    """`pc1, pc2, ...`, moved out of the way of anything already there.
+
+    The suffix belongs to the STEP, not to each name: naming them one at a
+    time gave a second PCA `pc1_2, pc2` -- its second component called `pc2`,
+    which reads as the first PCA's second component and is a different
+    variable. transforms.ts applies the same rule, so the two engines agree
+    about which run a column belongs to."""
+    taken = set(headers)
+    suffix = 1
+    while True:
+        names = [f'pc{i}' if suffix == 1 else f'pc{i}_{suffix}' for i in range(1, k + 1)]
+        if not any(n in taken for n in names):
+            return names
+        suffix += 1
+
+
 def _unique_sorted(s: pd.Series) -> list:
     vals = {str(v) for v in s if not _is_missing(v)}
     return sorted(vals)
@@ -333,6 +366,49 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 X[f'{col}_len'] = text.map(lambda s: np.nan if s is None else _text_length(s))
                 X[f'{col}_words'] = text.map(
                     lambda s: np.nan if s is None else (0 if not s.strip() else len(s.split())))
+            elif kind == 'pca':
+                usable = [c for c in cols if c in X.columns and _is_numeric_column(X[c])]
+                if len(usable) < 2:
+                    continue
+                block = X[usable].apply(pd.to_numeric, errors='coerce')
+                # Complete rows only: a blank would otherwise contribute a
+                # zero to that column's centred value, which is a data point
+                # the data does not contain.
+                complete = block.dropna()
+                if len(complete) < len(usable) + 1:
+                    continue
+                centre = complete.mean(axis=0).to_numpy(dtype=float)
+                # The correlation matrix, not the covariance one. On raw units
+                # the first component is whichever column happens to be
+                # measured in the largest numbers.
+                scale = complete.std(axis=0, ddof=0).to_numpy(dtype=float)
+                scale = np.where(scale == 0, 1.0, scale)
+                z = (complete.to_numpy(dtype=float) - centre) / scale
+                cov = np.cov(z, rowvar=False, ddof=1)
+                values, vectors = np.linalg.eigh(np.atleast_2d(cov))
+                order = np.argsort(values)[::-1]
+                values = values[order]
+                vectors = vectors[:, order]
+                total = float(np.clip(values, 0, None).sum()) or 1.0
+
+                carried, keep = 0.0, 0
+                while keep < len(values) and carried < _PCA_VARIANCE_TARGET:
+                    carried += float(max(values[keep], 0.0)) / total
+                    keep += 1
+
+                kept = [_fix_sign(vectors[:, i]) for i in range(keep)]
+                params.update({
+                    'pcaCols': usable,
+                    'pcaCentre': [float(v) for v in centre],
+                    'pcaScale': [float(v) for v in scale],
+                    'pcaVectors': [[float(w) for w in vec] for vec in kept],
+                    'pcaExplained': [float(max(values[i], 0.0)) / total for i in range(keep)],
+                })
+                names = _pca_names(X.columns, keep)
+                zi = (block.to_numpy(dtype=float) - centre) / scale
+                scores = zi @ np.array(kept).T if keep else np.empty((len(X), 0))
+                for i, name in enumerate(names):
+                    X[name] = scores[:, i]
             elif kind == 'group_stats':
                 if len(cols) < 2 or cols[1] not in X.columns:
                     continue
@@ -457,6 +533,22 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 X[f'{col}_len'] = text.map(lambda s: np.nan if s is None else _text_length(s))
                 X[f'{col}_words'] = text.map(
                     lambda s: np.nan if s is None else (0 if not s.strip() else len(s.split())))
+            elif kind == 'pca':
+                pca_cols = params.get('pcaCols') or []
+                vectors = params.get('pcaVectors') or []
+                if not pca_cols or not vectors or not all(c in X.columns for c in pca_cols):
+                    continue
+                centre = np.array(params['pcaCentre'], dtype=float)
+                scale = np.array(params['pcaScale'], dtype=float)
+                block = X[pca_cols].apply(pd.to_numeric, errors='coerce').to_numpy(dtype=float)
+                # A row missing any input scores null rather than a number
+                # computed from a centre standing in for the value: the
+                # component is a weighted sum of ALL the inputs, and one
+                # absent makes it a different sum, not a slightly worse one.
+                z = (block - centre) / np.where(scale == 0, 1.0, scale)
+                scores = z @ np.array(vectors, dtype=float).T
+                for i, name in enumerate(_pca_names(X.columns, len(vectors))):
+                    X[name] = scores[:, i]
             elif kind == 'group_stats':
                 group_col = params.get('groupCol')
                 value_col = params.get('valueCol')

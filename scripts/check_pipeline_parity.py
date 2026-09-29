@@ -24,6 +24,7 @@ passing quietly, because the steps are read from it too.
 import json
 import math
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,7 +53,15 @@ def check(cond, msg, *extra):
             print(f'        {e}')
 
 
-def same(a, b) -> bool:
+# Jacobi rotation in the browser against LAPACK here. They find the same
+# axes; they do not find them by the same arithmetic, so a PCA score agrees to
+# about a part in a billion rather than exactly. Loosening the tolerance for
+# every column to cover it would stop the other checks from noticing a real
+# drift, so it is loosened only where it is earned.
+_PCA_TOL = 1e-8
+
+
+def same(a, b, tol: float = 1e-9) -> bool:
     """One cell, compared the way the two languages can agree."""
     a_missing = a is None or (isinstance(a, float) and math.isnan(a))
     b_missing = b is None or (isinstance(b, float) and math.isnan(b))
@@ -63,7 +72,7 @@ def same(a, b) -> bool:
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
         # Group means are sums in a different order; an exact match would be
         # a check on float addition, not on the recipe.
-        return math.isclose(float(a), float(b), rel_tol=1e-9, abs_tol=1e-9)
+        return math.isclose(float(a), float(b), rel_tol=tol, abs_tol=tol)
     return str(a) == str(b)
 
 
@@ -80,7 +89,8 @@ def compare(label, expected_table, got: pd.DataFrame):
         for h in exp_headers:
             a = row.get(h)
             b = got.iloc[i][h]
-            if not same(a, b):
+            tol = _PCA_TOL if re.fullmatch(r'pc\d+(_\d+)?', h) else 1e-9
+            if not same(a, b, tol):
                 mismatches.append(f'row {i} · {h}: browser {a!r} vs here {b!r}')
     check(not mismatches, f'{label}: every cell agrees ({len(expected_table["rows"])} rows '
                           f'x {len(exp_headers)} columns)', *mismatches[:8])
@@ -94,7 +104,7 @@ def main():
     fx = json.load(open(FIXTURE, encoding='utf-8'))
 
     kinds = {s['kind'] for s in fx['steps']}
-    check(kinds >= {'date_parts', 'text_stats', 'group_stats'},
+    check(kinds >= {'date_parts', 'text_stats', 'group_stats', 'pca'},
           f'the fixture exercises the new transforms: {sorted(kinds)}')
 
     train = pd.DataFrame(fx['train']['rows'], columns=fx['train']['headers'])
@@ -130,6 +140,39 @@ def main():
           and all(same(v, (gs_py.get('groupMeans') or {}).get(k))
                   for k, v in (gs_ts.get('groupMeans') or {}).items()),
           'and the same group means', gs_ts.get('groupMeans'), gs_py.get('groupMeans'))
+
+    # PCA has a failure the cell comparison above would NOT catch on its own:
+    # an eigenvector and its negative describe the same axis, so two engines
+    # can agree about the axes and disagree about the sign of every score.
+    # That shows up in the cells too -- but only because both sides apply the
+    # same sign rule, which is worth pinning separately from the arithmetic.
+    pca_ts = ts_params.get('pca', {})
+    pca_py = here.get('pca', {})
+    check(pca_py.get('pcaCols') == pca_ts.get('pcaCols'),
+          f"both run PCA on the same columns, in order: {pca_py.get('pcaCols')}",
+          pca_ts.get('pcaCols'))
+    check(len(pca_py.get('pcaVectors') or []) == len(pca_ts.get('pcaVectors') or []),
+          f"and keep the same number of components: {len(pca_py.get('pcaVectors') or [])}",
+          len(pca_ts.get('pcaVectors') or []))
+
+    loadings_agree = all(
+        same(w_ts, w_py, _PCA_TOL)
+        for v_ts, v_py in zip(pca_ts.get('pcaVectors') or [], pca_py.get('pcaVectors') or [])
+        for w_ts, w_py in zip(v_ts, v_py))
+    check(loadings_agree,
+          'and the loadings have the same SIGN, not merely the same axis — '
+          'a flipped component agrees about the data and negates every score',
+          pca_ts.get('pcaVectors'), pca_py.get('pcaVectors'))
+    check(all(same(a, b, _PCA_TOL) for a, b in
+              zip(pca_ts.get('pcaExplained') or [], pca_py.get('pcaExplained') or [])),
+          f"and the same explained variance: "
+          f"{[round(v, 4) for v in (pca_py.get('pcaExplained') or [])]}")
+
+    # The fixture is built so this is a real reduction, not a rename: three
+    # columns in, and two carrying 95% of what they held between them.
+    check(len(pca_py.get('pcaCols') or []) > len(pca_py.get('pcaVectors') or []),
+          f"and it reduced: {len(pca_py.get('pcaCols') or [])} columns in, "
+          f"{len(pca_py.get('pcaVectors') or [])} out")
 
     print(f'\n{_ok} ok, {_failed} failure(s)')
     return 1 if _failed else 0

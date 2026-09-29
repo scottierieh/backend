@@ -44,6 +44,8 @@ step only (matching transforms.ts's dropSources: an in-place step like
 imputation grows no columns, so there is nothing to drop).
 """
 
+import datetime as dt
+import re
 from typing import Any, Optional
 
 import numpy as np
@@ -63,6 +65,21 @@ def _is_missing(v: Any) -> bool:
         return bool(pd.isna(v))
     except (TypeError, ValueError):
         return False
+
+
+def _is_numeric_column(s: pd.Series) -> bool:
+    """Is this column numbers? Judged on the values, the way the frontend
+    engine judges it (transforms.ts isNumericColumn): every non-missing value
+    has to be a number. A column of numeric-looking STRINGS is not numeric on
+    either side, so the two agree about which of a pair is the group."""
+    seen = False
+    for v in s:
+        if _is_missing(v):
+            continue
+        if isinstance(v, bool) or not isinstance(v, (int, float, np.integer, np.floating)):
+            return False
+        seen = True
+    return seen
 
 
 def _numeric_values(s: pd.Series) -> np.ndarray:
@@ -115,6 +132,57 @@ def _best_yeojohnson_lambda(vals: np.ndarray) -> float:
         if score < best_score:
             best_score, best_l = score, l
     return best_l
+
+
+# Only ISO-ish YYYY-MM-DD (optional time) and YYYY/MM/DD. pandas' own parser
+# reads "3" and a product code as dates, which would turn any short-string
+# column into five columns of nonsense; the frontend engine uses this exact
+# pattern (transforms.ts DATE_RE) and the two must agree character for
+# character, or a recipe saved on the screen produces different columns here.
+_DATE_RE = re.compile(r'^(\d{4})[-/](\d{2})[-/](\d{2})([T ](\d{2}):(\d{2})(:\d{2})?)?')
+
+_DATE_PARTS = ('year', 'month', 'day', 'dow', 'hour')
+
+
+def _parse_date(v: Any):
+    if isinstance(v, (dt.datetime, dt.date)):
+        return dt.datetime(v.year, v.month, v.day,
+                           getattr(v, 'hour', 0), getattr(v, 'minute', 0))
+    if not isinstance(v, str):
+        return None
+    m = _DATE_RE.match(v.strip())
+    if not m:
+        return None
+    try:
+        return dt.datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                           int(m.group(5) or 0), int(m.group(6) or 0))
+    except ValueError:
+        return None
+
+
+def _date_part(d: dt.datetime, part: str) -> int:
+    if part == 'year':
+        return d.year
+    if part == 'month':
+        return d.month
+    if part == 'day':
+        return d.day
+    if part == 'dow':
+        # JavaScript's getUTCDay() is 0=Sunday; Python's weekday() is
+        # 0=Monday. Matching JS here is not a style choice -- the same recipe
+        # has to put the same number in the same column on both sides.
+        return (d.weekday() + 1) % 7
+    if part == 'hour':
+        return d.hour
+    return 0
+
+
+def _text_length(s: str) -> int:
+    # JavaScript's String.length counts UTF-16 code units, Python's len()
+    # counts code points. They agree for every character in the BMP and differ
+    # for emoji and other astral characters, so this counts the way the
+    # frontend does rather than the way Python would.
+    return len(s.encode('utf-16-le')) // 2
 
 
 def _unique_sorted(s: pd.Series) -> list:
@@ -249,6 +317,53 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 a = pd.to_numeric(X[col], errors='coerce')
                 b = pd.to_numeric(X[col_b], errors='coerce')
                 X[name] = a * b
+            elif kind == 'date_parts':
+                parsed = X[col].map(_parse_date)
+                seen = parsed.dropna()
+                # Only the parts that vary. A file covering one month would
+                # otherwise get a `month` column holding one value.
+                parts = [p for p in _DATE_PARTS
+                         if seen.map(lambda d, _p=p: _date_part(d, _p)).nunique() > 1] if len(seen) else []
+                params['parts'] = parts
+                for p in parts:
+                    X[f'{col}_{p}'] = parsed.map(
+                        lambda d, _p=p: _date_part(d, _p) if d is not None else np.nan)
+            elif kind == 'text_stats':
+                text = X[col].map(lambda v: None if _is_missing(v) else str(v))
+                X[f'{col}_len'] = text.map(lambda s: np.nan if s is None else _text_length(s))
+                X[f'{col}_words'] = text.map(
+                    lambda s: np.nan if s is None else (0 if not s.strip() else len(s.split())))
+            elif kind == 'group_stats':
+                if len(cols) < 2 or cols[1] not in X.columns:
+                    continue
+                col_b = cols[1]
+                # The roles come from the TYPES, not from the order the two
+                # were picked in -- the frontend decides the same way, and a
+                # pair that is two numbers or two categories is no pair.
+                a_num = _is_numeric_column(X[col])
+                b_num = _is_numeric_column(X[col_b])
+                if a_num == b_num:
+                    continue
+                group_col = col_b if a_num else col
+                value_col = col if a_num else col_b
+                values = pd.to_numeric(X[value_col], errors='coerce')
+                groups = X[group_col].map(lambda v: None if _is_missing(v) else str(v))
+                ok = values.notna() & groups.notna()
+                if not ok.any():
+                    continue
+                means = values[ok].groupby(groups[ok]).mean()
+                overall = float(values[ok].mean())
+                params.update({
+                    'groupCol': group_col, 'valueCol': value_col,
+                    'groupMeans': {str(k): float(v) for k, v in means.items()},
+                    'overall': overall,
+                })
+                mean_name = f'{value_col}_by_{group_col}_mean'
+                diff_name = f'{value_col}_by_{group_col}_diff'
+                mapped = groups.map(lambda g: params['groupMeans'].get(g, overall)
+                                    if g is not None else overall)
+                X[mean_name] = mapped.astype(float)
+                X[diff_name] = values - mapped.astype(float)
             else:
                 continue
 
@@ -332,6 +447,33 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 a = pd.to_numeric(X[col], errors='coerce')
                 b = pd.to_numeric(X[col_b], errors='coerce')
                 X[name] = a * b
+            elif kind == 'date_parts':
+                parsed = X[col].map(_parse_date)
+                for p in params.get('parts', []):
+                    X[f'{col}_{p}'] = parsed.map(
+                        lambda d, _p=p: _date_part(d, _p) if d is not None else np.nan)
+            elif kind == 'text_stats':
+                text = X[col].map(lambda v: None if _is_missing(v) else str(v))
+                X[f'{col}_len'] = text.map(lambda s: np.nan if s is None else _text_length(s))
+                X[f'{col}_words'] = text.map(
+                    lambda s: np.nan if s is None else (0 if not s.strip() else len(s.split())))
+            elif kind == 'group_stats':
+                group_col = params.get('groupCol')
+                value_col = params.get('valueCol')
+                if not group_col or not value_col or group_col not in X.columns:
+                    continue
+                means = params.get('groupMeans') or {}
+                overall = float(params.get('overall', 0.0))
+                groups = X[group_col].map(lambda v: None if _is_missing(v) else str(v))
+                # A group unseen in training falls back to the overall
+                # training mean. A null here would drop the row at predict
+                # time, and the overall mean is what "nothing known about this
+                # group" actually says.
+                mapped = groups.map(lambda g: means.get(g, overall) if g is not None else overall)
+                values = (pd.to_numeric(X[value_col], errors='coerce')
+                          if value_col in X.columns else pd.Series(np.nan, index=X.index))
+                X[f'{value_col}_by_{group_col}_mean'] = mapped.astype(float)
+                X[f'{value_col}_by_{group_col}_diff'] = values - mapped.astype(float)
 
             after_cols = set(X.columns)
             added = list(after_cols - before_cols)

@@ -28,8 +28,13 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.ensemble import (
     RandomForestClassifier, RandomForestRegressor,
     GradientBoostingClassifier, GradientBoostingRegressor,
+    AdaBoostClassifier, AdaBoostRegressor,
     VotingClassifier, VotingRegressor, StackingClassifier, StackingRegressor
 )
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.linear_model import ElasticNet
 
 # Optional boosting base learners — so an ensemble can blend the actual Auto Compare
 # winners (often XGBoost/LightGBM/GBM), not just the 5 sklearn defaults. Guarded so the
@@ -45,6 +50,11 @@ try:
     _HAS_LGBM = True
 except Exception:
     _HAS_LGBM = False
+try:
+    from catboost import CatBoostClassifier, CatBoostRegressor
+    _HAS_CB = True
+except Exception:
+    _HAS_CB = False
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
@@ -68,6 +78,13 @@ BASE_ESTIMATORS = {
         'gbm': lambda rs: GradientBoostingClassifier(random_state=rs),
         'svm': lambda rs: SVC(probability=True, random_state=rs),
         'knn': lambda rs: KNeighborsClassifier(n_neighbors=5),
+        # The rest of Auto Compare's lineup. A blend is asked for by naming
+        # the models that won the board, and a winner this registry did not
+        # know was silently dropped -- a "top 3 blend" of two.
+        'adaboost': lambda rs: AdaBoostClassifier(n_estimators=200, random_state=rs),
+        'naive_bayes': lambda rs: GaussianNB(),
+        'discriminant': lambda rs: LinearDiscriminantAnalysis(),
+        'mlp': lambda rs: MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500, random_state=rs),
     },
     'regression': {
         'ridge': lambda rs: Ridge(random_state=rs),
@@ -76,6 +93,9 @@ BASE_ESTIMATORS = {
         'gbm': lambda rs: GradientBoostingRegressor(random_state=rs),
         'svm': lambda rs: SVR(),
         'knn': lambda rs: KNeighborsRegressor(n_neighbors=5),
+        'adaboost': lambda rs: AdaBoostRegressor(n_estimators=200, random_state=rs),
+        'mlp': lambda rs: MLPRegressor(hidden_layer_sizes=(64, 32), max_iter=500, random_state=rs),
+        'elasticnet': lambda rs: ElasticNet(alpha=1.0, l1_ratio=0.5, random_state=rs, max_iter=10000),
     }
 }
 
@@ -87,6 +107,15 @@ if _HAS_XGB:
 if _HAS_LGBM:
     BASE_ESTIMATORS['classification']['lightgbm'] = lambda rs: LGBMClassifier(random_state=rs, n_jobs=-1, verbose=-1)
     BASE_ESTIMATORS['regression']['lightgbm'] = lambda rs: LGBMRegressor(random_state=rs, n_jobs=-1, verbose=-1)
+if _HAS_CB:
+    # verbose=False and allow_writing_files=False for the same reasons
+    # tune_analysis.py pins them: CatBoost logs to stdout, which would corrupt
+    # this script's one-JSON-object-on-stdout contract, and it writes scratch
+    # files a stateless container has no lasting place for.
+    BASE_ESTIMATORS['classification']['catboost'] = lambda rs: CatBoostClassifier(
+        iterations=300, random_state=rs, verbose=False, allow_writing_files=False)
+    BASE_ESTIMATORS['regression']['catboost'] = lambda rs: CatBoostRegressor(
+        iterations=300, random_state=rs, verbose=False, allow_writing_files=False)
 
 DEFAULT_ESTIMATORS = {
     'classification': ['logistic_regression', 'decision_tree', 'random_forest'],
@@ -113,13 +142,61 @@ def _weight_member(estimator, y_train, requested):
     return estimator, report
 
 
+def blendable_models(task_type: str = None):
+    """Which models can be members of a blend, and whether the library is on
+    THIS server.
+
+    Auto Compare asks for a blend by naming the models that won its board, so
+    the screen has to know which of its rows can be named before it offers the
+    button. Repeating the list on the frontend would drift the first time one
+    is added here -- `{"list_only": true}` answers this and reads no data.
+    """
+    LABELS = {
+        'logistic_regression': 'Logistic Regression', 'ridge': 'Ridge',
+        'decision_tree': 'Decision Tree', 'random_forest': 'Random Forest',
+        'gbm': 'Gradient Boosting', 'svm': 'Support Vector Machine (SVM)',
+        'knn': 'K-Nearest Neighbors (KNN)', 'xgboost': 'XGBoost',
+        'lightgbm': 'LightGBM', 'catboost': 'CatBoost', 'adaboost': 'AdaBoost',
+        'naive_bayes': 'Naive Bayes', 'discriminant': 'Discriminant Analysis (LDA)',
+        'mlp': 'Artificial Neural Network (MLP)', 'elasticnet': 'Elastic Net Regression',
+    }
+    tasks = [task_type] if task_type else ['classification', 'regression']
+    return {
+        t: [{'key': k, 'label': LABELS.get(k, k)} for k in BASE_ESTIMATORS[t]]
+        for t in tasks
+    }
+
+
+class UnknownEstimators(ValueError):
+    """An explicit request named models this script cannot build."""
+
+
 def build_estimators(task_type: str, names: Optional[List[str]], random_state: int,
                      y_train=None, class_weight='balanced'):
     """Returns (estimators, weighting_reports). The reports are empty for
-    regression and whenever y_train is not supplied."""
+    regression and whenever y_train is not supplied.
+
+    A name this registry does not know used to be dropped without a word, and
+    a request where NONE matched fell through to the default three. So "blend
+    the top 3" could come back as a blend of two, or as the default blend
+    wearing the answer to a question nobody asked. An explicit request is now
+    either buildable or an error.
+    """
     registry = BASE_ESTIMATORS[task_type]
-    chosen = [n for n in (names or DEFAULT_ESTIMATORS[task_type]) if n in registry]
-    if not chosen:
+    if names:
+        unknown = [n for n in names if n not in registry]
+        chosen = [n for n in names if n in registry]
+        if not chosen:
+            raise UnknownEstimators(
+                f"None of the requested base estimators exist for {task_type}: "
+                f"{', '.join(map(repr, names))}. Available: {', '.join(registry)}"
+            )
+        if unknown:
+            raise UnknownEstimators(
+                f"No {task_type} base estimator named {', '.join(map(repr, unknown))}. "
+                f"Available: {', '.join(registry)}"
+            )
+    else:
         chosen = DEFAULT_ESTIMATORS[task_type]
     built = [(name, registry[name](random_state)) for name in chosen]
     if task_type != 'classification' or y_train is None:
@@ -763,6 +840,13 @@ def generate_prediction_examples(result: Dict, task_type: str, n_examples: int =
 def main():
     try:
         payload = json.load(sys.stdin)
+
+        # Asked before there is a blend to run, so the screen knows which of
+        # its rows may be named as members.
+        if payload.get('list_only'):
+            print(json.dumps({'blendable_models': blendable_models()}))
+            return
+
         data = payload.get('data')
         target_col = payload.get('target_col') or payload.get('target')
         feature_cols = payload.get('feature_cols') or payload.get('features')
@@ -891,6 +975,7 @@ def main():
             'row_counts': row_counts,
             'class_weighting': result.get('class_weighting'),
             'base_estimators': result['base_estimator_names'],
+            'blendable_models': blendable_models(task_type)[task_type],
             'individual_scores': result['individual_scores'],
             'metrics': result['metrics'],
             'perm_importance': perm_importance,

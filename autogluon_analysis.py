@@ -145,6 +145,101 @@ class _StderrSink:
             os.close(saved)
 
 
+# How many features get a curve, and how finely. The 14 scripts draw the top
+# six at sklearn's default resolution; the number of points is smaller here
+# because each one costs a prediction over the whole sample and AutoGluon's
+# bagged ensembles are slower per row than one estimator. Measured on the
+# example data: 20 points over 200 rows is 1.3s per feature, 7.6s for six —
+# which is what a hundred points would cost for one.
+PDP_FEATURES = 6
+PDP_GRID = 20
+PDP_SAMPLE = 200
+PDP_ICE = 30
+
+
+def _pdp_grid(col: pd.Series) -> list:
+    """The values to hold a column at.
+
+    Quantiles rather than a linear span, so a right-tailed column spends its
+    points where the rows are instead of stretching most of the line across a
+    tail two rows live in. Duplicates are dropped, which is what makes a
+    column with six distinct values draw six points rather than twenty copies.
+    """
+    if pd.api.types.is_numeric_dtype(col):
+        vals = pd.to_numeric(col, errors='coerce').dropna()
+        if vals.empty:
+            return []
+        qs = np.quantile(vals, np.linspace(0.05, 0.95, PDP_GRID))
+        return sorted({float(v) for v in qs})
+    # Categorical: its own values, the common ones first, and no more than the
+    # numeric budget so one high-cardinality column cannot cost minutes.
+    return [v for v in col.astype(str).value_counts().head(PDP_GRID).index]
+
+
+def _compute_pdp(predictor, df: pd.DataFrame, features: list, task_type: str,
+                 order: list, positive_class):
+    """Partial dependence, computed from the definition rather than through
+    sklearn.inspection.
+
+    `partial_dependence` wants an estimator that passes scikit-learn's own
+    checks -- `fit`, `classes_`, `_estimator_type`, `check_is_fitted` -- and a
+    TabularPredictor is not one. Standing in for all of that would be more
+    code, and more fragile code, than the definition itself: hold one column
+    at a value, predict every row, average. The individual rows are the ICE
+    curves the chart already draws, and they come out of the same call.
+
+    One request per feature, with the grid and the sample crossed into a
+    single frame, because a per-row loop over a bagged ensemble is the
+    difference between a second and several minutes.
+    """
+    # A curve is ONE class's probability across the grid. For two classes that
+    # is well defined. Past two there is no single class to follow: the
+    # winning class's probability stops describing one class at the point the
+    # prediction flips, which draws a V where the real curve falls straight
+    # through -- the same reason What-if refuses more than two classes rather
+    # than drawing them wrong.
+    if task_type == 'classification' and positive_class is None:
+        return None
+
+    sample = df[features]
+    if len(sample) > PDP_SAMPLE:
+        sample = sample.sample(n=PDP_SAMPLE, random_state=42)
+
+    ranked = [f for f in order if f in features] + [f for f in features if f not in order]
+    out = []
+    for feat in ranked[:PDP_FEATURES]:
+        grid = _pdp_grid(df[feat])
+        if len(grid) < 2:
+            continue
+        stacked = pd.concat([sample.assign(**{feat: v}) for v in grid], ignore_index=True)
+        try:
+            if task_type == 'classification':
+                proba = predictor.predict_proba(stacked)
+                col = proba[positive_class] if positive_class in proba.columns else proba.iloc[:, -1]
+                y = np.asarray(col, dtype=float)
+            else:
+                y = np.asarray(predictor.predict(stacked), dtype=float)
+        except Exception:
+            continue
+
+        # Back to (grid, row): the stack was built grid-major.
+        curves = y.reshape(len(grid), len(sample))
+        out.append({
+            'feature': feat,
+            # NOT _to_native_type: that converts numpy scalars and sends
+            # everything else through str(), so a plain Python float -- which
+            # is what a quantile comes back as here -- landed in the payload
+            # as "3.0". The screen's Number() rescued it, and the type was
+            # wrong all the way down the wire. A category is already a string
+            # and stays one; a number stays a number.
+            'grid': [v if isinstance(v, str) else _finite(v) for v in grid],
+            'average': [_finite(v) for v in curves.mean(axis=1)],
+            # ICE rows, transposed so each is one row across the whole grid.
+            'individual': [[_finite(v) for v in row] for row in curves.T[:PDP_ICE]],
+        })
+    return out or None
+
+
 def _detect_task_type(y: pd.Series) -> str:
     vals = y.dropna()
     if vals.empty:
@@ -318,6 +413,24 @@ def main():
             except Exception:
                 perm_importance = None
 
+            # ---- how the prediction moves with each column ---------------
+            #
+            # Same contract the other fourteen scripts emit
+            # ({feature, grid, average, individual}), so the Explain screen's
+            # second block draws it with no change. Ordered by the importance
+            # computed just above, which is what "the top six" means there.
+            positive = None
+            if task_type == 'classification':
+                labels = list(predictor.class_labels or [])
+                if len(labels) == 2:
+                    positive = getattr(predictor, 'positive_class', None)
+                    if positive is None or positive not in labels:
+                        positive = labels[-1]
+            pdp = _compute_pdp(
+                predictor, df, list(features), task_type,
+                [d['feature'] for d in (perm_importance or [])], positive,
+            )
+
             singles = [m for m in models if not m['is_ensemble']]
             best_single = singles[0]['name'] if singles else None
 
@@ -342,6 +455,10 @@ def main():
                 # AutoGluon could not compute it -- the screen draws nothing
                 # rather than a ranking that is not there.
                 'perm_importance': perm_importance,
+                # None for three or more classes: a single curve cannot follow
+                # one class there, and the screen draws nothing rather than a
+                # line whose meaning changes at the crossing point.
+                'pdp': pdp,
                 # What those numbers were measured on. 'train' is not the
                 # held-out measurement the other scripts report, and the
                 # screen has to be able to tell the difference before it

@@ -280,6 +280,44 @@ def main():
                     'predict_seconds': _finite(r.get('pred_time_val')),
                 })
 
+            # ---- which columns it leans on ------------------------------
+            #
+            # Permutation importance, in the shape the Explain screen already
+            # reads from the other fourteen scripts ({feature,
+            # importance_mean, importance_std}). AutoGluon reports it as
+            # `importance` and `stddev` over five shuffle sets, which is what
+            # those two names mean.
+            #
+            # Measured on the rows this script was given, and that is not the
+            # same claim the other scripts make. They split their input again
+            # and permute on the half they held back; AutoGluon refuses to
+            # compute importance without a dataset once it is bagging, and the
+            # preset here bags. Holding rows back inside this script instead
+            # would shrink the training set the board then ranks -- distorting
+            # the comparison this whole engine exists to make.
+            #
+            # So it is measured on the training rows and says so, and the
+            # screen says so too. On rows a model has fitted, shuffling a
+            # column it memorised costs more than shuffling one it generalised
+            # from, so these numbers run high and run highest exactly where
+            # they would mislead. A ranking is still worth having; a ranking
+            # presented as held-out evidence is not.
+            perm_importance = None
+            perm_scope = None
+            try:
+                fi = predictor.feature_importance(df, silent=True)
+                perm_importance = [
+                    {
+                        'feature': str(name),
+                        'importance_mean': _finite(row.get('importance')),
+                        'importance_std': _finite(row.get('stddev')),
+                    }
+                    for name, row in fi.iterrows()
+                ]
+                perm_scope = 'train'
+            except Exception:
+                perm_importance = None
+
             singles = [m for m in models if not m['is_ensemble']]
             best_single = singles[0]['name'] if singles else None
 
@@ -300,6 +338,15 @@ def main():
                 'models': models,
                 'best_single': best_single,
                 'best_overall': models[0]['name'] if models else None,
+                # The contract the Explain screen already reads. None when
+                # AutoGluon could not compute it -- the screen draws nothing
+                # rather than a ranking that is not there.
+                'perm_importance': perm_importance,
+                # What those numbers were measured on. 'train' is not the
+                # held-out measurement the other scripts report, and the
+                # screen has to be able to tell the difference before it
+                # repeats their wording.
+                'perm_importance_scope': perm_scope,
                 'preprocessing': {
                     'generated': generated,
                     'dropped': dropped,

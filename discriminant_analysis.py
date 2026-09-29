@@ -32,7 +32,7 @@ from sklearn.metrics import (
 )
 from scipy import stats
 import warnings
-from analysis_common import balanced_weighting, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare
+from analysis_common import cv_scoring_of, balanced_weighting, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare
 
 warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -701,7 +701,8 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, me
     cv_folds = max(2, min(cv_folds, min_class_count))
 
     return run_cv(pipeline, X_raw, y_encoded, 'classification', cv_folds, 42,
-                  sample_weight=cv_fit_kwargs.get('sample_weight'))
+                  sample_weight=cv_fit_kwargs.get('sample_weight'),
+                  scoring=params.get('cv_scoring'))
 
 
 def generate_prediction_examples(
@@ -1233,6 +1234,7 @@ def main():
             'reg_param': reg_param,
             'priors': priors,
             'class_weight': payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, 'classification'),
             'random_state': random_state
         }
 

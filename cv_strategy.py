@@ -53,7 +53,24 @@ def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None
     Returns   : {cv_mean, cv_std, cv_scores, cv_folds, cv_scoring, cv_strategy}.
                 Superset of the keys the scripts emitted before, so it's drop-in.
     """
-    scoring = scoring or ('accuracy' if task_type == 'classification' else 'r2')
+    default_scoring = 'accuracy' if task_type == 'classification' else 'r2'
+    requested = scoring or default_scoring
+    scoring = requested
+
+    # A binary-only scorer on a target that is not binary does NOT raise once
+    # the labels are integers: average_precision takes pos_label=1 and quietly
+    # scores class 1 against the rest. On a three-class target that returns
+    # about 0.33 and it reaches the board labelled PR-AUC, which is a number
+    # about one class presented as a number about the model. Nothing throws,
+    # so the fallback below would never fire -- this has to be checked, not
+    # caught.
+    _binary_only = {'average_precision', 'roc_auc', 'f1', 'precision', 'recall'}
+    _pre_reason = None
+    if scoring in _binary_only and len(np.unique(np.asarray(y))) != 2:
+        _pre_reason = (f'{scoring} is a binary metric and this target has '
+                       f'{len(np.unique(np.asarray(y)))} classes')
+        scoring = default_scoring
+
     splitter = make_cv_splitter(task_type, cv_folds, random_state,
                                 time_order=time_order, groups=groups)
     kwargs = {'groups': groups} if groups is not None else {}
@@ -80,11 +97,37 @@ def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None
             **kwargs.pop('params', {}),
             key: np.asarray(sample_weight),
         }
-    scores = np.asarray(
-        cross_val_score(estimator, X, y, cv=splitter, scoring=scoring, **kwargs),
-        dtype=float,
-    )
-    return {
+    # A caller asks for the metric its leaderboard ranks on, and not every
+    # estimator can produce every metric: average_precision needs
+    # predict_proba and a binary target, roc_auc the same. Letting that raise
+    # would lose the cross-validation entirely -- and CV is what the shortlist
+    # is chosen on -- so an unusable scorer falls back to the default and the
+    # response says which number it actually is. A model silently scored on a
+    # different metric than its neighbours is the failure this whole field
+    # exists to prevent.
+    fallback_reason = _pre_reason
+    try:
+        scores = np.asarray(
+            cross_val_score(estimator, X, y, cv=splitter, scoring=scoring, **kwargs),
+            dtype=float,
+        )
+        if not np.isfinite(scores).any():
+            raise ValueError(f'every fold returned a non-finite {scoring}')
+    except Exception as e:
+        # Already on the default -- there is nothing left to fall back to, and
+        # a silent empty CV would be worse than the error. (Comparing
+        # `requested` here instead would retry the default with the default
+        # when the pre-check above had already switched to it.)
+        if scoring == default_scoring:
+            raise
+        fallback_reason = f'{type(e).__name__}: {e}'[:200]
+        scoring = default_scoring
+        scores = np.asarray(
+            cross_val_score(estimator, X, y, cv=splitter, scoring=scoring, **kwargs),
+            dtype=float,
+        )
+
+    out = {
         'cv_scores': [float(s) for s in scores],
         'cv_mean': float(np.mean(scores)),
         'cv_std': float(np.std(scores)),
@@ -92,3 +135,7 @@ def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None
         'cv_scoring': scoring,
         'cv_strategy': type(splitter).__name__,
     }
+    if fallback_reason is not None:
+        out['cv_scoring_requested'] = requested
+        out['cv_scoring_fallback'] = fallback_reason
+    return out

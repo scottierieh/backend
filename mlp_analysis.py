@@ -29,7 +29,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import leak_safe_prepare_onehot, _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, balanced_weighting
+from analysis_common import cv_scoring_of, leak_safe_prepare_onehot, _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -336,7 +336,8 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
     pipeline.steps.insert(-1, ('scale', StandardScaler()))
 
     return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds,
-                  params['random_state'], sample_weight=cv_sample_weight)
+                  params['random_state'], sample_weight=cv_sample_weight,
+                  scoring=params.get('cv_scoring'))
 
 
 def generate_loss_curve_plot(model) -> str:
@@ -675,6 +676,7 @@ def main():
             # 'balanced' when the caller says nothing: a default that flips
             # on an older client makes two runs of the same data incomparable.
             'class_weight': payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, task_type),
         }
 
         scaler = StandardScaler().fit(X_train_df)

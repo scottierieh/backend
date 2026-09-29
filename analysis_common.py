@@ -738,6 +738,89 @@ def _fit_accepts_sample_weight(estimator) -> bool:
         return False
 
 
+def cv_scoring_of(payload, task_type):
+    """The metric this run's cross-validation should be scored on.
+
+    Auto Compare ranks the board on one metric (PR-AUC for a rare-minority
+    binary target, macro F1 for multiclass, RMSE for regression) and every
+    script cross-validated on accuracy or R2 regardless. The two numbers then
+    described different things, and the screen could not use the CV to settle
+    a ranking it was not measured in -- which is the number the shortlist is
+    supposed to be chosen on.
+
+    The frontend sends the ranking metric as `cv_scoring`. Absent, the caller
+    predates this and run_cv keeps its own default.
+    """
+    value = (payload or {}).get('cv_scoring')
+    if value is None or value == '':
+        return None
+    value = str(value)
+    # A regression scorer on a classification task (or the reverse) is a
+    # caller bug, not something to fall back from quietly -- but it must not
+    # take the CV down with it either, so it is simply ignored here and the
+    # default stands.
+    clf_only = {'accuracy', 'balanced_accuracy', 'f1', 'f1_macro', 'f1_micro',
+                'f1_weighted', 'roc_auc', 'roc_auc_ovr', 'average_precision',
+                'precision', 'recall', 'neg_log_loss'}
+    reg_only = {'r2', 'neg_root_mean_squared_error', 'neg_mean_squared_error',
+                'neg_mean_absolute_error', 'neg_median_absolute_error'}
+    if task_type == 'classification' and value in reg_only:
+        return None
+    if task_type == 'regression' and value in clf_only:
+        return None
+    return value
+
+
+def cv_score_value(scoring, y_true, y_pred, y_proba=None):
+    """`scoring` computed from predictions that have already been made.
+
+    For the one script whose cross-validation is a hand-written fold loop
+    rather than cross_val_score: CatBoost fits on a Pool carrying the
+    categorical columns, so an sklearn scorer -- which would call
+    predict_proba on a bare frame -- does not apply to it directly.
+
+    Returns None when the metric cannot be computed from what was passed (a
+    probability metric with no probabilities, a binary-only metric on three
+    classes). The caller falls back and says which number it ended up with.
+    """
+    import numpy as _np
+    from sklearn import metrics as _m
+
+    y_true = _np.asarray(y_true)
+    y_pred = _np.asarray(y_pred)
+    binary = len(_np.unique(y_true)) == 2
+
+    try:
+        if scoring in (None, 'accuracy'):
+            return float(_m.accuracy_score(y_true, y_pred))
+        if scoring == 'balanced_accuracy':
+            return float(_m.balanced_accuracy_score(y_true, y_pred))
+        if scoring == 'f1_macro':
+            return float(_m.f1_score(y_true, y_pred, average='macro', zero_division=0))
+        if scoring == 'f1_weighted':
+            return float(_m.f1_score(y_true, y_pred, average='weighted', zero_division=0))
+        if scoring == 'f1':
+            if not binary:
+                return None
+            return float(_m.f1_score(y_true, y_pred, zero_division=0))
+        if scoring in ('roc_auc', 'average_precision'):
+            if y_proba is None or not binary:
+                return None
+            p = _np.asarray(y_proba)
+            p = p[:, 1] if p.ndim == 2 and p.shape[1] == 2 else p.ravel()
+            fn = _m.roc_auc_score if scoring == 'roc_auc' else _m.average_precision_score
+            return float(fn(y_true, p))
+        if scoring == 'r2':
+            return float(_m.r2_score(y_true, y_pred))
+        if scoring == 'neg_root_mean_squared_error':
+            return -float(_np.sqrt(_m.mean_squared_error(y_true, y_pred)))
+        if scoring == 'neg_mean_absolute_error':
+            return -float(_m.mean_absolute_error(y_true, y_pred))
+    except Exception:
+        return None
+    return None
+
+
 def balanced_weighting(estimator, y_train, requested='balanced'):
     """Apply balanced class weighting to `estimator`, however it supports it.
 

@@ -30,7 +30,8 @@ from sklearn.metrics import (
 )
 from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 import warnings
-from analysis_common import (_compute_multiclass_auc, _to_native_type, _fig_to_base64,
+from analysis_common import (cv_scoring_of, cv_score_value,
+                             _compute_multiclass_auc, _to_native_type, _fig_to_base64,
                              build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
                              ale_1d, shap_matrix, balanced_weighting)
 
@@ -441,6 +442,10 @@ def perform_cross_validation(X_train_raw, y_train, params: dict, task_type: str,
             X_te[numeric_cols] = X_te_raw[numeric_cols].fillna(medians)
         return X_tr, X_te
 
+    requested_scoring = params.get('cv_scoring') or (
+        'accuracy' if task_type == 'classification' else 'r2')
+    scoring_used = requested_scoring
+
     if task_type == 'classification':
         le = LabelEncoder()
         y_encoded = le.fit_transform(y_train)
@@ -454,7 +459,19 @@ def perform_cross_validation(X_train_raw, y_train, params: dict, task_type: str,
             # otherwise the CV beside the metrics describes a different model.
             m, _, _ = balanced_weighting(m, y_tr, params.get('class_weight', 'balanced'))
             m.fit(Pool(X_tr, y_tr, cat_features=cat_features), verbose=False)
-            scores.append(accuracy_score(y_te, m.predict(Pool(X_te, cat_features=cat_features)).ravel().astype(int)))
+            te_pool = Pool(X_te, cat_features=cat_features)
+            y_hat = m.predict(te_pool).ravel().astype(int)
+            proba = m.predict_proba(te_pool)
+            # This loop is hand-written because CatBoost fits on a Pool
+            # carrying the categorical columns, so an sklearn scorer -- which
+            # would call predict_proba on a bare frame -- does not apply. The
+            # metric still has to be the one the board ranks on, or this
+            # column is an accuracy sitting under a PR-AUC heading.
+            value = cv_score_value(requested_scoring, y_te, y_hat, proba)
+            if value is None:
+                scoring_used = 'accuracy'
+                value = accuracy_score(y_te, y_hat)
+            scores.append(value)
     else:
         scores = []
         kf = make_cv_splitter('regression', cv_folds, params['random_state'])
@@ -463,15 +480,29 @@ def perform_cross_validation(X_train_raw, y_train, params: dict, task_type: str,
             y_tr, y_te = y_train.iloc[train_idx], y_train.iloc[test_idx]
             m = CatBoostRegressor(**cv_params, loss_function='RMSE')
             m.fit(Pool(X_tr, y_tr, cat_features=cat_features), verbose=False)
-            scores.append(r2_score(y_te, m.predict(Pool(X_te, cat_features=cat_features))))
+            y_hat = m.predict(Pool(X_te, cat_features=cat_features))
+            value = cv_score_value(requested_scoring, y_te, y_hat)
+            if value is None:
+                scoring_used = 'r2'
+                value = r2_score(y_te, y_hat)
+            scores.append(value)
 
     scores = np.array(scores)
-    return {
+    out = {
         'cv_scores': [_to_native_type(s) for s in scores],
         'cv_mean': _to_native_type(np.mean(scores)),
         'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds
+        'cv_folds': cv_folds,
+        # Which metric this column is. Without it the screen cannot tell
+        # whether the CV agrees with the ranking or is simply a different
+        # measurement, and it has to assume the latter.
+        'cv_scoring': scoring_used,
+        'cv_strategy': 'StratifiedKFold' if task_type == 'classification' else 'KFold',
     }
+    if scoring_used != requested_scoring:
+        out['cv_scoring_requested'] = requested_scoring
+        out['cv_scoring_fallback'] = f'{requested_scoring} could not be computed for this target'
+    return out
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -741,6 +772,7 @@ def main():
             # 'balanced' when the caller says nothing: a default that flips on
             # an older client makes two runs of the same data incomparable.
             'class_weight': payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, task_type),
         }
 
         try:

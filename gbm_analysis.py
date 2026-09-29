@@ -16,7 +16,8 @@ import base64
 import warnings
 from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
                              shap_matrix, shap_interaction_top, ale_1d, _to_native_type,
-                             leak_safe_prepare_onehot, balanced_weighting)
+                             leak_safe_prepare_onehot, balanced_weighting, cv_scoring_of)
+from cv_strategy import run_cv
 from sklearn.inspection import partial_dependence, permutation_importance
 from typing import List, Dict, Optional
 
@@ -36,7 +37,8 @@ def _to_native_type(obj):
     return obj
 
 def perform_cross_validation(X_train_raw, y_train, cv_pipeline, problem_type, n_estimators,
-                              learning_rate, max_depth, cv_folds=5, class_weight='balanced'):
+                              learning_rate, max_depth, cv_folds=5, class_weight='balanced',
+                              cv_scoring=None):
     """Cross-validate on the TRAIN split only, each fold refitting its own
     imputation/one-hot encoding via cv_pipeline. See docs/automl-preprocessing-leakage.md."""
     if problem_type == 'classification':
@@ -47,25 +49,20 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, problem_type, n_
         # those metrics describes a differently trained model. A Pipeline
         # routes fit parameters to a named step, so the weight is prefixed.
         model, _cv_fit_kwargs, _ = balanced_weighting(model, y_train, class_weight)
-        pipeline = cv_pipeline(model)
-        cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        cv_params = ({f'{pipeline.steps[-1][0]}__sample_weight': _cv_fit_kwargs['sample_weight']}
-                     if 'sample_weight' in _cv_fit_kwargs else None)
-        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_splitter,
-                                 scoring='accuracy', params=cv_params)
-    else:
-        model = GradientBoostingRegressor(
-            n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth,
-            random_state=42, validation_fraction=0.1, n_iter_no_change=5, tol=0.01
-        )
-        pipeline = cv_pipeline(model)
-        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_folds, scoring='r2')
-    return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
-        'cv_folds': cv_folds,
-    }
+        # run_cv rather than a local cross_val_score: it owns the splitter, the
+        # sample_weight prefixing, and the fallback when the board asks for a
+        # metric this estimator cannot produce -- and it reports WHICH metric
+        # the number is, which a bare cross_val_score here never did.
+        return run_cv(cv_pipeline(model), X_train_raw, y_train, 'classification',
+                      cv_folds, 42, scoring=cv_scoring,
+                      sample_weight=_cv_fit_kwargs.get('sample_weight'))
+
+    model = GradientBoostingRegressor(
+        n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth,
+        random_state=42, validation_fraction=0.1, n_iter_no_change=5, tol=0.01
+    )
+    return run_cv(cv_pipeline(model), X_train_raw, y_train, 'regression',
+                  cv_folds, 42, scoring=cv_scoring)
 
 def compute_pdp_json(model, X_train: np.ndarray, feature_names: List[str],
                       feature_importance: Optional[List[Dict]] = None,
@@ -199,7 +196,8 @@ def main():
         y_train_pred = model.predict(X_train)
         cv_result = perform_cross_validation(
             prep['X_train_raw'], y_train, prep['cv_pipeline'], problem_type, n_estimators,
-            learning_rate, max_depth, class_weight=class_weight)
+            learning_rate, max_depth, class_weight=class_weight,
+            cv_scoring=cv_scoring_of(payload, problem_type))
 
         # --- Evaluation ---
         results = {}

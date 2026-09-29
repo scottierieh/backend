@@ -28,7 +28,8 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance, partial_dependence
 import warnings
-from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
+from analysis_common import cv_scoring_of, _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
+from cv_strategy import run_cv
 
 
 warnings.filterwarnings('ignore')
@@ -355,7 +356,8 @@ def train_knn_regressor(X_train, X_test, y_train, y_test, params: dict,
 
 
 def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str,
-                              cv_folds: int, scale_features: bool) -> Dict[str, Any]:
+                              cv_folds: int, scale_features: bool,
+                              cv_scoring=None) -> Dict[str, Any]:
     """Cross-validate on the TRAIN split only, each fold refitting its own
     imputation/one-hot encoding (and scaling, if requested) via cv_pipeline.
     See docs/automl-preprocessing-leakage.md."""
@@ -372,8 +374,13 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
         pipeline = cv_pipeline(model)
         if scale_features:
             pipeline.steps.insert(-1, ('scale', StandardScaler()))
-        cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        scores = cross_val_score(pipeline, X_train_raw, y_encoded, cv=cv, scoring='accuracy')
+        # run_cv owns the splitter and the fallback for a metric this
+        # estimator cannot produce, and it says which metric the number is --
+        # the local cross_val_score here reported neither.
+        cv_out = run_cv(pipeline, X_train_raw, y_encoded, 'classification',
+                        cv_folds, 42, scoring=cv_scoring)
+        cv_out['cv_metric'] = cv_out['cv_scoring']  # knn's original field name
+        return cv_out
     else:
         model = KNeighborsRegressor(
             n_neighbors=params['n_neighbors'],
@@ -385,12 +392,15 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
         pipeline = cv_pipeline(model)
         if scale_features:
             pipeline.steps.insert(-1, ('scale', StandardScaler()))
-        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_folds, scoring='r2')
+        cv_out = run_cv(pipeline, X_train_raw, y_train, 'regression',
+                        cv_folds, 42, scoring=cv_scoring)
+        cv_out['cv_metric'] = cv_out['cv_scoring']
+        return cv_out
 
     return {
-        'cv_scores': [_to_native_type(s) for s in scores],
-        'cv_mean': _to_native_type(np.mean(scores)),
-        'cv_std': _to_native_type(np.std(scores)),
+        'cv_scores': [],
+        'cv_mean': None,
+        'cv_std': None,
         'cv_folds': cv_folds,
         'cv_metric': 'accuracy' if task_type == 'classification' else 'r2'
     }
@@ -1143,7 +1153,8 @@ def main():
 
         # ── Cross-validation ────────────────────────────────────────
         cv_result = perform_cross_validation(
-            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds, scale_features)
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], params, task_type, cv_folds,
+            scale_features, cv_scoring=cv_scoring_of(payload, task_type))
 
         # For the decision-boundary plot only (not a metric) — every row,
         # imputed and scaled by the statistics already fit on train alone

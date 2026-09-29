@@ -29,7 +29,7 @@ from sklearn.metrics import (
     precision_recall_curve, average_precision_score
 )
 import warnings
-from analysis_common import _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
+from analysis_common import cv_scoring_of, _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -337,8 +337,11 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, cv
         nb_type=nb_type, binarize_threshold=params.get('binarize_threshold'))))
 
     cv = run_cv(pipeline, X_train_raw, y_encoded, 'classification', cv_folds, 42,
-                sample_weight=cv_sample_weight)
-    cv['cv_metric'] = 'accuracy'  # preserve naive_bayes's original field name
+                sample_weight=cv_sample_weight, scoring=params.get('cv_scoring'))
+    # naive_bayes's original field name, and it has to follow the scorer that
+    # was actually used -- hardcoding 'accuracy' here would label a PR-AUC
+    # number as an accuracy the moment the board asked for one.
+    cv['cv_metric'] = cv['cv_scoring']
     return cv
 
 
@@ -880,6 +883,7 @@ def main():
             # 'balanced' when the caller says nothing: a default that flips
             # on an older client makes two runs of the same data incomparable.
             'class_weight':        payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, 'classification'),
         }
 
         X_train = X_train_df.values

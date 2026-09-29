@@ -31,7 +31,7 @@ from sklearn.metrics import (
 )
 from sklearn.tree import export_text
 import warnings
-from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
+from analysis_common import cv_scoring_of, _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -617,7 +617,8 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
     # Shared CV (cv_strategy.py) — same StratifiedKFold(clf)/KFold(reg) behavior as
     # before, now centralized so time/group splits can be added in one place.
     return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds,
-                  params['random_state'], sample_weight=cv_sample_weight)
+                  params['random_state'], sample_weight=cv_sample_weight,
+                  scoring=params.get('cv_scoring'))
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -906,6 +907,7 @@ def main():
             # 'balanced' when the caller says nothing: a default that flips on
             # an older client makes two runs of the same data incomparable.
             'class_weight': payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, task_type),
         }
 
         if task_type == 'classification':

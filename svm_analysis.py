@@ -29,7 +29,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance
 import warnings
-from analysis_common import _compute_multiclass_auc, leak_safe_prepare_onehot, balanced_weighting
+from analysis_common import cv_scoring_of, _compute_multiclass_auc, leak_safe_prepare_onehot, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -380,7 +380,8 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
         pipeline.steps.insert(-1, ('scale', StandardScaler()))
 
     cv = run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds,
-                params['random_state'], sample_weight=cv_sample_weight)
+                params['random_state'], sample_weight=cv_sample_weight,
+                scoring=params.get('cv_scoring'))
     cv['cv_metric'] = cv['cv_scoring']  # preserve svm's original field name
     return cv
 
@@ -889,6 +890,7 @@ def main():
             # 'balanced' when the caller says nothing: a default that flips
             # on an older client makes two runs of the same data incomparable.
             'class_weight': payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, task_type),
         }
         cv_folds = int(payload.get('cv_folds', 5))
         scale_features = bool(payload.get('scale_features', True))

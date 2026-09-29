@@ -52,7 +52,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
-from analysis_common import balanced_weighting, _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
+from analysis_common import cv_scoring_of, balanced_weighting, _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot
 
 
 warnings.filterwarnings('ignore')
@@ -558,7 +558,8 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, task_type: str, 
     if scale_features:
         pipeline.steps.insert(-1, ('scale', StandardScaler()))
 
-    return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'],
+                  scoring=params.get('cv_scoring'))
 
 
 def generate_comparison_plot(individual_scores: Dict[str, float], model_label: str, task_type: str) -> str:
@@ -816,6 +817,7 @@ def main():
             'base_estimators': base_estimators,
             'final_estimator': final_estimator,
             'class_weight': payload.get('class_weight', 'balanced'),
+            'cv_scoring': cv_scoring_of(payload, task_type),
             'random_state': random_state,
         }
 

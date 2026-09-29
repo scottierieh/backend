@@ -86,6 +86,16 @@ def main():
                 'svm', 'knn', 'adaboost', 'mlp', 'elasticnet'}
     check(not (want_reg - set(reg)), 'and every regression one too', want_reg - set(reg))
 
+    # The screen joins its BOARD ROWS to these by route. Matching on the label
+    # would put "LightGBM" and "GBM" one substring apart.
+    entries = (cat or {}).get('blendable_models', {}).get('classification', [])
+    routed = {m['key']: m.get('routes') for m in entries}
+    check(routed.get('lightgbm') == ['lightgbm'] and routed.get('gbm') == ['gradient-boosting'],
+          'each member names the Auto Compare route it is, so the join is not on a label',
+          routed.get('lightgbm'), routed.get('gbm'))
+    check(routed.get('logistic_regression') == [],
+          'and a member with no board row of its own claims no route')
+
     # ------------------------------------------------- a named blend is that blend
     asked = ['catboost', 'svm', 'discriminant']
     res, err = run(base(rows, base_estimators=asked, ensemble_method='voting', voting_type='soft'))

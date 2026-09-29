@@ -142,9 +142,26 @@ def blendable_models(task_type: str = None):
         'naive_bayes': 'Naive Bayes', 'discriminant': 'Discriminant Analysis (LDA)',
         'mlp': 'Artificial Neural Network (MLP)', 'elasticnet': 'Elastic Net Regression',
     }
+    # The Auto Compare route each member corresponds to. That is the join
+    # key: the screen has a board of ROWS and has to decide which of them can
+    # be named as members. Matching on the label instead would put "LightGBM"
+    # and "GBM" one substring apart, which is the collision the predictive
+    # registry was restructured to end.
+    ROUTES = {
+        'random_forest': ['randomforest'], 'xgboost': ['xgboost'],
+        'lightgbm': ['lightgbm'], 'catboost': ['catboost'],
+        'gbm': ['gradient-boosting'], 'decision_tree': ['decision-tree'],
+        'svm': ['svm'], 'knn': ['knn'], 'adaboost': ['adaboost'],
+        'naive_bayes': ['naive-bayes'], 'discriminant': ['lda'], 'mlp': ['mlp'],
+        'elasticnet': ['elasticnet-regression'],
+        # No Auto Compare row of their own -- available as a meta-learner or
+        # as an extra member, never matched from the board.
+        'logistic_regression': [], 'ridge': [],
+    }
     tasks = [task_type] if task_type else ['classification', 'regression']
     return {
-        t: [{'key': k, 'label': LABELS.get(k, k)} for k in BASE_ESTIMATORS[t]]
+        t: [{'key': k, 'label': LABELS.get(k, k), 'routes': ROUTES.get(k, [])}
+            for k in BASE_ESTIMATORS[t]]
         for t in tasks
     }
 

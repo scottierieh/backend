@@ -701,3 +701,134 @@ def leak_safe_prepare_onehot(
             'n_train_used': len(X_train), 'n_holdout_used': len(X_test),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Class weighting
+# ---------------------------------------------------------------------------
+#
+# Every classification script is sent `class_weight: "balanced"` by the
+# frontend, and until now nothing read it. The leaderboard ranks an uneven
+# target on PR-AUC precisely because accuracy rewards ignoring the smaller
+# class -- and then trained every model as if the classes were even.
+#
+# One helper rather than the same fifteen lines in fourteen scripts, because
+# the per-estimator differences are the whole difficulty and they should be
+# wrong or right in one place. See docs/automl-class-imbalance.md.
+#
+# On balanced data every weight comes out 1.0, so this is a no-op there and
+# needs no "only when imbalanced" condition. A condition would also make it
+# impossible to tell afterwards which regime a given run was under.
+
+_CW_PARAM = 'class_weight'
+
+
+def _accepts(estimator, param: str) -> bool:
+    try:
+        return param in estimator.get_params(deep=False)
+    except Exception:
+        return False
+
+
+def _fit_accepts_sample_weight(estimator) -> bool:
+    import inspect
+    try:
+        return 'sample_weight' in inspect.signature(estimator.fit).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+def balanced_weighting(estimator, y_train, requested='balanced'):
+    """Apply balanced class weighting to `estimator`, however it supports it.
+
+    Returns (estimator, fit_kwargs, report).
+
+      estimator   the same object, with a weighting parameter set when it took
+                  one -- so cross-validation re-derives the weights per fold
+                  rather than reusing the full-data ones
+      fit_kwargs  {'sample_weight': ...} when that was the only route, else {}
+      report      the `class_weighting` dict the Compare screen reads
+
+    The three routes, in the order they are preferred:
+
+      class_weight='balanced'      the estimator derives it per fit, which is
+                                   what makes cross-validation honest
+      scale_pos_weight / auto_*    the same idea under the library's own name
+      fit(sample_weight=...)       computed here, from y_train only
+
+    Two estimators support none of them. KNeighborsClassifier has no
+    class_weight and its fit takes no sample_weight -- `weights='distance'` is
+    a distance weighting, not a class one -- and sklearn's MLPClassifier.fit
+    takes no sample_weight either. Resampling would work around both, but it
+    has to happen inside each CV fold and is a separate design. What matters
+    is that the response SAYS so: eleven weighted models and two unweighted
+    ones on the same PR-AUC leaderboard is a comparison under two different
+    conditions, and the screen cannot know unless it is told.
+    """
+    import numpy as _np
+
+    name = type(estimator).__name__
+    if requested is None:
+        return estimator, {}, {
+            'applied': False, 'method': None,
+            'reason': 'class weighting was turned off in the request',
+        }
+
+    # CatBoost names it itself, and its get_params() returns only the
+    # parameters that were explicitly set -- so asking whether it "accepts"
+    # auto_class_weights the way an sklearn estimator would answers no, and
+    # this fell through to sample weights. Those work, but they are computed
+    # once from the whole training half, so a cross-validation fold reuses
+    # weights derived from rows outside it. auto_class_weights re-derives per
+    # fit, which is the point.
+    if name.startswith('CatBoost'):
+        try:
+            estimator.set_params(auto_class_weights='Balanced')
+            return estimator, {}, {
+                'applied': True, 'method': "auto_class_weights='Balanced'", 'reason': None,
+            }
+        except Exception:
+            pass  # older CatBoost without the parameter — fall through
+
+    if _accepts(estimator, _CW_PARAM):
+        estimator.set_params(class_weight='balanced')
+        return estimator, {}, {
+            'applied': True, 'method': "class_weight='balanced'", 'reason': None,
+        }
+
+    if _accepts(estimator, 'scale_pos_weight'):
+        classes, counts = _np.unique(_np.asarray(y_train), return_counts=True)
+        if len(classes) == 2 and counts.min() > 0:
+            ratio = float(counts.max()) / float(counts.min())
+            estimator.set_params(scale_pos_weight=ratio)
+            return estimator, {}, {
+                'applied': True, 'method': f'scale_pos_weight={ratio:.3f}', 'reason': None,
+            }
+        # Multiclass: scale_pos_weight is binary-only, so fall through to
+        # sample weights below rather than setting a parameter that would be
+        # silently ignored.
+
+    if _fit_accepts_sample_weight(estimator):
+        from sklearn.utils.class_weight import compute_sample_weight
+        sw = compute_sample_weight('balanced', y_train)
+        return estimator, {'sample_weight': sw}, {
+            'applied': True, 'method': "fit(sample_weight=compute_sample_weight('balanced'))",
+            'reason': None,
+        }
+
+    # Discriminant analysis takes neither, but it does take the class priors
+    # it would otherwise estimate from the data -- and estimating them from an
+    # uneven sample is exactly what makes it answer the larger class. Uniform
+    # priors are the same intent by the only route this estimator has.
+    if _accepts(estimator, 'priors'):
+        classes = _np.unique(_np.asarray(y_train))
+        if len(classes) >= 2:
+            estimator.set_params(priors=[1.0 / len(classes)] * len(classes))
+            return estimator, {}, {
+                'applied': True, 'method': f'priors=uniform({len(classes)})', 'reason': None,
+            }
+
+    return estimator, {}, {
+        'applied': False, 'method': None,
+        'reason': f'{name} supports neither class_weight nor sample_weight',
+    }

@@ -65,7 +65,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, r2_score, mean_absolute_error
 
-from analysis_common import _to_native_type
+from analysis_common import _to_native_type, balanced_weighting
 from algorithm_registry import build_estimator
 from feature_pipeline import FeatureEngineer
 import model_store
@@ -103,6 +103,12 @@ class TrainRequest(BaseModel):
     # included. Omitted keeps the internal 80/20 split, so existing callers
     # are unaffected.
     holdout: Optional[list[dict[str, Any]]] = None
+
+    # 'balanced' when the key is absent, so a caller that predates this field
+    # gets the same fit as one that sends it -- a default that flips on an
+    # older client is how two runs of the same data stop being comparable.
+    # Explicit null turns it off.
+    classWeight: Optional[str] = 'balanced'
 
     # ---- AutoGluon ---------------------------------------------------------
     # An explicit field, not a string match on `algorithm`. That field carries
@@ -161,11 +167,30 @@ def _build_preprocessor(numeric_features: list[str], categorical_features: list[
     return ColumnTransformer(transformers, remainder='drop')
 
 
-def _build_pipeline(algorithm: str, task: Task, numeric_features: list[str], categorical_features: list[str]) -> Pipeline:
+def _build_pipeline(algorithm: str, task: Task, numeric_features: list[str],
+                    categorical_features: list[str], y_train=None,
+                    class_weight: Optional[str] = 'balanced') -> tuple[Pipeline, dict, Optional[dict]]:
+    """The served pipeline, weighted the way this estimator supports it.
+
+    Returns (pipeline, fit_kwargs, report). `fit_kwargs` is what has to reach
+    .fit() — for the estimators whose only route is sample weights — and is
+    prefixed for the Pipeline step, because a Pipeline routes fit parameters
+    to a named step rather than to whatever is last.
+
+    Classification only. A regression target has no classes to balance, and
+    passing y_train for one would make the helper answer a question nobody
+    asked.
+    """
+    estimator = build_estimator(algorithm, task)
+    fit_kwargs: dict = {}
+    report: Optional[dict] = None
+    if task == 'classification' and y_train is not None:
+        estimator, raw_kwargs, report = balanced_weighting(estimator, y_train, class_weight)
+        fit_kwargs = {f'est__{k}': v for k, v in raw_kwargs.items()}
     return Pipeline([
         ('pre', _build_preprocessor(numeric_features, categorical_features)),
-        ('est', build_estimator(algorithm, task)),
-    ])
+        ('est', estimator),
+    ]), fit_kwargs, report
 
 
 def _prepare_xy(df: pd.DataFrame, target: str, features: list[str], task: Task, numeric_features: list[str]):
@@ -758,8 +783,10 @@ def train_model(model_id: str, req: TrainRequest):
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42, stratify=stratify,
             )
-        eval_pipeline = _build_pipeline(req.algorithm, req.task, numeric_features, categorical_features)
-        eval_pipeline.fit(X_train, y_train)
+        eval_pipeline, eval_fit_kwargs, _ = _build_pipeline(
+            req.algorithm, req.task, numeric_features, categorical_features,
+            y_train, req.classWeight)
+        eval_pipeline.fit(X_train, y_train, **eval_fit_kwargs)
         y_pred = eval_pipeline.predict(X_test)
         if req.task == 'classification':
             metrics['accuracy'] = _to_native_type(accuracy_score(y_test, y_pred))
@@ -785,9 +812,12 @@ def train_model(model_id: str, req: TrainRequest):
         pass  # best-effort — register-model.ts falls back to the run's own metrics if this is empty
 
     # ...then a fresh fit on ALL valid rows for the model actually served.
-    pipeline = _build_pipeline(req.algorithm, req.task, numeric_features, categorical_features)
+    # Weighted from ALL the rows this fit sees, not from the train half the
+    # eval fit used — the weights belong to the data the model is given.
+    pipeline, fit_kwargs, class_weighting = _build_pipeline(
+        req.algorithm, req.task, numeric_features, categorical_features, y, req.classWeight)
     try:
-        pipeline.fit(X, y)
+        pipeline.fit(X, y, **fit_kwargs)
     except Exception as e:
         _fail(422, f"Training failed: {e}")
 
@@ -827,6 +857,11 @@ def train_model(model_id: str, req: TrainRequest):
         # Lets the caller tell "scored on the rows I sealed" from "scored on an
         # internal split", which are not the same claim.
         'evaluatedOn': 'holdout' if holdout_used else 'internal_split',
+        # Which route this estimator took, or why it had none. Eleven weighted
+        # models and three unweighted ones on one PR-AUC leaderboard is a
+        # comparison under two conditions, and the screen can only mark it if
+        # it is told. None for regression, which has no classes to balance.
+        'classWeighting': class_weighting,
         # The cut this model will answer at, with both operating points so the
         # screen can state what it costs as well as what it buys. None when
         # there is no single cut to choose (three or more classes, no

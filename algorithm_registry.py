@@ -13,12 +13,12 @@ reported metrics (computed in models_api.py after fitting) are what the
 registry and the user actually see and judge it by.
 """
 
-from typing import Literal
+from typing import Literal, Optional
 
 Task = Literal['classification', 'regression']
 
 
-def build_estimator(algorithm: str, task: Task):
+def _build_default_estimator(algorithm: str, task: Task):
     """Return a fresh, unfitted estimator for `algorithm` + `task`. Raises
     ValueError for an algorithm/task combination this backend can't serve
     (e.g. Naive Bayes for regression — it's classification-only on the
@@ -114,3 +114,29 @@ def build_estimator(algorithm: str, task: Task):
         ])
 
     raise ValueError(f'Unknown algorithm: {algorithm!r}')
+
+
+def build_estimator(algorithm: str, task: Task, params: Optional[dict] = None):
+    """The estimator this backend serves for `algorithm` + `task`.
+
+    `params` overrides the defaults above -- this is how a TUNED model
+    reaches the thing that actually gets served. Without it the search in
+    tune_analysis.py ends at a number on a screen: the model deployed
+    afterwards is built from those defaults, so the improvement the person
+    was shown is not the model they got.
+    """
+    estimator = _build_default_estimator(algorithm, task)
+    if not params:
+        return estimator
+    try:
+        return estimator.set_params(**params)
+    except ValueError as e:
+        # A parameter this estimator does not take. Naming it beats
+        # sklearn's own message, which lists every parameter it does take
+        # and buries the one that was wrong.
+        unknown = [k for k in params if k not in estimator.get_params(deep=True)]
+        raise ValueError(
+            f'{algorithm} does not take '
+            + (', '.join(repr(k) for k in unknown) if unknown else 'those parameters')
+            + f' ({e})'
+        ) from e

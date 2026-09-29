@@ -110,6 +110,14 @@ class TrainRequest(BaseModel):
     # Explicit null turns it off.
     classWeight: Optional[str] = 'balanced'
 
+    # Hyperparameters for the estimator, as tune_analysis.py's `best_params`
+    # returns them. Model Lab tunes a shortlisted model and then scores it on
+    # the sealed rows through this endpoint -- without this the score, and the
+    # model that gets deployed afterwards, would both come from the defaults,
+    # and the improvement the person was shown would belong to nothing they
+    # can use. Omitted keeps the defaults.
+    params: Optional[dict[str, Any]] = None
+
     # ---- AutoGluon ---------------------------------------------------------
     # An explicit field, not a string match on `algorithm`. That field carries
     # a display label ("AutoGluon · WeightedEnsemble_L2") chosen by the screen,
@@ -169,7 +177,8 @@ def _build_preprocessor(numeric_features: list[str], categorical_features: list[
 
 def _build_pipeline(algorithm: str, task: Task, numeric_features: list[str],
                     categorical_features: list[str], y_train=None,
-                    class_weight: Optional[str] = 'balanced') -> tuple[Pipeline, dict, Optional[dict]]:
+                    class_weight: Optional[str] = 'balanced',
+                    params: Optional[dict] = None) -> tuple[Pipeline, dict, Optional[dict]]:
     """The served pipeline, weighted the way this estimator supports it.
 
     Returns (pipeline, fit_kwargs, report). `fit_kwargs` is what has to reach
@@ -181,7 +190,10 @@ def _build_pipeline(algorithm: str, task: Task, numeric_features: list[str],
     passing y_train for one would make the helper answer a question nobody
     asked.
     """
-    estimator = build_estimator(algorithm, task)
+    # Tuned parameters first, class weighting second: the weighting is a
+    # separate contract the response reports on, and a tuned value for the
+    # same parameter must not silently take it over.
+    estimator = build_estimator(algorithm, task, params)
     fit_kwargs: dict = {}
     report: Optional[dict] = None
     if task == 'classification' and y_train is not None:
@@ -746,7 +758,7 @@ def train_model(model_id: str, req: TrainRequest):
         _fail(400, f"Not enough valid rows to train ({len(X)} after dropping missing targets, need >= {MIN_TRAINING_ROWS})")
 
     try:
-        estimator = build_estimator(req.algorithm, req.task)
+        estimator = build_estimator(req.algorithm, req.task, req.params)
     except ValueError as e:
         _fail(400, str(e))
 
@@ -785,7 +797,7 @@ def train_model(model_id: str, req: TrainRequest):
             )
         eval_pipeline, eval_fit_kwargs, _ = _build_pipeline(
             req.algorithm, req.task, numeric_features, categorical_features,
-            y_train, req.classWeight)
+            y_train, req.classWeight, req.params)
         eval_pipeline.fit(X_train, y_train, **eval_fit_kwargs)
         y_pred = eval_pipeline.predict(X_test)
         if req.task == 'classification':
@@ -815,7 +827,8 @@ def train_model(model_id: str, req: TrainRequest):
     # Weighted from ALL the rows this fit sees, not from the train half the
     # eval fit used — the weights belong to the data the model is given.
     pipeline, fit_kwargs, class_weighting = _build_pipeline(
-        req.algorithm, req.task, numeric_features, categorical_features, y, req.classWeight)
+        req.algorithm, req.task, numeric_features, categorical_features, y,
+        req.classWeight, req.params)
     try:
         pipeline.fit(X, y, **fit_kwargs)
     except Exception as e:

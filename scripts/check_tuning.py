@@ -14,7 +14,11 @@ of them fails quietly rather than loudly:
     fits, and past the 600s request timeout the whole search is lost rather
     than returning the best of what it had;
   - it says which models it can tune AT ALL, so the screen does not draw a
-    button whose only outcome is a ValueError.
+    button whose only outcome is a ValueError;
+  - and the tuned parameters reach the model that is actually SERVED. Without
+    that last one the whole feature is decorative: the search ends at a number
+    on a screen and /train builds the same defaults it always did, so the
+    improvement the person was shown belongs to no model they can use.
 
 And one older one, since this script had the leak the 14 were cleaned of: it
 must survive a missing value. RandomForest and GBM raise on NaN, so before
@@ -37,6 +41,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np  # noqa: E402
 
 import tune_analysis  # noqa: E402
+
+# models_api writes the fitted pipeline to GCS at import time of model_store;
+# this stands in for it so /train can be called in-process.
+import types  # noqa: E402
+
+_store: dict = {}
+_fake_store = types.ModuleType('model_store')
+_fake_store.save_pipeline = lambda model_id, artifact: (
+    _store.__setitem__(f'gs://check/{model_id}', artifact) or f'gs://check/{model_id}')
+_fake_store.load_pipeline = lambda uri: _store[uri]
+_fake_store.delete_artifact = lambda uri: _store.pop(uri, None)
+sys.modules['model_store'] = _fake_store
+
+import models_api  # noqa: E402
+models_api.model_store = _fake_store
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(HERE, 'tune_analysis.py')
@@ -245,6 +264,46 @@ def main():
     check(err is None and res.get('scored_on') == 'inner_split',
           "and every response says its score is from this script's own split, "
           'not the sealed holdout the leaderboard reports on', (res or {}).get('scored_on'))
+
+    # ------------------------------------------- the tuned model gets served
+    # A search that does not change what is deployed is a number on a screen.
+    tuned = {'n_estimators': 120, 'max_depth': 3, 'min_samples_leaf': 7}
+    got = models_api.train_model('m-tuned', models_api.TrainRequest(
+        data=rows, algorithm='Random Forest', target=TARGET, features=FEATURES,
+        task='classification', params=tuned))
+    est = _store[got['artifactUri']]['pipeline'].named_steps['est']
+    actual = {k: est.get_params()[k] for k in tuned}
+    check(actual == tuned,
+          f'best_params reach the estimator inside the saved artifact: {actual}', tuned)
+
+    # The defaults are n_estimators=300 — a served model that ignored `params`
+    # would still pass the check above if it happened to match, so this pins
+    # that they are not simply the defaults.
+    default = models_api.train_model('m-default', models_api.TrainRequest(
+        data=rows, algorithm='Random Forest', target=TARGET, features=FEATURES,
+        task='classification'))
+    d_est = _store[default['artifactUri']]['pipeline'].named_steps['est']
+    check(d_est.get_params()['n_estimators'] != tuned['n_estimators'],
+          'and an untuned request still gets the defaults, so the two differ',
+          d_est.get_params()['n_estimators'])
+
+    # Both the weighting and the tuning have to survive together — the tuned
+    # parameters are applied first, then the weighting, so neither erases the
+    # other.
+    check((got.get('classWeighting') or {}).get('applied') is True
+          and est.get_params().get('class_weight') == 'balanced',
+          'and a tuned model is still class-weighted, not one or the other',
+          got.get('classWeighting'), est.get_params().get('class_weight'))
+
+    try:
+        models_api.train_model('m-bad', models_api.TrainRequest(
+            data=rows, algorithm='Random Forest', target=TARGET, features=FEATURES,
+            task='classification', params={'learning_rate': 0.1}))
+        check(False, 'a parameter the estimator does not take is refused')
+    except Exception as e:
+        detail = getattr(e, 'detail', str(e))
+        check(getattr(e, 'status_code', None) == 400 and 'learning_rate' in str(detail),
+              f'a parameter the estimator does not take is refused BY NAME: "{detail}"', e)
 
     print(f'\n{_ok} ok, {_failed} failure(s)')
     return 1 if _failed else 0

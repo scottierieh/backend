@@ -32,7 +32,7 @@ from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 import warnings
 from analysis_common import (_compute_multiclass_auc, _to_native_type, _fig_to_base64,
                              build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
-                             ale_1d, shap_matrix)
+                             ale_1d, shap_matrix, balanced_weighting)
 
 
 warnings.filterwarnings('ignore')
@@ -69,6 +69,13 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
     n_classes = len(le.classes_)
 
     model = CatBoostClassifier(**_common_params(params))
+    # Balanced by default, from the TRAIN half only -- the split already
+    # happened, and weights derived from the holdout would carry it into the
+    # fit. See docs/automl-class-imbalance.md.
+    # CatBoost balances by its own name -- auto_class_weights -- and derives
+    # the weights per fit, so nothing has to reach .fit() here.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
 
     train_pool = Pool(X_train, y_train_encoded, cat_features=cat_features)
     test_pool = Pool(X_test, y_test_encoded, cat_features=cat_features)
@@ -161,7 +168,8 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
     )
 
     return {
-        'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
+        'model': model, 'class_weighting': class_weighting,
+        'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': metric_name,
         'label_encoder': le, 'train_pool': train_pool, 'test_pool': test_pool,
@@ -442,6 +450,9 @@ def perform_cross_validation(X_train_raw, y_train, params: dict, task_type: str,
             X_tr, X_te = _impute_fold(X_train_raw.iloc[train_idx], X_train_raw.iloc[test_idx])
             y_tr, y_te = y_encoded[train_idx], y_encoded[test_idx]
             m = CatBoostClassifier(**cv_params)
+            # The same balancing as the reported fit, re-derived per fold --
+            # otherwise the CV beside the metrics describes a different model.
+            m, _, _ = balanced_weighting(m, y_tr, params.get('class_weight', 'balanced'))
             m.fit(Pool(X_tr, y_tr, cat_features=cat_features), verbose=False)
             scores.append(accuracy_score(y_te, m.predict(Pool(X_te, cat_features=cat_features)).ravel().astype(int)))
     else:
@@ -726,7 +737,10 @@ def main():
             'learning_rate': learning_rate,
             'l2_leaf_reg': l2_leaf_reg,
             'random_state': random_state,
-            'early_stopping_rounds': early_stopping_rounds
+            'early_stopping_rounds': early_stopping_rounds,
+            # 'balanced' when the caller says nothing: a default that flips on
+            # an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
 
         try:
@@ -821,6 +835,9 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting': result.get('class_weighting'),
             'n_categorical_features': len(cat_cols),
             'categorical_features': cat_cols,
             'parameters': params,

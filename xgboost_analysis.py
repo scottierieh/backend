@@ -29,7 +29,7 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -93,8 +93,14 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
     )
 
     eval_set = [(X_train, y_train_encoded), (X_test, y_test_encoded)]
+    # Balanced by default, from the TRAIN half only -- leak_safe_prepare has
+    # already split, and weights derived from the holdout would carry it into
+    # the fit. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
     model.fit(
         X_train, y_train_encoded,
+        **_fit_kwargs,
         eval_set=eval_set,
         verbose=False
     )
@@ -194,6 +200,7 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
 
     return {
         'model': model,
+        'class_weighting': class_weighting,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -555,6 +562,9 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
         )
         min_class_count = int(np.min(np.bincount(y_encoded)))
         cv_folds = max(2, min(cv_folds, min_class_count))
+        model, _cv_fit_kwargs, _ = balanced_weighting(
+            model, y_encoded, params.get('class_weight', 'balanced'))
+        cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
         cv_target, cv_task = y_encoded, 'classification'
     else:
         model = xgb.XGBRegressor(
@@ -563,9 +573,11 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
             colsample_bytree=params['colsample_bytree'], objective='reg:squarederror',
             random_state=params['random_state'], n_jobs=-1
         )
+        cv_sample_weight = None
         cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds,
+                  params['random_state'], sample_weight=cv_sample_weight)
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -891,7 +903,10 @@ def main():
             'gamma': float(payload.get('gamma', 0)),
             'reg_alpha': float(payload.get('reg_alpha', 0)),
             'reg_lambda': float(payload.get('reg_lambda', 1)),
-            'random_state': random_state
+            'random_state': random_state,
+            # 'balanced' when the caller says nothing: a default that flips
+            # on an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
 
         if task_type == 'classification':
@@ -970,6 +985,10 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting': result.get('class_weighting'),
+
             'parameters': params,
             'metrics': result['metrics'],
             'feature_importance': feature_importance,

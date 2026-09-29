@@ -16,7 +16,7 @@ import base64
 import warnings
 from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
                              shap_matrix, shap_interaction_top, ale_1d, _to_native_type,
-                             leak_safe_prepare_onehot)
+                             leak_safe_prepare_onehot, balanced_weighting)
 from sklearn.inspection import partial_dependence, permutation_importance
 from typing import List, Dict, Optional
 
@@ -36,16 +36,23 @@ def _to_native_type(obj):
     return obj
 
 def perform_cross_validation(X_train_raw, y_train, cv_pipeline, problem_type, n_estimators,
-                              learning_rate, max_depth, cv_folds=5):
+                              learning_rate, max_depth, cv_folds=5, class_weight='balanced'):
     """Cross-validate on the TRAIN split only, each fold refitting its own
     imputation/one-hot encoding via cv_pipeline. See docs/automl-preprocessing-leakage.md."""
     if problem_type == 'classification':
         model = GradientBoostingClassifier(
             n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=42
         )
+        # The same balancing as the reported fit. Without it the CV beside
+        # those metrics describes a differently trained model. A Pipeline
+        # routes fit parameters to a named step, so the weight is prefixed.
+        model, _cv_fit_kwargs, _ = balanced_weighting(model, y_train, class_weight)
         pipeline = cv_pipeline(model)
         cv_splitter = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_splitter, scoring='accuracy')
+        cv_params = ({f'{pipeline.steps[-1][0]}__sample_weight': _cv_fit_kwargs['sample_weight']}
+                     if 'sample_weight' in _cv_fit_kwargs else None)
+        scores = cross_val_score(pipeline, X_train_raw, y_train, cv=cv_splitter,
+                                 scoring='accuracy', params=cv_params)
     else:
         model = GradientBoostingRegressor(
             n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth,
@@ -134,6 +141,9 @@ def main():
         learning_rate = float(payload.get('learningRate', 0.1))
         max_depth = int(payload.get('maxDepth', 3))
         test_size = float(payload.get('test_size', 0.2))
+        # 'balanced' when the caller says nothing: a default that flips on an
+        # older client makes two runs of the same data incomparable.
+        class_weight = payload.get('class_weight', 'balanced')
 
         if not all([data, features, target, problem_type]):
             raise ValueError("Missing data, features, target, or problemType")
@@ -175,11 +185,21 @@ def main():
                 random_state=42
             )
         
-        model.fit(X_train, y_train)
+        # Balanced by default, from the TRAIN half only -- the split already
+        # happened, and weights derived from the holdout would carry it into
+        # the fit. GradientBoosting has no class_weight, so the weights reach
+        # it at fit time. See docs/automl-class-imbalance.md.
+        class_weighting = None
+        _fit_kwargs = {}
+        if problem_type != 'regression':
+            model, _fit_kwargs, class_weighting = balanced_weighting(
+                model, y_train, class_weight)
+        model.fit(X_train, y_train, **_fit_kwargs)
         y_pred = model.predict(X_test)
         y_train_pred = model.predict(X_train)
         cv_result = perform_cross_validation(
-            prep['X_train_raw'], y_train, prep['cv_pipeline'], problem_type, n_estimators, learning_rate, max_depth)
+            prep['X_train_raw'], y_train, prep['cv_pipeline'], problem_type, n_estimators,
+            learning_rate, max_depth, class_weight=class_weight)
 
         # --- Evaluation ---
         results = {}
@@ -578,6 +598,9 @@ def main():
 
         results['cv_results'] = cv_result
         results['row_counts'] = row_counts
+        # Which route this estimator took to class balancing, or why it had
+        # none. Absent for regression, which has no classes.
+        results['class_weighting'] = class_weighting
         results['n_samples'] = row_counts['n_train'] + row_counts['n_holdout']
 
         response = {

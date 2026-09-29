@@ -67,9 +67,18 @@ def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None
     # `params` rather than the deprecated `fit_params`, and sklearn indexes it
     # per fold, so a fold gets its own rows' weights rather than all of them.
     if sample_weight is not None:
+        # A Pipeline does not take fit parameters for itself -- it routes them
+        # to a named step, and an unprefixed sample_weight raises rather than
+        # being ignored, so every fold fails and the CV comes back as an
+        # error. The estimator is the last step by construction here
+        # (cv_pipeline puts the preprocessing before it).
+        key = 'sample_weight'
+        steps = getattr(estimator, 'steps', None)
+        if steps:
+            key = f'{steps[-1][0]}__sample_weight'
         kwargs['params'] = {
             **kwargs.pop('params', {}),
-            'sample_weight': np.asarray(sample_weight),
+            key: np.asarray(sample_weight),
         }
     scores = np.asarray(
         cross_val_score(estimator, X, y, cv=splitter, scoring=scoring, **kwargs),

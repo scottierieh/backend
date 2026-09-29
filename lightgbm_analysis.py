@@ -30,7 +30,7 @@ from sklearn.metrics import (
 )
 import lightgbm as lgb
 import warnings
-from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
+from analysis_common import _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -69,8 +69,14 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
         callbacks.append(lgb.early_stopping(params['early_stopping_rounds'], verbose=False))
 
     eval_metric = 'binary_logloss' if n_classes == 2 else 'multi_logloss'
+    # Balanced by default, from the TRAIN half only -- leak_safe_prepare has
+    # already split, and weights derived from the holdout would carry it into
+    # the fit. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
     model.fit(
         X_train, y_train_encoded,
+        **_fit_kwargs,
         eval_set=[(X_train, y_train_encoded), (X_test, y_test_encoded)],
         eval_names=['train', 'test'],
         eval_metric=eval_metric,
@@ -153,7 +159,8 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
     )
 
     return {
-        'model': model, 'metrics': metrics, 'per_class_metrics': per_class_metrics,
+        'model': model, 'class_weighting': class_weighting,
+        'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': eval_metric,
         'label_encoder': le, 'best_iteration': int(model.best_iteration_ or params['n_estimators']),
@@ -392,12 +399,17 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
         le = LabelEncoder()
         y_encoded = le.fit_transform(y_train)
         model = lgb.LGBMClassifier(**cv_params)
+        model, _cv_fit_kwargs, _ = balanced_weighting(
+            model, y_encoded, params.get('class_weight', 'balanced'))
+        cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
         cv_target, cv_task = y_encoded, 'classification'
     else:
         model = lgb.LGBMRegressor(**cv_params)
+        cv_sample_weight = None
         cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds,
+                  params['random_state'], sample_weight=cv_sample_weight)
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -644,7 +656,10 @@ def main():
             'reg_alpha': payload.get('reg_alpha', 0.0),
             'reg_lambda': payload.get('reg_lambda', 0.0),
             'random_state': payload.get('random_state', 42),
-            'early_stopping_rounds': payload.get('early_stopping_rounds', 20)
+            'early_stopping_rounds': payload.get('early_stopping_rounds', 20),
+            # 'balanced' when the caller says nothing: a default that flips
+            # on an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
 
         if task_type == 'classification':
@@ -713,6 +728,10 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting': result.get('class_weighting'),
+
             'parameters': params,
             'metrics': result['metrics'],
             'feature_importance': feature_importance,

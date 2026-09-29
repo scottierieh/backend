@@ -29,7 +29,7 @@ from sklearn.metrics import (
 )
 from sklearn.inspection import permutation_importance
 import warnings
-from analysis_common import _compute_multiclass_auc, leak_safe_prepare_onehot
+from analysis_common import _compute_multiclass_auc, leak_safe_prepare_onehot, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -133,7 +133,12 @@ def train_svm_classifier(X_train, X_test, y_train, y_test, params: dict,
         probability=True
     )
 
-    model.fit(X_train, y_train_encoded)
+    # Balanced by default, from the TRAIN half only -- leak_safe_prepare has
+    # already split, and weights derived from the holdout would carry it into
+    # the fit. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
+    model.fit(X_train, y_train_encoded, **_fit_kwargs)
 
     # Predictions
     y_pred = model.predict(X_test)
@@ -251,6 +256,7 @@ def train_svm_classifier(X_train, X_test, y_train, y_test, params: dict,
 
     return {
         'model': model,
+        'class_weighting': class_weighting,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -354,6 +360,9 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
             degree=params['degree'],
             random_state=params['random_state']
         )
+        model, _cv_fit_kwargs, _ = balanced_weighting(
+            model, y_encoded, params.get('class_weight', 'balanced'))
+        cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
         cv_target, cv_task = y_encoded, 'classification'
     else:
         model = SVR(
@@ -363,13 +372,15 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
             degree=params['degree'],
             epsilon=params['epsilon']
         )
+        cv_sample_weight = None
         cv_target, cv_task = y_train, 'regression'
 
     pipeline = cv_pipeline(model)
     if scale_features:
         pipeline.steps.insert(-1, ('scale', StandardScaler()))
 
-    cv = run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    cv = run_cv(pipeline, X_train_raw, cv_target, cv_task, cv_folds,
+                params['random_state'], sample_weight=cv_sample_weight)
     cv['cv_metric'] = cv['cv_scoring']  # preserve svm's original field name
     return cv
 
@@ -874,7 +885,10 @@ def main():
             'degree': int(payload.get('degree', 3)),
             'coef0': float(payload.get('coef0', 0.0)),
             'epsilon': float(payload.get('epsilon', 0.1)),
-            'random_state': int(payload.get('random_state', 42))
+            'random_state': int(payload.get('random_state', 42)),
+            # 'balanced' when the caller says nothing: a default that flips
+            # on an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
         cv_folds = int(payload.get('cv_folds', 5))
         scale_features = bool(payload.get('scale_features', True))
@@ -963,6 +977,10 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting': result.get('class_weighting'),
+
             'parameters': {
                 'kernel': params['kernel'],
                 'C': params['C'],

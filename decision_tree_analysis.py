@@ -35,7 +35,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import shap
-from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
+from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -593,7 +593,12 @@ def train_classifier(X_train, X_test, y_train, y_test,
         max_leaf_nodes=params['max_leaf_nodes'],
         random_state=params['random_state']
     )
-    model.fit(X_train, y_train_enc)
+    # Balanced by default, from the TRAIN half only -- leak_safe_prepare has
+    # already split, and weights derived from the holdout would carry it into
+    # the fit. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_enc, params.get('class_weight', 'balanced'))
+    model.fit(X_train, y_train_enc, **_fit_kwargs)
 
     y_pred       = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
@@ -680,7 +685,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
     )
 
     return {
-        'model': model, 'metrics': metrics,
+        'model': model, 'class_weighting': class_weighting, 'metrics': metrics,
         'per_class_metrics': per_class,
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
@@ -757,6 +762,9 @@ def perform_cv(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str, 
             max_leaf_nodes=params['max_leaf_nodes'],
             random_state=params['random_state']
         )
+        model, _cv_fit_kwargs, _ = balanced_weighting(
+            model, y_enc, params.get('class_weight', 'balanced'))
+        cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
         cv_target, cv_task = y_enc, 'classification'
     else:
         model = DecisionTreeRegressor(
@@ -769,9 +777,11 @@ def perform_cv(X_train_raw, y_train, cv_pipeline, params: dict, task_type: str, 
             max_leaf_nodes=params['max_leaf_nodes'],
             random_state=params['random_state']
         )
+        cv_sample_weight = None
         cv_target, cv_task = y_train, 'regression'
 
-    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds,
+                  params['random_state'], sample_weight=cv_sample_weight)
 
 
 # ─────────────────────────────────────────────
@@ -953,6 +963,9 @@ def main():
             'splitter':          splitter,
             'max_leaf_nodes':    max_leaf_nodes,
             'random_state':      random_state,
+            # 'balanced' when the caller says nothing: a default that flips on
+            # an older client makes two runs of the same data incomparable.
+            'class_weight':      payload.get('class_weight', 'balanced'),
         }
 
         X_train = X_train_df.values.astype(float)
@@ -1057,6 +1070,9 @@ def main():
             'n_train':            len(X_train),
             'n_test':             len(X_test),
             'row_counts':         row_counts,
+            # Which route this estimator took to class balancing, or why it
+            # had none. Absent for regression, which has no classes.
+            'class_weighting':    result.get('class_weighting'),
             'parameters':         {k: _to_native(v) for k, v in params.items()},
             'metrics':            result['metrics'],
             'feature_importance': feature_importance,

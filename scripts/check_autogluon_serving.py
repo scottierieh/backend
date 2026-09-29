@@ -137,7 +137,43 @@ def main() -> int:
           'one probability column per class, not a single winning number',
           (p['probabilities'] or [None])[0])
     check(all(abs(sum(r) - 1.0) < 1e-6 for r in p['probabilities']), 'and each row sums to 1')
-    check(p['shapContributions'] is None, 'row contributions are declared absent, not faked')
+    check(p['shapContributions'] is None,
+          'a prediction that did not ask to be explained carries no contributions')
+
+    # ---- row-level SHAP ---------------------------------------------------
+    # The explainer wraps predict_proba and never reaches into an estimator,
+    # so it fits a predictor as it fits a Pipeline. What does NOT fit without
+    # help is the shape: AutoGluon returns a DataFrame where sklearn returns
+    # an ndarray, and `proba[:, 1]` on a DataFrame means "the column named 1"
+    # -- right by accident on integer labels, an error on string ones.
+    import time as _time
+    t0 = _time.time()
+    e = models_api.predict_model('m-check', models_api.PredictRequest(
+        artifactUri=uri, rows=score_rows[:2], explain=True))
+    took = _time.time() - t0
+
+    contribs = e['shapContributions']
+    check(contribs is not None, f'asking for an explanation gets one ({took:.1f}s for 2 rows)')
+    if contribs:
+        check(len(contribs) == 2, 'one set of contributions per row', len(contribs))
+        check({c['feature'] for c in contribs[0]} == set(FEATURES),
+              'covering every feature the model was given',
+              sorted(c['feature'] for c in contribs[0]))
+        check(all(isinstance(c['shap'], float) for c in contribs[0]),
+              'as real numbers rather than strings or nulls')
+        # All-zero contributions is what a wrapper that silently explains a
+        # constant looks like: no error, a full-shaped answer, no information.
+        check(any(abs(c['shap']) > 1e-9 for c in contribs[0]),
+              'and not all zero, which is what explaining nothing looks like',
+              [round(c['shap'], 5) for c in contribs[0]])
+        check(all('value' in c for c in contribs[0]),
+              'each carrying the feature value it was computed at')
+
+    # A categorical column is coded before shap sees it and decoded before the
+    # predictor does. Getting that backwards raises inside the explainer and
+    # the whole thing returns None -- which looks like "not supported".
+    check(contribs is not None and any(c['feature'] == 'region' for c in (contribs or [[]])[0]),
+          'including the categorical one, which is coded and decoded around the explainer')
 
     # Untarring on every call would work and would be slow enough to matter.
     loaded = art.get('_ag_loaded')

@@ -235,20 +235,51 @@ def _decode_row(arr, columns: list[str], categories: dict[str, pd.Index]) -> pd.
     return frame
 
 
-def _predict_fn_for(pipeline: Pipeline, task: Task, columns: list[str], categories: dict[str, pd.Index]):
+class AutoGluonEstimator:
+    """A TabularPredictor behind the two methods the SHAP path uses.
+
+    That path was already engine-agnostic: it wraps predict_proba in a
+    shap.Explainer rather than reaching into an estimator's internals, so any
+    callable fits. What does not fit is the shape of what comes back.
+    AutoGluon returns a DataFrame where scikit-learn returns an ndarray, and
+    `proba[:, 1]` on a DataFrame means "the column literally named 1" — a
+    different thing, which on integer class labels happens to give the right
+    answer and on string labels raises. It also takes `model=`, naming which
+    model on its leaderboard to use, and a predictor asked for contributions
+    from one model while serving another explains the wrong thing.
+
+    Both are settled here, once, instead of at three call sites.
+    """
+
+    def __init__(self, predictor, ag_model: Optional[str] = None):
+        self._predictor = predictor
+        self._model = ag_model
+
+    def predict(self, frame: pd.DataFrame):
+        return np.asarray(self._predictor.predict(frame, model=self._model))
+
+    def predict_proba(self, frame: pd.DataFrame):
+        return np.asarray(self._predictor.predict_proba(frame, model=self._model))
+
+
+def _predict_fn_for(estimator, task: Task, columns: list[str], categories: dict[str, pd.Index]):
     """A callable over the shap-encoded (numeric-coded) feature space that
-    decodes back to real categories before calling the pipeline — see
-    _encode_for_shap for why the coding step exists at all."""
+    decodes back to real categories before calling the estimator — see
+    _encode_for_shap for why the coding step exists at all.
+
+    `estimator` is an sklearn Pipeline or an AutoGluonEstimator; nothing here
+    knows which, and nothing here should.
+    """
     def fn(data):
         frame = _decode_row(data, columns, categories)
         if task == 'classification':
-            proba = pipeline.predict_proba(frame)
+            proba = np.asarray(estimator.predict_proba(frame))
             return proba[:, 1] if proba.shape[1] == 2 else proba.max(axis=1)
-        return pipeline.predict(frame)
+        return np.asarray(estimator.predict(frame))
     return fn
 
 
-def _compute_beeswarm(pipeline: Pipeline, task: Task, X: pd.DataFrame) -> Optional[dict]:
+def _compute_beeswarm(estimator, task: Task, X: pd.DataFrame) -> Optional[dict]:
     try:
         import shap
         background_n = min(len(X), BACKGROUND_SAMPLE_SIZE)
@@ -259,7 +290,7 @@ def _compute_beeswarm(pipeline: Pipeline, task: Task, X: pd.DataFrame) -> Option
         sample_raw = X.sample(n=n, random_state=1) if len(X) > n else X
         sample = _encode_with(sample_raw, categories)
 
-        explainer = shap.Explainer(_predict_fn_for(pipeline, task, list(X.columns), categories), background)
+        explainer = shap.Explainer(_predict_fn_for(estimator, task, list(X.columns), categories), background)
         sv = explainer(sample, silent=True)
         values = np.asarray(sv.values)
 
@@ -281,13 +312,13 @@ def _compute_beeswarm(pipeline: Pipeline, task: Task, X: pd.DataFrame) -> Option
         return None
 
 
-def _compute_row_contributions(pipeline: Pipeline, task: Task, background_raw: pd.DataFrame, rows_raw: pd.DataFrame) -> Optional[list]:
+def _compute_row_contributions(estimator, task: Task, background_raw: pd.DataFrame, rows_raw: pd.DataFrame) -> Optional[list]:
     try:
         import shap
         background, categories = _encode_for_shap(background_raw)
         rows = _encode_with(rows_raw, categories)
 
-        explainer = shap.Explainer(_predict_fn_for(pipeline, task, list(rows_raw.columns), categories), background)
+        explainer = shap.Explainer(_predict_fn_for(estimator, task, list(rows_raw.columns), categories), background)
         sv = explainer(rows, silent=True)
         values = np.asarray(sv.values)
         out = []
@@ -519,6 +550,14 @@ def train_model(model_id: str, req: TrainRequest):
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
+        # The rows shap perturbs against, sampled once here rather than
+        # recomputed per explain call -- same reason and same size as the
+        # estimator path's.
+        ag_X = ag_frame[req.features]
+        ag_background_n = min(len(ag_X), BACKGROUND_SAMPLE_SIZE)
+        ag_background = (ag_X.sample(n=ag_background_n, random_state=42)
+                         if len(ag_X) > ag_background_n else ag_X)
+
         artifact = {
             'kind': 'autogluon',
             'bundle': bundle,
@@ -527,6 +566,7 @@ def train_model(model_id: str, req: TrainRequest):
             'features': req.features,
             'feature_engineer': feature_engineer,
             'raw_columns': feature_engineer.input_columns_ if feature_engineer else req.features,
+            'background': ag_background,
             # Read by /predict to turn a probability frame into a fixed column
             # order the caller can rely on, rather than whatever the frame
             # happens to be ordered by.
@@ -541,12 +581,20 @@ def train_model(model_id: str, req: TrainRequest):
         return {
             'artifactUri': artifact_uri,
             'metrics': metrics or None,
-            # Not computed for this engine yet. The SHAP path wraps
-            # predict_proba and is model-agnostic, so it CAN be done here; it
-            # is a separate change with its own cost (a background sample and
-            # an explainer over a predictor that is slower per call than one
-            # estimator), and reporting a beeswarm this response did not
-            # compute would be worse than reporting none.
+            # Deliberately not computed, with a measured reason.
+            #
+            # The SHAP path is engine-agnostic and does work here -- row
+            # contributions below use it. The beeswarm is what does not fit:
+            # over an AutoGluon predictor it took 133 seconds on five features
+            # and a thousand rows, against well under a second for a single
+            # estimator, and the permutation explainer's cost grows with the
+            # feature count. That lands on top of a fit that already spent the
+            # caller's whole budget, so a 300-second save becomes a
+            # seven-minute one for a chart.
+            #
+            # Row-level contributions cost 2.1s for the ensemble and 0.1s for
+            # a single model, which is a click rather than a save, so those
+            # are computed on demand in /predict instead.
             'shapBeeswarm': None,
             'featureBaseline': _compute_feature_baseline(
                 ag_frame[req.features], *_split_feature_types(ag_frame, req.features)),
@@ -723,13 +771,22 @@ def predict_model(model_id: str, req: PredictRequest):
             except Exception:
                 probabilities = None
 
+        # The same explainer the estimator path uses, over the same wrapper.
+        # It only ever calls predict_proba, so what it explains is the model
+        # that is actually served -- including `model=`, so a row explained
+        # under a chosen leaderboard model is that model's answer and not the
+        # ensemble's.
+        contributions = None
+        if req.explain:
+            background = artifact.get('background')
+            if background is not None:
+                contributions = _compute_row_contributions(
+                    AutoGluonEstimator(predictor, ag_model), artifact.get('task'), background, X)
+
         return {
             'predictions': predictions,
             'probabilities': probabilities,
-            # Row-level SHAP over a predictor is a separate change -- see the
-            # note on shapBeeswarm in train_model. None is what the contract
-            # already means by "this engine does not report it".
-            'shapContributions': None,
+            'shapContributions': contributions,
         }
 
 

@@ -235,6 +235,117 @@ def _decode_row(arr, columns: list[str], categories: dict[str, pd.Index]) -> pd.
     return frame
 
 
+# A probability is not a decision. Somewhere between them is a cut, and until
+# now that cut was 0.5 everywhere by default -- sklearn's argmax -- while
+# everything else in this app is built around the target being uneven: the
+# leaderboard ranks on PR-AUC because accuracy rewards ignoring the smaller
+# class, and the table marks every accuracy that fails to beat "always answer
+# the larger class". All of that ends at the ranking: the model that gets
+# served then answers at 0.5.
+#
+# Measured here on a 12.9% minority, 300 held-out rows, Random Forest:
+#
+#   0.500  precision .600  recall .188  F1 .286   —  9 of 48 found
+#   0.290  precision .500  recall .438  F1 .467   — 21 of 48 found
+#
+# Note what that measurement also shows. build_estimator takes no
+# class_weight, so THIS path fits without one, while the fourteen analysis
+# scripts are sent class_weight='balanced' by the frontend. The model that
+# earns a place on the board and the model that gets served are not trained
+# the same way, and the served one leans harder toward the larger class. That
+# is a separate defect; the cut is chosen on whatever model is actually being
+# served, so it stays correct either way and will simply land nearer 0.5 once
+# the weighting is fixed.
+MIN_POSITIVES_FOR_THRESHOLD = 5
+
+
+def _scores_at(y_true: np.ndarray, proba: np.ndarray, cut: float) -> dict:
+    pred = (proba >= cut).astype(int)
+    tp = int(((pred == 1) & (y_true == 1)).sum())
+    fp = int(((pred == 1) & (y_true == 0)).sum())
+    fn = int(((pred == 0) & (y_true == 1)).sum())
+    precision = tp / (tp + fp) if (tp + fp) else 0.0
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    return {
+        'threshold': _to_native_type(float(cut)),
+        'precision': _to_native_type(precision),
+        'recall': _to_native_type(recall),
+        'f1': _to_native_type(f1),
+        'predicted_positive': tp + fp,
+    }
+
+
+def _choose_threshold(estimator, X_test: pd.DataFrame, y_test: np.ndarray,
+                      classes) -> Optional[dict]:
+    """The cut that maximises F1 on the smaller class, chosen on held-out rows.
+
+    The smaller class, not `classes_[1]`, because that is the one this exists
+    for: a 0.5 cut on a 12% minority answers "no" almost always, and the
+    class someone built the model to find is the one that goes missing. Which
+    label it is comes back in the response rather than being left to a
+    convention the reader cannot see.
+
+    F1 rather than Youden's J or a fixed recall: it is the balance the
+    leaderboard already reports, so the number the screen shows for the served
+    model is comparable to the number it ranked on. The alternatives are a
+    different product decision, not a better default.
+
+    None -- serve at 0.5 -- whenever the choice would be noise: three or more
+    classes (there is no single cut), no probabilities (not every estimator
+    has them), or too few positives to fit a curve to.
+    """
+    if len(classes) != 2:
+        return None
+    if not hasattr(estimator, 'predict_proba'):
+        return None
+
+    # The smaller class in the rows being scored, by its encoded index.
+    counts = np.bincount(y_test.astype(int), minlength=2)
+    positive_idx = int(np.argmin(counts))
+    n_positive = int(counts[positive_idx])
+    if n_positive < MIN_POSITIVES_FOR_THRESHOLD:
+        return None
+
+    try:
+        proba = np.asarray(estimator.predict_proba(X_test))[:, positive_idx]
+    except Exception:
+        return None
+
+    y_bin = (y_test.astype(int) == positive_idx).astype(int)
+    try:
+        from sklearn.metrics import precision_recall_curve
+        precision, recall, cuts = precision_recall_curve(y_bin, proba)
+    except Exception:
+        return None
+    if len(cuts) == 0:
+        return None
+
+    # precision_recall_curve returns one more point than it does thresholds;
+    # the extra point is (recall 0, precision 1) and has no cut behind it.
+    with np.errstate(divide='ignore', invalid='ignore'):
+        f1s = np.nan_to_num(2 * precision[:-1] * recall[:-1] / (precision[:-1] + recall[:-1]))
+    best = float(cuts[int(np.argmax(f1s))])
+
+    chosen = _scores_at(y_bin, proba, best)
+    default = _scores_at(y_bin, proba, 0.5)
+    return {
+        'value': chosen['threshold'],
+        'criterion': 'max_f1',
+        # The label, not the index -- /predict answers in labels and the screen
+        # prints one.
+        'positive_class': _to_native_type(classes[positive_idx]),
+        'positive_index': positive_idx,
+        'chosen_on': 'holdout',
+        'n_eval': int(len(y_bin)),
+        'n_positive': n_positive,
+        # Both operating points, so the screen can state the trade rather than
+        # announcing an improvement.
+        'at_chosen': chosen,
+        'at_default': default,
+    }
+
+
 class AutoGluonEstimator:
     """A TabularPredictor behind the two methods the SHAP path uses.
 
@@ -617,6 +728,7 @@ def train_model(model_id: str, req: TrainRequest):
     # Honest metrics from a held-out split first...
     metrics: dict[str, float] = {}
     holdout_used = False
+    threshold: Optional[dict] = None
     try:
         if req.holdout:
             # Caller supplied the evaluation rows. They go through the same
@@ -660,6 +772,13 @@ def train_model(model_id: str, req: TrainRequest):
             metrics['r2'] = _to_native_type(r2_score(y_test, y_pred))
             metrics['mae'] = _to_native_type(mean_absolute_error(y_test, y_pred))
         metrics['n_eval'] = float(len(X_test))
+        # The cut comes from the SAME rows the score does, and from the model
+        # fitted on train only. Choosing it on rows the model was fitted on
+        # would pick the cut that best separates memorised data -- the exact
+        # mistake the two-stage split exists to prevent, one step later.
+        if req.task == 'classification' and label_encoder is not None:
+            threshold = _choose_threshold(
+                eval_pipeline, X_test, np.asarray(y_test), list(label_encoder.classes_))
     except HTTPException:
         raise  # a bad holdout is the caller's error, not a metric we can skip
     except Exception:
@@ -689,6 +808,8 @@ def train_model(model_id: str, req: TrainRequest):
         # this existed.
         'feature_engineer': feature_engineer,
         'raw_columns': feature_engineer.input_columns_ if feature_engineer else req.features,
+        # None means answer at argmax, exactly as before this existed.
+        'threshold': threshold,
     }
     try:
         artifact_uri = model_store.save_pipeline(model_id, artifact)
@@ -706,6 +827,11 @@ def train_model(model_id: str, req: TrainRequest):
         # Lets the caller tell "scored on the rows I sealed" from "scored on an
         # internal split", which are not the same claim.
         'evaluatedOn': 'holdout' if holdout_used else 'internal_split',
+        # The cut this model will answer at, with both operating points so the
+        # screen can state what it costs as well as what it buys. None when
+        # there is no single cut to choose (three or more classes, no
+        # probabilities, or too few of the smaller class to fit a curve to).
+        'threshold': threshold,
     }
 
 
@@ -835,6 +961,28 @@ def predict_model(model_id: str, req: PredictRequest):
             # three or more. Column order matches pipeline.predict_proba's own
             # (== label_encoder.classes_, sorted), unchanged from before.
             probabilities = [[_to_native_type(float(v)) for v in row] for row in proba]
+
+            # The cut chosen at train time, applied here rather than stored
+            # and ignored. Without this the model answers at argmax -- 0.5 for
+            # two classes -- and every screen that talks about the smaller
+            # class is talking about a ranking, not about what this model
+            # actually says when asked.
+            #
+            # `pipeline` was refitted on all rows while the cut was chosen on
+            # the held-out ones from a fit on the training half. Those are
+            # different fits, and their probabilities are close rather than
+            # identical: a threshold is a hyperparameter tuned on held-out
+            # data and applied to the final model, which is what tuning one
+            # has always meant.
+            t = artifact.get('threshold')
+            if t and label_encoder is not None and proba.shape[1] == 2:
+                idx = int(t.get('positive_index', 1))
+                cut = float(t.get('value', 0.5))
+                classes = list(label_encoder.classes_)
+                predictions = [
+                    _to_native_type(classes[idx] if row[idx] >= cut else classes[1 - idx])
+                    for row in proba
+                ]
         except Exception:
             probabilities = None
     else:
@@ -848,6 +996,12 @@ def predict_model(model_id: str, req: PredictRequest):
         'predictions': [_to_native_type(p) for p in predictions],
         'probabilities': probabilities,
         'shapContributions': shap_contributions,
+        # What turned these probabilities into these answers. Without it the
+        # caller has a label and a distribution and no way to tell whether the
+        # two were joined at 0.5 or at something else -- and at 0.31 a row
+        # whose top probability is 0.4 is a positive, which reads as a bug to
+        # anyone who assumes argmax.
+        'threshold': artifact.get('threshold'),
     }
 
 

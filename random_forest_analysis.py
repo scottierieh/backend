@@ -31,7 +31,7 @@ from sklearn.metrics import (
 )
 from sklearn.tree import export_text
 import warnings
-from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare
+from analysis_common import _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
 warnings.filterwarnings('ignore')
@@ -100,7 +100,12 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         n_jobs=-1
     )
 
-    model.fit(X_train, y_train_encoded)
+    # Balanced by default, computed from the TRAIN half only -- leak_safe_prepare
+    # has already split, and weights derived from the holdout would carry it
+    # into the fit. See docs/automl-class-imbalance.md.
+    model, _fit_kwargs, class_weighting = balanced_weighting(
+        model, y_train_encoded, params.get('class_weight', 'balanced'))
+    model.fit(X_train, y_train_encoded, **_fit_kwargs)
 
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
@@ -192,6 +197,7 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
 
     return {
         'model': model,
+        'class_weighting': class_weighting,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -592,6 +598,9 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
             max_features=max_features, bootstrap=params['bootstrap'],
             random_state=params['random_state'], n_jobs=-1
         )
+        model, _cv_fit_kwargs, _ = balanced_weighting(
+            model, y_encoded, params.get('class_weight', 'balanced'))
+        cv_sample_weight = _cv_fit_kwargs.get('sample_weight')
         cv_target = y_encoded
         cv_task = 'classification'
     else:
@@ -601,12 +610,14 @@ def perform_cross_validation(X_train_raw, y_train, cv_pipeline, params: dict, ta
             max_features=max_features, bootstrap=params['bootstrap'],
             random_state=params['random_state'], n_jobs=-1
         )
+        cv_sample_weight = None
         cv_target = y_train
         cv_task = 'regression'
 
     # Shared CV (cv_strategy.py) — same StratifiedKFold(clf)/KFold(reg) behavior as
     # before, now centralized so time/group splits can be added in one place.
-    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds, params['random_state'])
+    return run_cv(cv_pipeline(model), X_train_raw, cv_target, cv_task, cv_folds,
+                  params['random_state'], sample_weight=cv_sample_weight)
 
 
 def generate_feature_importance_plot(importance_data: List[Dict], top_n: int = 20) -> str:
@@ -892,6 +903,9 @@ def main():
             'bootstrap': bootstrap,
             'oob_score': oob_score_flag,
             'random_state': random_state,
+            # 'balanced' when the caller says nothing: a default that flips on
+            # an older client makes two runs of the same data incomparable.
+            'class_weight': payload.get('class_weight', 'balanced'),
         }
 
         if task_type == 'classification':
@@ -995,6 +1009,9 @@ def main():
             'n_train': len(X_train),
             'n_test': len(X_test),
             'row_counts': row_counts,
+            # Which route this estimator took to class balancing, or why it had
+            # none. Absent for regression, which has no classes to balance.
+            'class_weighting': result.get('class_weighting'),
             'parameters': {
                 'n_estimators': params['n_estimators'],
                 'max_depth': params['max_depth'] if params['max_depth'] else 'None',

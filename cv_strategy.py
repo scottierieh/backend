@@ -38,7 +38,7 @@ def make_cv_splitter(task_type, cv_folds=5, random_state=42, *, time_order=False
 
 
 def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None,
-           *, time_order=False, groups=None):
+           *, time_order=False, groups=None, sample_weight=None):
     """Cross-validate `estimator` on (X, y) and return the standard result dict.
 
     estimator : any fitted-or-unfitted sklearn-compatible model (or Pipeline).
@@ -46,6 +46,10 @@ def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None
                 (label-encoded for classification, numeric for regression) — the
                 caller passes whatever its local variables are named.
     task_type : 'classification' | 'regression'.
+    sample_weight : per-row weights for estimators whose only route to class
+                balancing is fit(sample_weight=). Indexed per fold by sklearn,
+                so each fold weights its own rows. None for the rest, which
+                carry the weighting as a parameter instead.
     Returns   : {cv_mean, cv_std, cv_scores, cv_folds, cv_scoring, cv_strategy}.
                 Superset of the keys the scripts emitted before, so it's drop-in.
     """
@@ -53,6 +57,20 @@ def run_cv(estimator, X, y, task_type, cv_folds=5, random_state=42, scoring=None
     splitter = make_cv_splitter(task_type, cv_folds, random_state,
                                 time_order=time_order, groups=groups)
     kwargs = {'groups': groups} if groups is not None else {}
+    # Class weighting reaches most estimators as a parameter they re-derive per
+    # fit, which cross-validation then gets for free. Three of them
+    # (AdaBoost, GBM, Naive Bayes) have no such parameter and take weights at
+    # fit time instead, and without this those models would be weighted in the
+    # reported metrics and unweighted in the CV beside them -- two numbers
+    # about two different fits, printed as if they described one.
+    #
+    # `params` rather than the deprecated `fit_params`, and sklearn indexes it
+    # per fold, so a fold gets its own rows' weights rather than all of them.
+    if sample_weight is not None:
+        kwargs['params'] = {
+            **kwargs.pop('params', {}),
+            'sample_weight': np.asarray(sample_weight),
+        }
     scores = np.asarray(
         cross_val_score(estimator, X, y, cv=splitter, scoring=scoring, **kwargs),
         dtype=float,

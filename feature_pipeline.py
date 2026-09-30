@@ -191,6 +191,84 @@ def _text_length(s: str) -> int:
 _PCA_VARIANCE_TARGET = 0.95
 
 
+# Target encoding. Both numbers are shared with the frontend engine
+# (transforms.ts TARGET_ENCODE_FOLDS / TARGET_ENCODE_SMOOTHING); a different
+# value on either side is a different column.
+#
+# Replacing a category with the target's mean in that category puts the answer
+# into the question. Fitted on the training rows and applied to those same rows,
+# every row's feature contains that row's own label -- a level seen once becomes
+# exactly its label, and a model learns to read it back. So a fitting row's
+# value is computed from the OTHER folds only, which is what makes
+# fit_transform() and fit().transform() different here. sklearn's own
+# TargetEncoder documents the same asymmetry for the same reason.
+#
+# The folds are position modulo K rather than a shuffle: the two engines must
+# produce the same folds and cannot share a random number generator, and
+# interleaving spreads a target-sorted table where contiguous blocks would not.
+_TARGET_ENCODE_FOLDS = 5
+
+# The m in the m-estimate `(n*mean + m*prior) / (n + m)`: how many rows a level
+# needs before its own average outweighs the overall one. Not sklearn's
+# smooth='auto' (an empirical-Bayes shrinkage on each level's variance), which
+# is a better estimator and a worse thing to implement twice -- a stated
+# constant is explainable in one sentence and cannot drift between engines.
+_TARGET_ENCODE_SMOOTHING = 20
+
+
+def _prepare_target_y(y, task):
+    """The target as numbers, by the rule transforms.ts follows.
+
+    Regression takes the value. Classification needs exactly two classes: the
+    distinct labels sorted as strings, and the LAST one counts as 1. Which of
+    the two that is does not matter to a model (`p` and `1 - p` carry the same
+    information); which rule is used does, because both engines have to pick
+    the same one.
+
+    More than two classes returns None. One column cannot hold "how does the
+    target behave here" when the target has three answers, and declining is
+    better than averaging class codes as if they were a quantity.
+    """
+    if y is None:
+        return None
+    vals = list(y)
+    if task == 'regression':
+        nums = pd.to_numeric(pd.Series(vals), errors='coerce')
+        return [None if pd.isna(v) else float(v) for v in nums]
+    labels = sorted({str(v) for v in vals if not _is_missing(v)})
+    if len(labels) != 2:
+        return None
+    return [None if _is_missing(v) else (1.0 if str(v) == labels[1] else 0.0)
+            for v in vals]
+
+
+def _te_smoothed(total, n, prior):
+    m = _TARGET_ENCODE_SMOOTHING
+    return (total + m * prior) / (n + m)
+
+
+def _te_sums(levels, ys, admit):
+    """Per-level totals over the rows `admit` accepts, plus their prior."""
+    sums = {}
+    total = 0.0
+    count = 0
+    for i, yv in enumerate(ys):
+        if yv is None or not admit(i):
+            continue
+        total += yv
+        count += 1
+        key = levels[i]
+        if key is None:
+            continue
+        hit = sums.get(key)
+        if hit:
+            hit[0] += yv
+            hit[1] += 1
+        else:
+            sums[key] = [yv, 1]
+    return sums, (total / count if count else 0.0), count > 0
+
+
 def _fix_sign(vec: np.ndarray) -> np.ndarray:
     """An eigenvector and its negative describe the same axis, and which one
     an implementation returns is arbitrary -- so two implementations of PCA
@@ -229,10 +307,31 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
     model registry entry (RegisteredModel.pipeline) -- a list of
     {id, kind, columns, keepSource}."""
 
-    def __init__(self, steps: Optional[list[dict]] = None):
+    def __init__(self, steps: Optional[list[dict]] = None, task: Optional[str] = None):
         self.steps = steps or []
+        # Only `target_encode` reads this, and it is a constructor parameter
+        # rather than an argument to fit() so that get_params/clone carry it and
+        # the pickled engineer remembers what it was fitted for.
+        self.task = task
 
     def fit(self, X: pd.DataFrame, y=None):
+        self._fit_pass(X, y)
+        return self
+
+    def fit_transform(self, X: pd.DataFrame, y=None, **fit_params) -> pd.DataFrame:
+        """Fit, and return the FITTING rows transformed.
+
+        Deliberately not `fit(X, y).transform(X)`. With a `target_encode` step
+        those two differ: this one gives each row its out-of-fold value, and
+        transform() gives it the lookup built from every training row -- which
+        for these rows includes their own labels. Anything that TRAINS on the
+        fitting rows wants this one. (sklearn's TargetEncoder draws the same
+        distinction, and a sklearn Pipeline calls fit_transform on its
+        intermediate steps, so this is also the behaviour a Pipeline expects.)
+        """
+        return self._fit_pass(X, y)
+
+    def _fit_pass(self, X: pd.DataFrame, y=None) -> pd.DataFrame:
         X = X.copy()
         self.input_columns_ = list(X.columns)
         self.fitted_steps_: list[dict] = []
@@ -428,6 +527,43 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 scores = zi @ np.array(kept).T if keep else np.empty((len(X), 0))
                 for i, name in enumerate(names):
                     X[name] = scores[:, i]
+            elif kind == 'target_encode':
+                # The only step that reads the target, and it reads it from `y`
+                # rather than from a column: models_api fits the recipe on the
+                # feature columns with the target dropped, so a step looking for
+                # a column would find nothing and silently do nothing.
+                ys = _prepare_target_y(y, self.task)
+                if ys is None or len(ys) != len(X):
+                    continue
+                levels = [None if _is_missing(v) else str(v) for v in X[col].tolist()]
+                sums, prior, has_y = _te_sums(levels, ys, lambda i: True)
+                if not has_y:
+                    continue
+                params.update({
+                    'teMeans': {k: _te_smoothed(t, n, prior) for k, (t, n) in sums.items()},
+                    'tePrior': prior,
+                })
+                # One pass per fold, not one per row: a fold's complement is the
+                # same set for every row in it.
+                k_folds = _TARGET_ENCODE_FOLDS
+                folds = [_te_sums(levels, ys, lambda i, f=f: i % k_folds != f)
+                         for f in range(k_folds)]
+                oof = []
+                for i, key in enumerate(levels):
+                    f_sums, f_prior, f_has = folds[i % k_folds]
+                    if not f_has:
+                        # Nothing outside this row's fold is labelled; the
+                        # overall prior is the most that can be said.
+                        oof.append(prior)
+                    elif key is None:
+                        oof.append(f_prior)
+                    else:
+                        hit = f_sums.get(key)
+                        # A level appearing only inside this row's own fold gets
+                        # the prior: the alternative is its own rows' mean,
+                        # which is the leak.
+                        oof.append(_te_smoothed(hit[0], hit[1], f_prior) if hit else f_prior)
+                X[f'{col}_te'] = np.asarray(oof, dtype=float)
             elif kind == 'group_stats':
                 if len(cols) < 2 or cols[1] not in X.columns:
                     continue
@@ -474,7 +610,7 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
             })
 
         self.output_columns_ = list(X.columns)
-        return self
+        return X
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         X = X.copy()
@@ -574,6 +710,17 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 scores = z @ np.array(vectors, dtype=float).T
                 for i, name in enumerate(_pca_names(X.columns, len(vectors))):
                     X[name] = scores[:, i]
+            elif kind == 'target_encode':
+                te_means = params.get('teMeans')
+                prior = params.get('tePrior')
+                if te_means is None or prior is None:
+                    continue
+                # An unseen level and a missing one say the same thing --
+                # nothing is known about this row's category -- and the prior is
+                # what that says. A null would drop the row at predict time.
+                X[f'{col}_te'] = X[col].map(
+                    lambda v, m=te_means, p=float(prior): (
+                        p if _is_missing(v) else float(m.get(str(v), p)))).astype(float)
             elif kind == 'group_stats':
                 group_col = params.get('groupCol')
                 value_col = params.get('valueCol')

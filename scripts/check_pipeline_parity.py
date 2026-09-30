@@ -104,19 +104,43 @@ def main():
     fx = json.load(open(FIXTURE, encoding='utf-8'))
 
     kinds = {s['kind'] for s in fx['steps']}
-    check(kinds >= {'date_parts', 'text_stats', 'group_stats', 'pca', 'winsorize'},
+    check(kinds >= {'date_parts', 'text_stats', 'group_stats', 'pca', 'winsorize',
+                    'target_encode'},
           f'the fixture exercises the new transforms: {sorted(kinds)}')
 
     train = pd.DataFrame(fx['train']['rows'], columns=fx['train']['headers'])
     holdout = pd.DataFrame(fx['holdout']['rows'], columns=fx['holdout']['headers'])
 
-    fe = FeatureEngineer(fx['steps'])
-    fe.fit(train)
+    fe = FeatureEngineer(fx['steps'], task=fx.get('task'))
+    fit_out = fe.fit_transform(train, train[fx['target']] if fx.get('target') else None)
 
-    compare('train', fx['train_out'], fe.transform(train))
+    # Three tables, not two. With a `target_encode` step the fitting pass and
+    # the re-applied pass are DIFFERENT by design (out-of-fold values against
+    # the full-training lookup), so both have to agree with the browser -- a
+    # Python side that collapsed them into one would still match on two of the
+    # three and train on the wrong column.
+    compare('train (fitting pass)', fx['train_fit'], fit_out)
+    compare('train (re-applied)', fx['train_out'], fe.transform(train))
     # The half the recipe was NOT fitted on. Every fallback lives here: an
     # unseen group, a date that does not parse, a missing value.
     compare('holdout', fx['holdout_out'], fe.transform(holdout))
+
+    # And the asymmetry itself has to be there on both sides. If either engine
+    # produced the same column twice, two of the three comparisons above would
+    # still pass.
+    oof = [r['region_te'] for r in fx['train_fit']['rows']]
+    look = [r['region_te'] for r in fx['train_out']['rows']]
+    check(any(not same(a, b) for a, b in zip(oof, look)),
+          'the browser\'s fitting pass and its re-applied pass differ on '
+          'region_te — the out-of-fold path is exercised, not just present')
+    py_oof = list(fit_out['region_te'])
+    py_look = list(fe.transform(train)['region_te'])
+    check(any(not same(a, b) for a, b in zip(py_oof, py_look))
+          and all(same(a, b) for a, b in zip(py_oof, oof))
+          and all(same(a, b) for a, b in zip(py_look, look)),
+          'and so do this engine\'s, to the same two sets of numbers',
+          f'oof  {[round(v, 4) for v in py_oof]}',
+          f'look {[round(v, 4) for v in py_look]}')
 
     # The two engines also have to agree on what was LEARNED, not only on the
     # output: the params travel with the saved model and a disagreement here
@@ -129,6 +153,24 @@ def main():
           ts_params.get('date_parts', {}).get('parts'))
     check('year' not in (here.get('date_parts', {}).get('parts') or []),
           'and a part that is constant in training is dropped rather than carried')
+
+    te_ts = ts_params.get('target_encode', {})
+    te_py = here.get('target_encode', {})
+    check(set((te_py.get('teMeans') or {}).keys()) == set((te_ts.get('teMeans') or {}).keys())
+          and all(same(v, (te_py.get('teMeans') or {}).get(k))
+                  for k, v in (te_ts.get('teMeans') or {}).items())
+          and same(te_py.get('tePrior'), te_ts.get('tePrior')),
+          f"both smooth the same levels to the same numbers, and agree the "
+          f"prior is {te_ts.get('tePrior')}",
+          te_ts.get('teMeans'), te_py.get('teMeans'))
+    # 광주 appears once. Its smoothed value must sit next to the prior, not at
+    # its single label -- and the two engines must shrink it identically.
+    lone = (te_ts.get('teMeans') or {}).get('광주')
+    prior = te_ts.get('tePrior')
+    check(lone is not None and prior is not None
+          and abs(lone - prior) * 5 < abs(lone - 0.0 if prior > 0.5 else lone - 1.0),
+          f'a level seen once encodes to {lone} against a prior of {prior} — '
+          f'shrunk, not believed')
 
     gs_ts = ts_params.get('group_stats', {})
     gs_py = here.get('group_stats', {})

@@ -622,11 +622,16 @@ def train_model(model_id: str, req: TrainRequest):
         # it here is also what keeps feature_engineer.input_columns_ (below,
         # persisted as `raw_columns`) from demanding the target back at
         # predict time, when no caller has it.
-        feature_engineer = FeatureEngineer(req.pipeline)
+        feature_engineer = FeatureEngineer(req.pipeline, task=req.task)
         raw_features = df.drop(columns=[req.target], errors='ignore')
         try:
-            feature_engineer.fit(raw_features)
-            engineered = feature_engineer.transform(raw_features)
+            # fit_transform, not fit() then transform(). With a `target_encode`
+            # step those two differ and these are the rows being trained on:
+            # fit_transform gives each one its out-of-fold value, transform
+            # would give it a category average containing its own label. The
+            # target goes in as `y` -- it stays out of X so it stays out of
+            # `raw_columns`, which /predict demands and no caller can supply.
+            engineered = feature_engineer.fit_transform(raw_features, df[req.target])
         except Exception as e:
             _fail(422, f"Feature pipeline failed: {e}")
         # Kept for the response. /predict demands rows in these columns -- the

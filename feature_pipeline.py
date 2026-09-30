@@ -286,6 +286,25 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 with np.errstate(invalid='ignore', divide='ignore'):
                     transformed = _boxcox_value(shifted, lam)
                 X[name] = np.where(vals.notna(), transformed, np.nan)
+            elif kind == 'winsorize':
+                vals = _numeric_values(X[col])
+                if len(vals) >= 4:
+                    # numpy's default quantile is linear interpolation, which
+                    # is what the browser engine's quantile() does and what
+                    # data_profile_analysis.py used to measure the outliers
+                    # this step is acting on.
+                    q1 = float(np.quantile(vals, 0.25))
+                    q3 = float(np.quantile(vals, 0.75))
+                    iqr = q3 - q1
+                    # A column whose middle half is one value has no spread to
+                    # measure a tail against. The profile counts zero outliers
+                    # here too, and this learns nothing rather than clipping
+                    # the column down to its median.
+                    if iqr > 0:
+                        params['lower'] = q1 - 1.5 * iqr
+                        params['upper'] = q3 + 1.5 * iqr
+                        X[col] = pd.to_numeric(X[col], errors='coerce').clip(
+                            params['lower'], params['upper'])
             elif kind == 'yeojohnson':
                 nums = _numeric_values(X[col])
                 lam = _best_yeojohnson_lambda(nums) if len(nums) else 1.0
@@ -482,6 +501,12 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                 with np.errstate(invalid='ignore', divide='ignore'):
                     transformed = _boxcox_value(shifted, params['lambda'])
                 X[name] = np.where(vals.notna(), transformed, np.nan)
+            elif kind == 'winsorize':
+                if 'lower' in params and 'upper' in params:
+                    # In place, like imputation: a clipped value is the same
+                    # variable with its tail pulled in.
+                    X[col] = pd.to_numeric(X[col], errors='coerce').clip(
+                        params['lower'], params['upper'])
             elif kind == 'yeojohnson':
                 name = f'{col}_yj'
                 vals = pd.to_numeric(X[col], errors='coerce')

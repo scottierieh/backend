@@ -104,7 +104,7 @@ def main():
     fx = json.load(open(FIXTURE, encoding='utf-8'))
 
     kinds = {s['kind'] for s in fx['steps']}
-    check(kinds >= {'date_parts', 'text_stats', 'group_stats', 'pca'},
+    check(kinds >= {'date_parts', 'text_stats', 'group_stats', 'pca', 'winsorize'},
           f'the fixture exercises the new transforms: {sorted(kinds)}')
 
     train = pd.DataFrame(fx['train']['rows'], columns=fx['train']['headers'])
@@ -140,6 +140,22 @@ def main():
           and all(same(v, (gs_py.get('groupMeans') or {}).get(k))
                   for k, v in (gs_ts.get('groupMeans') or {}).items()),
           'and the same group means', gs_ts.get('groupMeans'), gs_py.get('groupMeans'))
+
+    # Winsorizing has two params and one non-decision, and the non-decision is
+    # the interesting one: a column whose middle half is a single value has no
+    # spread to measure a tail against, so its fences collapse onto that value
+    # and clipping would pull the whole column down to its median. The profile
+    # counts zero outliers there for the same reason.
+    wins = [s['params'] for s in fe.fitted_steps_ if s['kind'] == 'winsorize']
+    wins_ts = [p for st, p in zip(fx['steps'], fx['params']) if st['kind'] == 'winsorize']
+    check(len(wins) == len(wins_ts) == 2, f'both fitted {len(wins)} winsorize steps', len(wins_ts))
+    check(same(wins[0].get('lower'), wins_ts[0].get('lower'))
+          and same(wins[0].get('upper'), wins_ts[0].get('upper')),
+          f"both learned the same Tukey fences: "
+          f"[{wins[0].get('lower')}, {wins[0].get('upper')}]", wins_ts[0])
+    check(not wins[1] and not wins_ts[1],
+          'and both learned NOTHING from the column with no spread, rather than '
+          'clipping it down to its median', wins[1], wins_ts[1])
 
     # PCA has a failure the cell comparison above would NOT catch on its own:
     # an eigenvector and its negative describe the same axis, so two engines

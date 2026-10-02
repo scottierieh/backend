@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
 from sklearn.cluster import KMeans, kmeans_plusplus
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples, adjusted_rand_score
 from sklearn.feature_selection import f_classif
 from analysis_common import cluster_projection
 
@@ -61,6 +61,7 @@ class KMeansAnalysis:
         inertias = []
         silhouette_scores = []
         ch_scores = []
+        db_scores = []
 
         for k in k_range:
             kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=42)
@@ -69,15 +70,21 @@ class KMeansAnalysis:
             if len(np.unique(kmeans.labels_)) > 1:
                 silhouette_scores.append(silhouette_score(self.cluster_data_scaled, kmeans.labels_))
                 ch_scores.append(calinski_harabasz_score(self.cluster_data_scaled, kmeans.labels_))
+                # Davies-Bouldin across the same grid. The report compares k on
+                # silhouette and CH already; without DB per k its row in the
+                # validation table has a value but nothing to read it against.
+                db_scores.append(davies_bouldin_score(self.cluster_data_scaled, kmeans.labels_))
             else:
                 silhouette_scores.append(-1)
                 ch_scores.append(-1)
+                db_scores.append(float('nan'))
 
         self.results['optimal_k'] = {
             'k_range': k_range,
             'inertias': inertias,
             'silhouette_scores': silhouette_scores,
             'ch_scores': ch_scores,
+            'db_scores': db_scores,
         }
 
         if k_range:
@@ -143,8 +150,54 @@ class KMeansAnalysis:
             self.cluster_data_scaled, self.cluster_labels, kmeans.cluster_centers_,
         )
 
+        self.results['stability'] = self._assess_stability(n_clusters, init_method, algorithm)
+
         self.analyze_clusters()
         return self.results
+
+    def _assess_stability(self, n_clusters, init_method, algorithm, n_restarts=20):
+        """How much the cluster assignment depends on where the search started.
+
+        K-means converges to a local optimum, so a different seed can return a
+        different partition. The report already tells the reader to consider
+        initialization sensitivity, but without a number there is nothing to
+        consider: it cannot be told from the output whether a rerun reproduces
+        this solution. Refit from independent seeds and compare each result to
+        the one being reported, using the adjusted Rand index (1 = identical
+        grouping, 0 = no better than chance; it ignores label permutation, so
+        the same partition under different cluster numbers still scores 1).
+
+        Each restart uses n_init=1 on purpose. The reported fit runs n_init
+        times and keeps the best, which is exactly the guard against a bad
+        start — measuring with that guard on would mostly return 1.0 and say
+        nothing. n_init=1 measures the underlying sensitivity instead, so a
+        low value means the data has several competing optima, not that the
+        reported fit is unreliable.
+        """
+        if self.n_samples > 20000 or n_clusters >= self.n_samples:
+            return None
+
+        aris = []
+        for seed in range(1, n_restarts + 1):
+            km = KMeans(n_clusters=n_clusters, init=init_method, n_init=1,
+                        random_state=seed, algorithm=algorithm)
+            aris.append(float(adjusted_rand_score(self.cluster_labels, km.fit_predict(self.cluster_data_scaled))))
+
+        if not aris:
+            return None
+        identical = int(sum(1 for a in aris if a > 0.999))
+        return {
+            'n_restarts': int(n_restarts),
+            'ari_mean': float(np.mean(aris)),
+            'ari_min': float(np.min(aris)),
+            'identical': identical,
+            'note': (
+                "Each restart refits with n_init=1 from a different seed and is compared to the "
+                "reported solution by adjusted Rand index. The reported fit keeps the best of its "
+                "configured restarts, so this measures how sensitive the data is to the starting "
+                "point, not how reliable the reported fit is."
+            ),
+        }
 
     def analyze_clusters(self):
         profiles = {}

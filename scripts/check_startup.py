@@ -318,12 +318,12 @@ def main():
     # must get that sentence; a traceback tells them nothing they can act on.
     with tempfile.TemporaryDirectory() as tmp:
         saying = os.path.join(tmp, 'says.py')
-        open(saying, 'w').write(
+        open(saying, 'w', encoding='utf-8').write(
             'import json, sys\n'
             'sys.stderr.write(json.dumps({"error": "타깃 열을 고르세요"}))\n'
             'sys.exit(1)\n')
         junk = os.path.join(tmp, 'junk.py')
-        open(junk, 'w').write('print("not json at all")\n')
+        open(junk, 'w', encoding='utf-8').write('print("not json at all")\n')
 
         real_dir = app_module._BACKEND_DIR
         app_module._BACKEND_DIR = tmp

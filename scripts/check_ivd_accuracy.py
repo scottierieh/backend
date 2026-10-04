@@ -65,18 +65,17 @@ def run(payload):
 
 def rows(tp, fp, fn, tn, ind_pos=0, ind_neg=0, kit='kit', comp='ref'):
     out = []
-    for _ in range(tp):
-        out.append({kit: 'positive', comp: 'positive'})
-    for _ in range(fp):
-        out.append({kit: 'positive', comp: 'negative'})
-    for _ in range(fn):
-        out.append({kit: 'negative', comp: 'positive'})
-    for _ in range(tn):
-        out.append({kit: 'negative', comp: 'negative'})
-    for _ in range(ind_pos):
-        out.append({kit: 'indeterminate', comp: 'positive'})
-    for _ in range(ind_neg):
-        out.append({kit: 'indeterminate', comp: 'negative'})
+
+    def add(k, c, n):
+        for _ in range(n):
+            out.append({'id': f'S{len(out) + 1:04d}', kit: k, comp: c})
+
+    add('positive', 'positive', tp)
+    add('positive', 'negative', fp)
+    add('negative', 'positive', fn)
+    add('negative', 'negative', tn)
+    add('indeterminate', 'positive', ind_pos)
+    add('indeterminate', 'negative', ind_neg)
     return out
 
 
@@ -271,7 +270,96 @@ def main():
     check('__error' in empty,
           'and a table where nothing is analysable says so rather than returning 0/0')
 
-    # ---- 7. the response names its own method ---------------------------
+    # ---- 7. discordant resolution ---------------------------------------
+    # The plan may send a disagreeing specimen to a third method. That changes
+    # the table, so both have to come back — and the UNRESOLVED one has to be
+    # the default, because a resolution can only move a specimen in the
+    # direction that helps the kit.
+    base = {'data': rows(142, 6, 5, 326, ind_pos=3, ind_neg=4),
+            'kit_col': 'kit', 'comparator_col': 'ref', 'specimen_col': 'id',
+            'goals': {'sensitivity': 0.95, 'specificity': 0.98}}
+
+    plain = run(base)
+    kinds = {}
+    for d in plain['discordant']:
+        kinds[d['kind']] = kinds.get(d['kind'], 0) + 1
+    check(len(plain['discordant']) == 11 and kinds == {'kit_positive': 6, 'kit_negative': 5},
+          'the discordant specimens are listed whether or not anything resolves them — '
+          '6 kit-positive and 5 kit-negative, by name',
+          kinds)
+    check(plain['resolved'] is None,
+          'and with no resolutions there is no resolved table, rather than a copy of the '
+          'unresolved one pretending to be one')
+
+    # Four of the six kit-positive discordants turn out to be truly positive.
+    kitpos = [d['specimen'] for d in plain['discordant'] if d['kind'] == 'kit_positive']
+    res = run({**base, 'resolutions': [
+        {'specimen': s, 'comparator': 'positive', 'method': '배양'} for s in kitpos[:4]]})
+    before, after = by_id(res, 'specificity'), by_id(res['resolved'], 'specificity')
+    check(before['x'] == 326 and before['n'] == 332
+          and after['x'] == 326 and after['n'] == 328,
+          f"resolving 4 of them moves specificity's DENOMINATOR, not its numerator — "
+          f"{before['x']}/{before['n']} to {after['x']}/{after['n']}: those four were "
+          f'never true negatives')
+    check(round(before['estimate'] * 100, 1) == 98.2
+          and round(after['estimate'] * 100, 1) == 99.4,
+          f"and the point estimate rises from {before['estimate'] * 100:.1f}% to "
+          f"{after['estimate'] * 100:.1f}%")
+    check(round(before['ci'][0] * 100, 1) == 96.1 and round(after['ci'][0] * 100, 1) == 97.8
+          and before['verdict'] == 'fail' and after['verdict'] == 'fail',
+          f"but the BOUND goes {before['ci'][0] * 100:.1f}% to {after['ci'][0] * 100:.1f}% "
+          f'and still misses 98% — the resolution did not change the conclusion, which is '
+          f'a result and is reported as one')
+
+    sens_b, sens_a = by_id(res, 'sensitivity'), by_id(res['resolved'], 'sensitivity')
+    check(sens_b['n'] == 147 and sens_a['n'] == 151 and sens_a['x'] == 146,
+          f"sensitivity gains them too — {sens_b['x']}/{sens_b['n']} to "
+          f"{sens_a['x']}/{sens_a['n']}: a specimen re-adjudicated positive that the kit "
+          f'called positive is a true positive')
+    check(res['table'] == plain['table'],
+          'and the top-level table is untouched by the resolutions — the default reading '
+          'is the one that rests on no judgement')
+    check(any('both tables' in (n.get('en') or '').lower() for n in res['notes']),
+          'the response says why that is the way round it is')
+
+    # The refusals, which are the interesting part.
+    bad = run({**base, 'resolutions': [
+        {'specimen': 'S0001', 'comparator': 'negative'}]})
+    check('__error' in bad and 'discordant' in bad['__error'],
+          'an agreeing specimen cannot be re-adjudicated — that would be changing a '
+          'result nobody disputed',
+          bad.get('__error', '')[:140])
+    bad = run({**base, 'resolutions': [{'specimen': 'NOPE', 'comparator': 'negative'}]})
+    check('__error' in bad and 'NOPE' in bad['__error'],
+          'and a specimen that is not in the table is named in the error')
+    bad = run({**base, 'resolutions': [
+        {'specimen': kitpos[0], 'comparator': 'indeterminate'}]})
+    check('__error' in bad and 'under test' in bad['__error'],
+          "a resolution has to say what the COMPARATOR is now; the kit's own result is "
+          'the thing under test and is never re-adjudicated',
+          bad.get('__error', '')[:140])
+    bad = run({**base, 'resolutions': [
+        {'specimen': kitpos[0], 'comparator': 'positive'},
+        {'specimen': kitpos[0], 'comparator': 'negative'}]})
+    check('__error' in bad and 'twice' in bad['__error'],
+          'and one adjudication per specimen')
+    no_col = {k: v for k, v in base.items() if k != 'specimen_col'}
+    bad = run({**no_col, 'resolutions': [{'specimen': 'S0001', 'comparator': 'negative'}]})
+    check('__error' in bad and 'specimen_col' in bad['__error'],
+          'resolutions without a specimen column are refused rather than matched by row '
+          'order — a re-sorted table would silently re-adjudicate the wrong specimen',
+          bad.get('__error', '')[:140])
+
+    # A resolution that confirms the comparator changes nothing. Worth pinning:
+    # it is the asymmetry the note above is about.
+    same = run({**base, 'resolutions': [
+        {'specimen': s, 'comparator': 'negative'} for s in kitpos[:4]]})
+    check(same['resolved']['table'] == plain['table'],
+          'a re-adjudication that confirms the comparator leaves the table exactly as it '
+          'was — which is why resolutions can only help the kit, and why both tables are '
+          'reported')
+
+    # ---- 8. the response names its own method ---------------------------
     check(full['ci_method'] == 'clopper-pearson' and full['conf_level'] == 0.95,
           'the response states which interval it used — a report that quotes a bound '
           'has to be able to say what kind it is')

@@ -32,6 +32,15 @@ Indeterminate results come out of the denominators and are reported as their
 own rate. A specimen the kit could not read is not evidence about the kit's
 accuracy, but hiding it inflates both metrics, so it is counted in the open.
 
+DISCORDANT RESOLUTION (section 06). When the plan says a specimen the two
+methods disagree on is re-adjudicated by a third method, that changes the
+table. Both tables are returned from ONE request, computed by one function on
+one set of rows, so a screen cannot show the resolved figures without the
+unresolved ones beside them — and the TOP LEVEL is the unresolved reading,
+because a resolution can only move a specimen in the direction that helps the
+kit. Only the COMPARATOR is ever re-adjudicated: the kit's result is the thing
+under test.
+
 CLI-script contract, like every *_analysis.py here: one JSON object in on
 stdin, one JSON object out on stdout; on error print {"error": ...} to stderr
 and exit(1).
@@ -244,6 +253,69 @@ def _metric(mid, x, n, conf, goals, basis, reference_complete, extra_label=None)
     return out
 
 
+def _analyse(kit, comp, keep, conf, goals, basis, reference_complete, prevalences):
+    """The table, the metrics and the predictive values, from one reading of the
+    two columns.
+
+    A function because it is called TWICE when the plan specifies a discordant
+    resolution: once on the comparator as observed and once on the comparator
+    as re-adjudicated. Two copies of this arithmetic could disagree about the
+    before and the after, which is the one comparison section 06 exists to make.
+    """
+    cell = {(a, b): 0 for a in ('pos', 'neg', 'ind') for b in ('pos', 'neg')}
+    for i in keep:
+        cell[(kit[i], comp[i])] += 1
+
+    tp = cell[('pos', 'pos')]
+    fp = cell[('pos', 'neg')]
+    fn = cell[('neg', 'pos')]
+    tn = cell[('neg', 'neg')]
+    ind_pos = cell[('ind', 'pos')]
+    ind_neg = cell[('ind', 'neg')]
+
+    # Indeterminate out of the denominators. Its own rate is reported below;
+    # leaving them in as errors would punish the kit for not answering, and
+    # dropping them without a figure would flatter it.
+    sens = _metric('sensitivity', tp, tp + fn, conf, goals, basis, reference_complete)
+    spec = _metric('specificity', tn, tn + fp, conf, goals, basis, reference_complete)
+    n_analysed = len(keep)
+    ind_rate = _metric(
+        'indeterminate_rate', ind_pos + ind_neg, n_analysed, conf, goals, basis,
+        reference_complete,
+        extra_label={'en': 'Indeterminate rate', 'ko': '판정보류율'})
+
+    # Predictive values at the prevalences the PLAN named. Derived from
+    # sensitivity and specificity rather than from this table's own prevalence,
+    # which is a property of how the specimens were collected and almost never
+    # the prevalence the kit will be used at.
+    predictive = []
+    if sens['estimate'] is not None and spec['estimate'] is not None:
+        se, sp = sens['estimate'], spec['estimate']
+        for pv in prevalences:
+            pv = float(pv)
+            ppv_den = se * pv + (1 - sp) * (1 - pv)
+            npv_den = (1 - se) * pv + sp * (1 - pv)
+            predictive.append({
+                'prevalence': pv,
+                'ppv': (se * pv / ppv_den) if ppv_den > 0 else None,
+                'npv': (sp * (1 - pv) / npv_den) if npv_den > 0 else None,
+            })
+
+    return {
+        'n_analysed': n_analysed,
+        'table': {
+            'kit_positive': {'comparator_positive': tp, 'comparator_negative': fp},
+            'kit_negative': {'comparator_positive': fn, 'comparator_negative': tn},
+            'kit_indeterminate': {'comparator_positive': ind_pos,
+                                  'comparator_negative': ind_neg},
+            'comparator_positive_total': tp + fn + ind_pos,
+            'comparator_negative_total': fp + tn + ind_neg,
+        },
+        'metrics': [sens, spec, ind_rate],
+        'predictive': predictive,
+    }
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -315,51 +387,81 @@ def main():
         if not keep:
             _err('No specimen has both a kit result and a comparator result.')
 
-        cell = {(a, b): 0 for a in ('pos', 'neg', 'ind') for b in ('pos', 'neg')}
+        prevalences = payload.get('prevalences') or []
+        for pv in prevalences:
+            if not 0 < float(pv) < 1:
+                _err(f'Each prevalence must be between 0 and 1, got {pv}.')
+
+        observed = _analyse(kit, comp, keep, conf, goals, basis,
+                            reference_complete, prevalences)
+
+        # ---- the discordant specimens, and the plan's resolution -------
+        #
+        # Always listed, resolutions or not: a screen cannot offer to
+        # adjudicate specimens it was never told about.
+        names = None
+        spec_col = payload.get('specimen_col')
+        if spec_col:
+            if spec_col not in data[0]:
+                _err(f"specimen_col '{spec_col}' is not a column of the specimen table.")
+            names = [str(r.get(spec_col)) for r in data]
+
+        def name_of(i):
+            return names[i] if names else f'row {i + 1}'
+
+        discordant = []
         for i in keep:
-            cell[(kit[i], comp[i])] += 1
+            if kit[i] == 'pos' and comp[i] == 'neg':
+                kind = 'kit_positive'
+            elif kit[i] == 'neg' and comp[i] == 'pos':
+                kind = 'kit_negative'
+            else:
+                continue
+            discordant.append({'specimen': name_of(i), 'row': i, 'kind': kind,
+                               'resolved_to': None, 'method': None})
+        by_name = {d['specimen']: d for d in discordant}
 
-        tp = cell[('pos', 'pos')]
-        fp = cell[('pos', 'neg')]
-        fn = cell[('neg', 'pos')]
-        tn = cell[('neg', 'neg')]
-        ind_pos = cell[('ind', 'pos')]
-        ind_neg = cell[('ind', 'neg')]
+        resolutions = payload.get('resolutions') or []
+        resolved_block = None
+        if resolutions:
+            if not spec_col:
+                _err('Resolutions name specimens, so specimen_col is required to apply '
+                     'them — matching by row order would silently re-adjudicate the '
+                     'wrong specimen if the table were ever re-sorted.')
+            comp2 = list(comp)
+            seen = set()
+            for r in resolutions:
+                who = str(r.get('specimen', ''))
+                if who in seen:
+                    _err(f"Specimen {who!r} is resolved twice; one adjudication each.")
+                seen.add(who)
+                target = by_name.get(who)
+                if target is None:
+                    _err(f"Specimen {who!r} is not one of the {len(discordant)} discordant "
+                         f'specimens. Only a specimen the two methods disagree on can be '
+                         f're-adjudicated — resolving an agreeing one would be changing a '
+                         f'result nobody disputed.')
+                verdict = _norm(r.get('comparator'))
+                if verdict in {_norm(v) for v in pos_l}:
+                    new = 'pos'
+                elif verdict in {_norm(v) for v in neg_l}:
+                    new = 'neg'
+                else:
+                    _err(f"The resolution for {who!r} must say what the COMPARATOR is now "
+                         f'(one of the positive or negative labels), got '
+                         f'{r.get("comparator")!r}. The kit\'s own result is the thing '
+                         f'under test and is never re-adjudicated.')
+                comp2[target['row']] = new
+                target['resolved_to'] = new
+                target['method'] = r.get('method') or None
 
-        # Indeterminate out of the denominators. The rate is reported below;
-        # leaving them in as errors would punish the kit for not answering,
-        # and silently dropping them without a figure would flatter it.
-        sens = _metric('sensitivity', tp, tp + fn, conf, goals, basis, reference_complete)
-        spec = _metric('specificity', tn, tn + fp, conf, goals, basis, reference_complete)
-
-        n_analysed = len(keep)
-        ind_total = ind_pos + ind_neg
-        ind_rate = _metric(
-            'indeterminate_rate', ind_total, n_analysed, conf, goals, basis,
-            reference_complete,
-            extra_label={'en': 'Indeterminate rate', 'ko': '판정보류율'})
-
-        # Predictive values at the prevalences the PLAN named. Derived from
-        # sensitivity and specificity rather than from this table's own
-        # prevalence, which is a property of how the specimens were collected
-        # and almost never the prevalence the kit will be used at.
-        prevalences = payload.get('prevalences')
-        if prevalences is None:
-            prevalences = []
-        predictive = []
-        if sens['estimate'] is not None and spec['estimate'] is not None:
-            se, sp = sens['estimate'], spec['estimate']
-            for pv in prevalences:
-                pv = float(pv)
-                if not 0 < pv < 1:
-                    _err(f'Each prevalence must be between 0 and 1, got {pv}.')
-                ppv_den = se * pv + (1 - sp) * (1 - pv)
-                npv_den = (1 - se) * pv + sp * (1 - pv)
-                predictive.append({
-                    'prevalence': pv,
-                    'ppv': (se * pv / ppv_den) if ppv_den > 0 else None,
-                    'npv': (sp * (1 - pv) / npv_den) if npv_den > 0 else None,
-                })
+            # The analysis set can only grow or stay the same: a resolution
+            # turns an indeterminate or missing comparator into an answer, and
+            # never the other way.
+            keep2 = [i for i, (k, c) in enumerate(zip(kit, comp2))
+                     if c in ('pos', 'neg') and k != 'missing']
+            resolved_block = _analyse(kit, comp2, keep2, conf, goals, basis,
+                                      reference_complete, prevalences)
 
         notes = []
         if not reference_complete:
@@ -370,8 +472,8 @@ def main():
                 'ko': '기준검사가 완전한 표준이 아니므로 이 값은 민감도·특이도가 아니라 '
                       '일치율입니다. 계산은 같고 주장이 다릅니다.',
             })
-        if any(m['goal'] is not None and m['verdict'] != m['point_verdict']
-               for m in (sens, spec)):
+        _scored = [m for m in observed['metrics'] if m['id'] != 'indeterminate_rate']
+        if any(m['goal'] is not None and m['verdict'] != m['point_verdict'] for m in _scored):
             notes.append({
                 'en': 'At least one goal is met by the point estimate and missed by the '
                       'confidence bound. The plan judges the bound.',
@@ -379,12 +481,23 @@ def main():
                       '계획이 판정하는 것은 경계입니다.',
             })
         if any(m['goal'] is not None and m['wald_verdict'] == 'pass' and m['verdict'] == 'fail'
-               for m in (sens, spec)):
+               for m in _scored):
             notes.append({
                 'en': 'A Wald approximation would have passed a goal the exact interval '
                       'does not. This endpoint reports Clopper-Pearson only.',
                 'ko': 'Wald 근사로는 통과하는 기준을 정확구간은 통과시키지 않습니다. '
                       '이 분석은 Clopper-Pearson만 보고합니다.',
+            })
+        if resolved_block is not None:
+            notes.append({
+                'en': 'Both tables are reported. A resolution can only move a specimen in '
+                      'the direction that helps the kit — a re-adjudication that confirms '
+                      'the comparator changes nothing — so the unresolved figures are the '
+                      'ones that rest on no judgement, and are the top-level result here.',
+                'ko': '두 표를 모두 보고합니다. 해결은 검체를 키트에 유리한 방향으로만 '
+                      '움직일 수 있고(기준검사를 확인하는 재판정은 아무것도 바꾸지 '
+                      '않습니다), 그래서 판단이 개입하지 않은 해결 전 수치가 이 응답의 '
+                      '최상위 결과입니다.',
             })
 
         print(json.dumps({
@@ -400,19 +513,17 @@ def main():
             },
             'row_counts': {
                 'n_input': len(data),
-                'n_analysed': n_analysed,
+                'n_analysed': observed['n_analysed'],
                 'dropped': dropped,
             },
-            'table': {
-                'kit_positive': {'comparator_positive': tp, 'comparator_negative': fp},
-                'kit_negative': {'comparator_positive': fn, 'comparator_negative': tn},
-                'kit_indeterminate': {'comparator_positive': ind_pos,
-                                      'comparator_negative': ind_neg},
-                'comparator_positive_total': tp + fn + ind_pos,
-                'comparator_negative_total': fp + tn + ind_neg,
-            },
-            'metrics': [sens, spec, ind_rate],
-            'predictive': predictive,
+            # The top level is the comparator AS OBSERVED. Deliberately: a
+            # caller that ignores `resolved` below gets the figures that rest
+            # on no judgement, which is the right way round for a default.
+            'table': observed['table'],
+            'metrics': observed['metrics'],
+            'predictive': observed['predictive'],
+            'discordant': discordant,
+            'resolved': resolved_block,
             'notes': notes,
         }, default=_to_native_type))
 

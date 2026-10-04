@@ -225,6 +225,7 @@ SCRIPT_ROUTES = [
     ("/api/analysis/feature-engineering",         "feature_engineering_analysis.py",         True),
     ("/api/analysis/drift-stats",                 "drift_stats_analysis.py",                 True),
     ("/api/analysis/feature-scoring",             "feature_scoring_analysis.py",             True),
+    ("/api/analysis/ivd-accuracy",                "ivd_accuracy_analysis.py",                True),
     ("/api/analysis/ipa",                         "ipa_analysis.py",                         False),
     ("/api/analysis/kmeans",                      "kmeans_analysis.py",                      True),
     ("/api/analysis/customer-segmentation",       "customer_segmentation_analysis.py",       True),

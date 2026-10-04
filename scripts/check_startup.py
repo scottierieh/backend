@@ -3,7 +3,7 @@
     python scripts/check_startup.py          # a few seconds, no network
 
 Everything in this service hangs off one module-level table in main.py:
-SCRIPT_ROUTES maps 118 endpoint paths to 118 script files, and a loop hands
+SCRIPT_ROUTES maps 119 endpoint paths to 119 script files, and a loop hands
 each pair to register_script_route(). That loop checks NOTHING. A script that
 was renamed, deleted, or never added still registers a route perfectly
 happily; the endpoint exists, answers, and returns HTTP 400 with a Python
@@ -31,7 +31,7 @@ What it establishes:
   6. no *_analysis.py on disk is unwired, and none listed has gone missing
   7. the shared error path: a script that fails gives the user ITS message,
      not a traceback
-  8. the rate limiter, which sits in front of all 126 endpoints, counts and
+  8. the rate limiter, which sits in front of all 127 endpoints, counts and
      exempts /health
 
 Sections 7 and 8 drive the ASGI app by hand rather than through
@@ -195,8 +195,11 @@ def call(app, method, path, ip='10.0.0.1', body=b''):
 
 def main():
     routes = script_routes()
-    check(routes is not None and len(routes) == 118,
-          f'SCRIPT_ROUTES is a literal table of 118 entries '
+    # The count is written down on purpose. Deriving it from the table would
+    # make this line agree with itself; stated, a route added or lost shows up
+    # here and in the doc rather than only in a diff.
+    check(routes is not None and len(routes) == 119,
+          f'SCRIPT_ROUTES is a literal table of 119 entries '
           f'({len(routes) if routes else 0} read)')
     if not routes:
         print(f'\n{_ok} ok, {_failed} failure(s)')
@@ -213,7 +216,7 @@ def main():
     except Exception as exc:  # pragma: no cover - the thing being checked
         boot_error = f'{type(exc).__name__}: {exc}'
     check(boot_error is None,
-          f'main imports — routers, registry and all 118 registrations '
+          f'main imports — routers, registry and all {len(routes)} registrations '
           f'({time.time() - started:.1f}s)',
           boot_error or '')
     if boot_error:
@@ -296,8 +299,9 @@ def main():
 
     expected = len(paths) + len(_ROUTER_MODULES) + len(_MODELS_PATHS) + 2
     check(len(served) == expected,
-          f'{len(served)} paths served = 118 scripts + 5 conjoint routers + '
-          f'3 registry + / + /health',
+          f'{len(served)} paths served = {len(paths)} scripts + '
+          f'{len(_ROUTER_MODULES)} conjoint routers + {len(_MODELS_PATHS)} registry '
+          f'+ / + /health',
           f'expected {expected}')
 
     # --- 6. nothing on disk is unwired, nothing listed has vanished ------

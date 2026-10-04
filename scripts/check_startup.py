@@ -3,7 +3,7 @@
     python scripts/check_startup.py          # a few seconds, no network
 
 Everything in this service hangs off one module-level table in main.py:
-SCRIPT_ROUTES maps 119 endpoint paths to 119 script files, and a loop hands
+SCRIPT_ROUTES maps 120 endpoint paths to 120 script files, and a loop hands
 each pair to register_script_route(). That loop checks NOTHING. A script that
 was renamed, deleted, or never added still registers a route perfectly
 happily; the endpoint exists, answers, and returns HTTP 400 with a Python
@@ -31,7 +31,7 @@ What it establishes:
   6. no *_analysis.py on disk is unwired, and none listed has gone missing
   7. the shared error path: a script that fails gives the user ITS message,
      not a traceback
-  8. the rate limiter, which sits in front of all 127 endpoints, counts and
+  8. the rate limiter, which sits in front of all 128 endpoints, counts and
      exempts /health
 
 Sections 7 and 8 drive the ASGI app by hand rather than through
@@ -198,8 +198,8 @@ def main():
     # The count is written down on purpose. Deriving it from the table would
     # make this line agree with itself; stated, a route added or lost shows up
     # here and in the doc rather than only in a diff.
-    check(routes is not None and len(routes) == 119,
-          f'SCRIPT_ROUTES is a literal table of 119 entries '
+    check(routes is not None and len(routes) == 120,
+          f'SCRIPT_ROUTES is a literal table of 120 entries '
           f'({len(routes) if routes else 0} read)')
     if not routes:
         print(f'\n{_ok} ok, {_failed} failure(s)')

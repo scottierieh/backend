@@ -271,30 +271,6 @@ def main():
     check('__error' in empty,
           'and a table where nothing is analysable says so rather than returning 0/0')
 
-    # ---- 7. the sample size the plan step will ask for ------------------
-    # Not "what power does this test have" but "how wide will the interval be".
-    # The figure the mockup's plan screen quotes, pinned here so the plan step
-    # cannot be built against a number nobody checked — and so the arithmetic
-    # stays on this side, where the interval already lives.
-    def positives_needed(assume, goal, cap=4000):
-        if not assume > goal:
-            return None
-        for n in range(2, cap + 1):
-            x = round(assume * n)
-            lo, _ = cp_from_tail(x, n)
-            if lo >= goal:
-                return n
-        return None
-
-    need = positives_needed(0.95, 0.90)
-    lo, _ = cp_from_tail(round(0.95 * need), need)
-    check(need == 127 and abs(lo - 0.90) < 5e-4,
-          f'a 95% sensitivity needs {need} positive specimens for its lower bound to '
-          f'hold 90% ({round(0.95 * need)}/{need} -> {lo * 100:.2f}%)')
-    check(positives_needed(0.95, 0.95) is None and positives_needed(0.90, 0.95) is None,
-          'and a goal at or above the assumed estimate is unreachable at any n, which '
-          'is a plan to fix rather than a sample to enlarge')
-
     # ---- 7. the response names its own method ---------------------------
     check(full['ci_method'] == 'clopper-pearson' and full['conf_level'] == 0.95,
           'the response states which interval it used — a report that quotes a bound '

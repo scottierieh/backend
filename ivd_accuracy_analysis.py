@@ -32,6 +32,17 @@ Indeterminate results come out of the denominators and are reported as their
 own rate. A specimen the kit could not read is not evidence about the kit's
 accuracy, but hiding it inflates both metrics, so it is counted in the open.
 
+INDETERMINATE, INVALID AND RETEST (section 05). Three things that get merged
+and should not be: a kit that answered "unclear", a kit that produced no valid
+result at all, and a kit whose answer CHANGED when the same specimen was run
+again. The first two leave the metric denominators by different routes -- an
+indeterminate specimen is in the analysis set and out of the denominators, an
+invalid one never entered it -- and the third never shows up in a 2x2 at all
+while being the plainest repeatability signal in the data. `retest_col` is the
+kit's result on a repeat, and `use_retest` applies the plan's rule for it, with
+the first-result reading staying the top level for the same reason the
+unresolved one does.
+
 DISCORDANT RESOLUTION (section 06). When the plan says a specimen the two
 methods disagree on is re-adjudicated by a third method, that changes the
 table. Both tables are returned from ONE request, computed by one function on
@@ -323,6 +334,16 @@ def main():
         if not isinstance(data, list) or not data:
             _err('No specimen rows provided.')
 
+        # Every column name any row carries. Checking only the FIRST row looks
+        # right and is not: a caller that omits a key where the value is empty
+        # — which is ordinary for a column only a few specimens have, like a
+        # retest result — would be told its column does not exist. The error
+        # would be about the first row and read as being about the table.
+        present = set()
+        for row in data:
+            if isinstance(row, dict):
+                present.update(row.keys())
+
         kit_col = payload.get('kit_col')
         comp_col = payload.get('comparator_col')
         if not kit_col or not comp_col:
@@ -331,7 +352,7 @@ def main():
             _err('kit_col and comparator_col are the same column — that compares '
                  'a result with itself and agrees perfectly.')
 
-        missing_cols = [c for c in (kit_col, comp_col) if c not in data[0]]
+        missing_cols = [c for c in (kit_col, comp_col) if c not in present]
         if missing_cols:
             _err(f'Column(s) not found in the specimen table: {missing_cols}')
 
@@ -402,7 +423,7 @@ def main():
         names = None
         spec_col = payload.get('specimen_col')
         if spec_col:
-            if spec_col not in data[0]:
+            if spec_col not in present:
                 _err(f"specimen_col '{spec_col}' is not a column of the specimen table.")
             names = [str(r.get(spec_col)) for r in data]
 
@@ -463,6 +484,70 @@ def main():
             resolved_block = _analyse(kit, comp2, keep2, conf, goals, basis,
                                       reference_complete, prevalences)
 
+        # ---- section 05: indeterminate, invalid, and the retest ---------
+        retest_col = payload.get('retest_col')
+        retest = None
+        if retest_col:
+            if retest_col not in present:
+                _err(f"retest_col '{retest_col}' is not a column of the specimen table.")
+            retest = _classify([r.get(retest_col) for r in data],
+                               pos_l, neg_l, ind_l, retest_col)
+
+        # An indeterminate specimen is IN the analysis set and out of the metric
+        # denominators. An invalid one never entered it. Two different routes
+        # out of a 2x2 and two different things to report, so two rates.
+        comparator_known = [i for i, c in enumerate(comp) if c in ('pos', 'neg')]
+        invalid_n = len(comparator_known)
+        invalid_x = sum(1 for i in comparator_known if kit[i] == 'missing')
+        repeat = {
+            'indeterminate': _metric(
+                'indeterminate_rate', observed['metrics'][2]['x'], observed['n_analysed'],
+                conf, {}, basis, reference_complete,
+                extra_label={'en': 'Indeterminate', 'ko': '판정보류'}),
+            'invalid': _metric(
+                'invalid_rate', invalid_x, invalid_n, conf, {}, basis, reference_complete,
+                extra_label={'en': 'No valid result', 'ko': '무효'}),
+            'retested': 0,
+            'resolved_by_retest': 0,
+            'changed_on_retest': 0,
+            'changed': [],
+            'use_retest': False,
+        }
+
+        retested_block = None
+        if retest is not None:
+            unclear = ('ind', 'missing')
+            for i in comparator_known:
+                if retest[i] in unclear:
+                    continue
+                repeat['retested'] += 1
+                if kit[i] in unclear:
+                    repeat['resolved_by_retest'] += 1
+                elif retest[i] != kit[i]:
+                    # The same specimen, the same kit, a different answer. It
+                    # never appears in a 2x2 and it is the plainest
+                    # repeatability signal the study holds.
+                    repeat['changed_on_retest'] += 1
+                    repeat['changed'].append({
+                        'specimen': name_of(i),
+                        'first': kit[i],
+                        'retest': retest[i],
+                        'comparator': comp[i],
+                    })
+
+            if payload.get('use_retest'):
+                repeat['use_retest'] = True
+                # The plan's rule: a repeat result stands in for a first result
+                # that was unclear or invalid. It never overrides a first result
+                # the kit gave cleanly — that would be choosing between two
+                # answers after seeing both.
+                kit2 = [retest[i] if (kit[i] in unclear and retest[i] not in unclear)
+                        else kit[i] for i in range(len(kit))]
+                keep2 = [i for i, (k, c) in enumerate(zip(kit2, comp))
+                         if c in ('pos', 'neg') and k != 'missing']
+                retested_block = _analyse(kit2, comp, keep2, conf, goals, basis,
+                                          reference_complete, prevalences)
+
         notes = []
         if not reference_complete:
             notes.append({
@@ -487,6 +572,26 @@ def main():
                       'does not. This endpoint reports Clopper-Pearson only.',
                 'ko': 'Wald 근사로는 통과하는 기준을 정확구간은 통과시키지 않습니다. '
                       '이 분석은 Clopper-Pearson만 보고합니다.',
+            })
+        if repeat['changed_on_retest'] > 0:
+            notes.append({
+                'en': f"{repeat['changed_on_retest']} specimen(s) got a DIFFERENT answer "
+                      f'when the same specimen was run again. That never appears in the '
+                      f'table above — the first result is what is scored — and it is a '
+                      f'repeatability finding in its own right.',
+                'ko': f"{repeat['changed_on_retest']}건은 같은 검체를 다시 검사했을 때 "
+                      f'다른 답이 나왔습니다. 위 표에는 전혀 나타나지 않고(채점되는 것은 '
+                      f'첫 결과입니다), 그 자체로 재현성에 대한 결과입니다.',
+            })
+        if retested_block is not None:
+            notes.append({
+                'en': "The retest reading replaces a first result that was unclear or "
+                      'invalid, never one the kit gave cleanly — choosing between two '
+                      'clean answers after seeing both is not a rule, it is a preference. '
+                      'The first-result reading stays the top level.',
+                'ko': '재검 결과는 애매하거나 무효였던 첫 결과를 대신하고, 키트가 분명하게 '
+                      '낸 결과는 절대 덮지 않습니다 — 분명한 두 답을 보고 나서 고르는 것은 '
+                      '규칙이 아니라 선호입니다. 첫 결과 기준이 최상위로 남습니다.',
             })
         if resolved_block is not None:
             notes.append({
@@ -524,6 +629,8 @@ def main():
             'predictive': observed['predictive'],
             'discordant': discordant,
             'resolved': resolved_block,
+            'repeat': repeat,
+            'retested': retested_block,
             'notes': notes,
         }, default=_to_native_type))
 

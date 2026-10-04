@@ -359,7 +359,87 @@ def main():
           'was — which is why resolutions can only help the kit, and why both tables are '
           'reported')
 
-    # ---- 8. the response names its own method ---------------------------
+    # ---- 8. indeterminate, invalid, and the retest ----------------------
+    # Three things that get merged and must not be. An indeterminate specimen
+    # is IN the analysis set and out of the metric denominators; an invalid one
+    # never entered it; and a specimen whose answer CHANGED on a repeat never
+    # appears in a 2x2 at all.
+    mixed = rows(40, 2, 2, 40, ind_pos=3, ind_neg=2)
+    for r in mixed[:4]:
+        r['retest'] = r['kit']                  # agrees with itself
+    for r in mixed[4:6]:
+        r['retest'] = 'negative'                # a true positive that flipped
+    for r in mixed[-5:]:
+        r['retest'] = 'positive'                # the indeterminates, resolved
+    invalids = [{'id': f'X{i}', 'kit': None, 'ref': 'positive', 'retest': 'positive'}
+                for i in range(6)]
+    payload = {'data': mixed + invalids, 'kit_col': 'kit', 'comparator_col': 'ref',
+               'specimen_col': 'id', 'retest_col': 'retest'}
+
+    res = run(payload)
+    rep = res['repeat']
+    check(rep['indeterminate']['x'] == 5 and rep['indeterminate']['n'] == 89,
+          f"the indeterminate rate counts the specimens IN the analysis set — "
+          f"{rep['indeterminate']['x']}/{rep['indeterminate']['n']}",
+          rep['indeterminate'])
+    check(rep['invalid']['x'] == 6 and rep['invalid']['n'] == 95,
+          f"and the invalid rate is a DIFFERENT denominator — {rep['invalid']['x']}/"
+          f"{rep['invalid']['n']}: those six never entered the analysis set, so putting "
+          f"them over the same {rep['indeterminate']['n']} would be a rate over a "
+          f'denominator they are not in',
+          rep['invalid'])
+    check(rep['indeterminate']['ci'][0] is not None and rep['invalid']['ci'][0] is not None,
+          'both carry an exact interval, like every other proportion here')
+
+    check(rep['changed_on_retest'] == 2 and len(rep['changed']) == 2
+          and all(c['first'] == 'pos' and c['retest'] == 'neg' for c in rep['changed']),
+          f"{rep['changed_on_retest']} specimens answered differently on a repeat, and "
+          f'each is named with both answers — the plainest repeatability signal in the '
+          f'data, and it appears in no 2x2',
+          rep['changed'])
+    check(any('again' in (n.get('en') or '') for n in res['notes']),
+          'and the response says so rather than leaving it in a field nobody reads')
+    check(rep['resolved_by_retest'] == 11,
+          f"{rep['resolved_by_retest']} first results that were unclear or invalid got an "
+          f'answer on the repeat',
+          rep)
+
+    # Applying the plan's rule. The first-result reading stays the top level.
+    used = run({**payload, 'use_retest': True})
+    check(used['retested'] is not None and used['table'] == res['table'],
+          'with use_retest the first-result table is unchanged and the retest reading is '
+          'a second block')
+    check(used['retested']['n_analysed'] > used['row_counts']['n_analysed'],
+          f"and the analysis set GREW — {used['row_counts']['n_analysed']} to "
+          f"{used['retested']['n_analysed']}: a repeat turns an invalid specimen into one "
+          f'that can be scored')
+    # The rule only ever replaces an unclear or invalid first result.
+    first_clean = [c['specimen'] for c in rep['changed']]
+    sens_first = by_id(used, 'sensitivity')
+    sens_retest = next(m for m in used['retested']['metrics'] if m['id'] == 'sensitivity')
+    check(sens_retest['n'] >= sens_first['n'] and len(first_clean) == 2,
+          'a first result the kit gave cleanly is never overridden by the repeat — '
+          'choosing between two clean answers after seeing both is a preference, not a '
+          'rule')
+    check(any('never one the kit gave cleanly' in (n.get('en') or '') for n in used['notes']),
+          'and that is stated')
+    check(run({**payload, 'retest_col': 'nope'}).get('__error', '').find('nope') >= 0,
+          'a retest column that is not in the table is named in the error')
+
+    # A column only SOME rows carry. Ordinary for a retest result, and reading
+    # the column list off the first row alone would call it missing — an error
+    # about row 1 that reads as being about the table.
+    sparse = rows(10, 0, 0, 10, ind_pos=2)
+    for r in sparse[-2:]:
+        r['retest'] = 'positive'
+    got = run({'data': sparse, 'kit_col': 'kit', 'comparator_col': 'ref',
+               'specimen_col': 'id', 'retest_col': 'retest'})
+    check('__error' not in got and got['repeat']['resolved_by_retest'] == 2,
+          'and a column only two of the rows carry is found, not called missing — the '
+          'column list is the union over every row',
+          got.get('__error', '')[:100])
+
+    # ---- 9. the response names its own method ---------------------------
     check(full['ci_method'] == 'clopper-pearson' and full['conf_level'] == 0.95,
           'the response states which interval it used — a report that quotes a bound '
           'has to be able to say what kind it is')

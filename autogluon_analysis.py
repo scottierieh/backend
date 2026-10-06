@@ -35,6 +35,10 @@ import contextlib
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import (
+    roc_curve, auc, precision_recall_curve,
+    accuracy_score, f1_score, average_precision_score,
+)
 
 
 def _to_native_type(o):
@@ -348,12 +352,15 @@ def main():
 
             # One row per model AutoGluon kept, in its own ranking order.
             #
-            # Only the metric it optimised is filled in. AutoGluon scores its
-            # leaderboard on its internal validation split, which this script
-            # does not hold, so the other columns would have to be computed on
-            # the training rows -- a training score printed in a column the
-            # screen labels as held-out. An empty cell is the honest answer and
-            # the Compare table already draws one.
+            # The metric it optimised is filled in here; for binary
+            # classification the other Compare columns and the ROC/PR curves
+            # are filled in just below, from AutoGluon's own internal
+            # validation fold -- not from the training rows, so the honesty
+            # this comment used to promise ("an empty cell rather than a
+            # training score mislabelled as held-out") still holds. Multiclass
+            # and regression runs still leave those cells empty: there is no
+            # single ROC/PR curve for more than two classes, and accuracy/f1
+            # are not regression measures.
             models = []
             for _, r in board.iterrows():
                 raw_score = _finite(r.get('score_val'))
@@ -374,6 +381,69 @@ def main():
                     'fit_seconds': _finite(r.get('fit_time')),
                     'predict_seconds': _finite(r.get('pred_time_val')),
                 })
+
+            # ---- the other Compare columns, and ROC/PR, for binary models --
+            #
+            # leaderboard(extra_metrics=...) looked like the way to get these,
+            # but AutoGluon raises unless a `data=` frame is also given -- it
+            # scores extra metrics on data the caller supplies, not on its own
+            # internal validation fold the way score_val above is. The caller
+            # here has no such frame (the design note above the model loop
+            # says why), so these come from predict_oof/predict_proba_oof
+            # instead: the same out-of-fold predictions on df's own rows that
+            # the curves below are already built from, scored by hand with the
+            # identical sklearn functions the other fourteen scripts use on
+            # their own y_test/y_pred. One source of truth, not two.
+            #
+            # Only binary classification gets a curve, for the reason
+            # _compute_pdp above gives: past two classes there is no single
+            # probability column to draw one from.
+            #
+            # setdefault, not assignment: the metric a model was optimised on
+            # is already in `metrics` from score_val above, and that is the
+            # figure AutoGluon actually searched on -- recomputing it here by
+            # hand would be a second, possibly-conflicting source of truth for
+            # the one column that matters most on this row.
+            if task_type == 'classification':
+                labels = list(predictor.class_labels or [])
+                if len(labels) == 2:
+                    pos_label = (predictor.positive_class if predictor.positive_class in labels
+                                 else labels[-1])
+                    for m in models:
+                        try:
+                            oof_proba = predictor.predict_proba_oof(model=m['name'])
+                            if pos_label not in oof_proba.columns:
+                                continue
+                            oof_pred = predictor.predict_oof(model=m['name'])
+                            idx = oof_proba.index
+                            y_true = (df[target].loc[idx] == pos_label).astype(int)
+                            y_score = oof_proba[pos_label]
+                            y_pred_bin = (oof_pred.loc[idx] == pos_label).astype(int)
+                            if y_true.nunique() < 2 or len(y_true) < 10:
+                                continue
+
+                            m['metrics'].setdefault('accuracy', _finite(accuracy_score(y_true, y_pred_bin)))
+                            m['metrics'].setdefault(
+                                'f1', _finite(f1_score(y_true, y_pred_bin, zero_division=0)))
+                            m['metrics'].setdefault(
+                                'pr_auc', _finite(average_precision_score(y_true, y_score)))
+
+                            fpr, tpr, _ = roc_curve(y_true, y_score)
+                            m['roc_data'] = {'binary': {
+                                'fpr': [_finite(x) for x in fpr],
+                                'tpr': [_finite(x) for x in tpr],
+                                'auc': _finite(auc(fpr, tpr)),
+                            }}
+                            precision, recall, _ = precision_recall_curve(y_true, y_score)
+                            m['pr_data'] = {'binary': {
+                                'precision': [_finite(x) for x in precision],
+                                'recall': [_finite(x) for x in recall],
+                            }}
+                        except Exception:
+                            # Not every kept model supports OOF predictions
+                            # (e.g. a refit-full variant) -- that row simply
+                            # keeps the empty cells it already had.
+                            pass
 
             # ---- which columns it leans on ------------------------------
             #

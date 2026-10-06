@@ -38,6 +38,7 @@ import pandas as pd
 from sklearn.metrics import (
     roc_curve, auc, precision_recall_curve,
     accuracy_score, f1_score, average_precision_score,
+    confusion_matrix as sk_confusion_matrix,
 )
 
 
@@ -439,6 +440,12 @@ def main():
                                 'precision': [_finite(x) for x in precision],
                                 'recall': [_finite(x) for x in recall],
                             }}
+                            # [[tn, fp], [fn, tp]] -- labels=[0, 1] pins row 0
+                            # to the actual-negative row regardless of which
+                            # label value happens to sort first, matching what
+                            # the Compare screen's cmOf() reads this shape as.
+                            cm = sk_confusion_matrix(y_true, y_pred_bin, labels=[0, 1])
+                            m['confusion_matrix'] = [[int(v) for v in row] for row in cm]
                         except Exception:
                             # Not every kept model supports OOF predictions
                             # (e.g. a refit-full variant) -- that row simply

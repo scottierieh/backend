@@ -987,16 +987,28 @@ def predict_model(model_id: str, req: PredictRequest):
         # under a chosen leaderboard model is that model's answer and not the
         # ensemble's.
         contributions = None
+        shap_importance = None
         if req.explain:
             background = artifact.get('background')
             if background is not None:
+                ag_estimator = AutoGluonEstimator(predictor, ag_model)
                 contributions = _compute_row_contributions(
-                    AutoGluonEstimator(predictor, ag_model), artifact.get('task'), background, X)
+                    ag_estimator, artifact.get('task'), background, X)
+                # Mean |SHAP| over the persisted background sample itself --
+                # the same _compute_beeswarm train time already uses for the
+                # Compare screen's beeswarm chart, called here on the sample
+                # the artifact carries rather than on data only available at
+                # train time. Independent of which row(s) req.rows asked
+                # about: "what matters to this model in general" rather than
+                # "what mattered to this one prediction", which is what
+                # `contributions` above already answers.
+                shap_importance = _compute_beeswarm(ag_estimator, artifact.get('task'), background)
 
         return {
             'predictions': predictions,
             'probabilities': probabilities,
             'shapContributions': contributions,
+            'shapImportance': shap_importance,
         }
 
 
@@ -1073,13 +1085,19 @@ def predict_model(model_id: str, req: PredictRequest):
         predictions = [_to_native_type(float(v)) for v in raw_pred]
 
     shap_contributions = None
+    shap_importance = None
     if req.explain and background is not None:
         shap_contributions = _compute_row_contributions(pipeline, task, background, X)
+        # Mean |SHAP| over the persisted background sample -- see the
+        # matching comment on the AutoGluon branch above for why this is
+        # computed here rather than only at train time.
+        shap_importance = _compute_beeswarm(pipeline, task, background)
 
     return {
         'predictions': [_to_native_type(p) for p in predictions],
         'probabilities': probabilities,
         'shapContributions': shap_contributions,
+        'shapImportance': shap_importance,
         # What turned these probabilities into these answers. Without it the
         # caller has a label and a distribution and no way to tell whether the
         # two were joined at 0.5 or at something else -- and at 0.31 a row

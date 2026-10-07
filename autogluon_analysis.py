@@ -430,10 +430,13 @@ def main():
                                 'pr_auc', _finite(average_precision_score(y_true, y_score)))
 
                             fpr, tpr, _ = roc_curve(y_true, y_score)
+                            roc_auc_val = _finite(auc(fpr, tpr))
+                            # Compare table reads metrics.auc, not roc_data.auc.
+                            m['metrics'].setdefault('auc', roc_auc_val)
                             m['roc_data'] = {'binary': {
                                 'fpr': [_finite(x) for x in fpr],
                                 'tpr': [_finite(x) for x in tpr],
-                                'auc': _finite(auc(fpr, tpr)),
+                                'auc': roc_auc_val,
                             }}
                             precision, recall, _ = precision_recall_curve(y_true, y_score)
                             m['pr_data'] = {'binary': {

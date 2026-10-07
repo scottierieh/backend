@@ -307,6 +307,19 @@ def main():
                 f'At least 50 rows with a target are required; {len(df)} usable of {n_input}.'
             )
 
+        # The caller's own sealed rows, if it sent them -- never fit on, only
+        # scored against afterward. Optional: a caller that predates this
+        # field gets exactly the response it used to (holdout_df stays None,
+        # n_holdout stays 0 below).
+        holdout = payload.get('holdout')
+        holdout_df = None
+        if holdout:
+            h_all = pd.DataFrame(holdout)
+            h_missing = [c for c in [target] + list(features) if c not in h_all.columns]
+            if h_missing:
+                raise ValueError(f'Holdout rows are missing column(s): {h_missing}')
+            holdout_df = h_all[list(features) + [target]].dropna(subset=[target]).reset_index(drop=True)
+
         task_type = task_req if task_req in ('classification', 'regression') else _detect_task_type(df[target])
 
         eval_metric = payload.get('eval_metric') or _DEFAULT_METRIC[task_type]
@@ -351,6 +364,20 @@ def main():
                 seconds_used = round(time.time() - started, 1)
                 board = predictor.leaderboard(silent=True)
 
+                # Every kept model's score on rows it never trained or tuned
+                # against -- no refit, since the predictor already holds all
+                # of them; this is one inference pass over (usually small)
+                # sealed rows, not another fit. What the search's own
+                # score_val cannot rule out is the one AutoGluon picks having
+                # won by luck among dozens of candidates; this is the check
+                # that rules it out, for every row on the board at once.
+                sealed_board = None
+                if holdout_df is not None and len(holdout_df) > 0:
+                    try:
+                        sealed_board = predictor.leaderboard(holdout_df, silent=True)
+                    except Exception:
+                        sealed_board = None
+
             # One row per model AutoGluon kept, in its own ranking order.
             #
             # The metric it optimised is filled in here; for binary
@@ -382,6 +409,14 @@ def main():
                     'fit_seconds': _finite(r.get('fit_time')),
                     'predict_seconds': _finite(r.get('pred_time_val')),
                 })
+                if sealed_board is not None:
+                    sealed_row = sealed_board[sealed_board['model'] == name]
+                    if len(sealed_row):
+                        raw_sealed = _finite(sealed_row.iloc[0].get('score_test'))
+                        sealed_score = (-raw_sealed if (raw_sealed is not None
+                                        and eval_metric in _NEGATED) else raw_sealed)
+                        if sealed_score is not None:
+                            models[-1]['sealed_metrics'] = {metric_field: sealed_score}
 
             # ---- the other Compare columns, and ROC/PR, for binary models --
             #
@@ -564,12 +599,11 @@ def main():
                     # AutoGluon owns its own train/validation split inside the
                     # rows it was handed, and does not report the sizes, so
                     # these describe what it received rather than what it made
-                    # of it. The caller's own sealed holdout is separate and
-                    # was never sent.
+                    # of it.
                     'n_train': len(df),
-                    'n_holdout': 0,
+                    'n_holdout': len(holdout) if holdout else 0,
                     'n_train_used': len(df),
-                    'n_holdout_used': 0,
+                    'n_holdout_used': len(holdout_df) if holdout_df is not None else 0,
                 },
                 'time': {
                     'limit': time_limit,

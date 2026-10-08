@@ -245,6 +245,117 @@ def _compute_pdp(predictor, df: pd.DataFrame, features: list, task_type: str,
     return out or None
 
 
+def _points_at(y_true, proba, cuts) -> list:
+    """Operating points on the sealed rows, in counts as well as ratios.
+
+    The counts are the point. "정밀도 0.50" is a ratio nobody budgets in;
+    "놓침 12건 · 잘못 부름 40건" multiplies by a cost and becomes money, which
+    is what decides which model is actually cheapest to run -- a question the
+    ranking metric cannot answer, because it does not know what a miss costs.
+    """
+    out = []
+    for cut in cuts:
+        pred = (proba >= cut).astype(int)
+        tp = int(((pred == 1) & (y_true == 1)).sum())
+        fp = int(((pred == 1) & (y_true == 0)).sum())
+        fn = int(((pred == 0) & (y_true == 1)).sum())
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
+        out.append({
+            'threshold': _finite(cut),
+            'precision': _finite(precision),
+            'recall': _finite(recall),
+            'f1': _finite(f1),
+            'predicted_positive': tp + fp,
+            'missed': fn,
+            'false_alarms': fp,
+        })
+    return out
+
+
+# Cuts reported per model on the sealed rows. Quantiles of that model's own
+# predicted probabilities rather than an even 0..1 grid: a model whose scores
+# all sit between .02 and .35 has nothing to say about a cut at .9, and an even
+# grid spends most of its rows there.
+SEALED_CUTS = 9
+# Below this many sealed rows the per-level and per-bin figures below are noise
+# wearing decimal places.
+MIN_SEALED_FOR_CHECKS = 30
+# Fewest rows a subgroup needs before its recall is worth printing.
+MIN_LEVEL_ROWS = 10
+
+
+def _calibration(y_true, proba, bins: int = 10):
+    """Does a predicted 30% actually happen 30% of the time?
+
+    A model can rank perfectly and still be wrong about the number. Ranking is
+    all PR-AUC measures, and every screen that prints a probability -- the
+    prediction panel, the threshold table, any cost in won -- reads the number
+    instead. Equal-width bins across the predicted range, each with how often
+    the thing actually happened, plus ECE as the one-figure summary.
+    """
+    if len(y_true) < MIN_SEALED_FOR_CHECKS or len(np.unique(y_true)) < 2:
+        return None
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    idx = np.clip(np.digitize(proba, edges[1:-1], right=False), 0, bins - 1)
+    out = []
+    ece = 0.0
+    for b in range(bins):
+        sel = idx == b
+        n = int(sel.sum())
+        if n == 0:
+            continue
+        predicted = float(proba[sel].mean())
+        actual = float(y_true[sel].mean())
+        ece += (n / len(y_true)) * abs(predicted - actual)
+        out.append({
+            'from': _finite(edges[b]), 'to': _finite(edges[b + 1]),
+            'n': n, 'predicted': _finite(predicted), 'actual': _finite(actual),
+        })
+    return {'bins': out, 'ece': _finite(ece), 'n': int(len(y_true))} if out else None
+
+
+def _subgroups(frame: pd.DataFrame, features: list, y_true, pred, max_levels: int = 6) -> list:
+    """Per-level recall and rates on the sealed rows, for columns that name
+    groups rather than measure something.
+
+    An overall score hides a model that finds 60% of one group's positives and
+    20% of another's. This does not judge that -- a real difference in the data
+    looks identical to an unfair model from here -- it puts the numbers where
+    someone can see them before deploying.
+    """
+    out = []
+    for name in features:
+        if name not in frame.columns:
+            continue
+        col = frame[name].astype(str)
+        if col.nunique() > max_levels * 2:
+            continue
+        levels = []
+        for value in col.unique():
+            mask = (col == value).to_numpy()
+            n = int(mask.sum())
+            if n < MIN_LEVEL_ROWS:
+                continue
+            yt = y_true[mask]
+            yp = pred[mask]
+            pos = int(yt.sum())
+            tp = int(((yp == 1) & (yt == 1)).sum())
+            levels.append({
+                'value': str(value),
+                'n': n,
+                'n_positive': pos,
+                'actual_rate': _finite(yt.mean()),
+                'predicted_rate': _finite(yp.mean()),
+                'recall': _finite(tp / pos) if pos else None,
+            })
+        if len(levels) >= 2:
+            levels.sort(key=lambda d: d['n'], reverse=True)
+            out.append({'feature': name, 'levels': levels[:max_levels]})
+    return out
+
+
 def _detect_task_type(y: pd.Series) -> str:
     vals = y.dropna()
     if vals.empty:
@@ -418,6 +529,60 @@ def main():
                         if sealed_score is not None:
                             models[-1]['sealed_metrics'] = {metric_field: sealed_score}
 
+            # ---- what each model would cost to run, on the sealed rows -----
+            #
+            # The ranking metric cannot answer "which model is cheapest",
+            # because it does not know what a miss costs against a wrong call.
+            # That answer needs counts at a cut, for every model, on rows none
+            # of them were chosen on -- so it is computed here, where the
+            # predictor and the sealed rows are both in hand, rather than
+            # refitting anything later. The screen multiplies by the two
+            # amounts the reader enters; nothing here assumes a currency or a
+            # price.
+            sealed_checks = None
+            if (holdout_df is not None and len(holdout_df) > 0
+                    and task_type == 'classification'):
+                try:
+                    labels_h = list(predictor.class_labels or [])
+                    if len(labels_h) == 2:
+                        pos_h = (predictor.positive_class
+                                 if predictor.positive_class in labels_h else labels_h[-1])
+                        y_h = (holdout_df[target] == pos_h).astype(int).to_numpy()
+                        if len(np.unique(y_h)) == 2:
+                            for m in models:
+                                try:
+                                    pr = predictor.predict_proba(holdout_df, model=m['name'])
+                                    if pos_h not in pr.columns:
+                                        continue
+                                    score_h = pr[pos_h].to_numpy()
+                                    cuts = sorted({round(float(c), 4) for c in
+                                                   np.quantile(score_h, np.linspace(0.05, 0.95, SEALED_CUTS))
+                                                   if 0.0 < float(c) < 1.0})
+                                    if cuts:
+                                        m['sealed_points'] = _points_at(y_h, score_h, cuts)
+                                except Exception:
+                                    continue
+                            # The calibration and subgroup checks describe the
+                            # model that would be deployed, so they are
+                            # computed once for AutoGluon's own pick rather
+                            # than for every row on the board.
+                            best_name = str(board.iloc[0].get('model')) if len(board) else None
+                            if best_name:
+                                pr = predictor.predict_proba(holdout_df, model=best_name)
+                                if pos_h in pr.columns:
+                                    score_b = pr[pos_h].to_numpy()
+                                    pred_b = (predictor.predict(holdout_df, model=best_name)
+                                              == pos_h).astype(int).to_numpy()
+                                    sealed_checks = {
+                                        'model': best_name,
+                                        'n': int(len(y_h)),
+                                        'positive_class': _to_native_type(pos_h),
+                                        'calibration': _calibration(y_h, score_b),
+                                        'subgroups': _subgroups(holdout_df, list(features), y_h, pred_b),
+                                    }
+                except Exception:
+                    sealed_checks = None
+
             # ---- the other Compare columns, and ROC/PR, for binary models --
             #
             # leaderboard(extra_metrics=...) looked like the way to get these,
@@ -579,6 +744,10 @@ def main():
                 # screen has to be able to tell the difference before it
                 # repeats their wording.
                 'perm_importance_scope': perm_scope,
+                # Calibration and per-group figures for the model that would
+                # be deployed, measured on the sealed rows. None when there
+                # were none to measure on, or too few to mean anything.
+                'sealed_checks': sealed_checks,
                 'preprocessing': {
                     'generated': generated,
                     'dropped': dropped,

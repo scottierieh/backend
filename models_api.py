@@ -432,6 +432,27 @@ def _choose_threshold(estimator, X_test: pd.DataFrame, y_test: np.ndarray,
         return None
 
     y_bin = (y_test.astype(int) == positive_idx).astype(int)
+    return _threshold_from_scores(
+        y_bin, proba,
+        positive_class=classes[positive_idx],
+        positive_index=positive_idx,
+        criterion=criterion,
+        recall_target=recall_target,
+    )
+
+
+def _threshold_from_scores(y_bin, proba, *, positive_class, positive_index: int,
+                           criterion: str = 'max_f1',
+                           recall_target: Optional[float] = None) -> Optional[dict]:
+    """Pick the cut, given the scores -- the half of the job that has nothing
+    to do with where the probabilities came from.
+
+    Split out so the AutoGluon branch can use it too. That branch had no cut at
+    all, which meant every model Auto Lab saved answered at argmax: on a 13%
+    minority, "no" almost always, in the one lab built around uneven targets.
+    An estimator and a TabularPredictor disagree about how to be asked for a
+    probability and about nothing after that, so only the asking stayed behind.
+    """
     try:
         from sklearn.metrics import precision_recall_curve
         precision, recall, cuts = precision_recall_curve(y_bin, proba)
@@ -473,11 +494,11 @@ def _choose_threshold(estimator, X_test: pd.DataFrame, y_test: np.ndarray,
         'points': _threshold_curve(y_bin, proba),
         # The label, not the index -- /predict answers in labels and the screen
         # prints one.
-        'positive_class': _to_native_type(classes[positive_idx]),
-        'positive_index': positive_idx,
+        'positive_class': _to_native_type(positive_class),
+        'positive_index': int(positive_index),
         'chosen_on': 'holdout',
         'n_eval': int(len(y_bin)),
-        'n_positive': n_positive,
+        'n_positive': int(np.asarray(y_bin).sum()),
         # Both operating points, so the screen can state the trade rather than
         # announcing an improvement.
         'at_chosen': chosen,
@@ -777,6 +798,10 @@ def train_model(model_id: str, req: TrainRequest):
                 _fail(400, f"Model '{req.agModel}' is not on this predictor. Have: {available}")
 
             metrics: dict[str, float] = {}
+            # The cut, chosen below from the same held-out rows the metrics
+            # come from. None when there are none to choose on, which is the
+            # behaviour this branch had until now.
+            threshold: Optional[dict] = None
             if req.holdout:
                 h = pd.DataFrame(req.holdout)
                 if req.target not in h.columns:
@@ -800,6 +825,43 @@ def train_model(model_id: str, req: TrainRequest):
                         metrics['n_eval'] = float(len(h))
                     except Exception:
                         pass  # best-effort, same as the estimator path
+
+                    # The cut this model will answer at.
+                    #
+                    # The estimator path has chosen one since the day the
+                    # threshold existed; this branch never did, so every model
+                    # Auto Lab saves -- which is every model it can save --
+                    # answered at argmax. On a 13% minority that means "no"
+                    # almost always, which is the exact failure the whole cut
+                    # machinery was built for, in the one lab built around an
+                    # uneven target. The screens that read `threshold` (the
+                    # verdict on Deploy, the operating-point table, the strip)
+                    # simply rendered nothing.
+                    #
+                    # Same rule and same shape as _choose_threshold, on the
+                    # same held-out rows, using the predictor's own
+                    # probabilities rather than an estimator's.
+                    try:
+                        labels_t = list(predictor.class_labels or [])
+                        if req.task == 'classification' and len(labels_t) == 2:
+                            counts_t = h[req.target].astype(str).value_counts()
+                            positive_t = str(counts_t.index[-1])
+                            if positive_t in [str(c) for c in labels_t]:
+                                label_t = next(c for c in labels_t if str(c) == positive_t)
+                                proba_t = predictor.predict_proba(h)
+                                if label_t in proba_t.columns:
+                                    y_t = (h[req.target].astype(str) == positive_t).astype(int).to_numpy()
+                                    p_t = proba_t[label_t].to_numpy()
+                                    if int(y_t.sum()) >= MIN_POSITIVES_FOR_THRESHOLD and len(np.unique(y_t)) == 2:
+                                        threshold = _threshold_from_scores(
+                                            y_t, p_t,
+                                            positive_class=label_t,
+                                            positive_index=list(proba_t.columns).index(label_t),
+                                            criterion=(req.thresholdCriterion or 'max_f1'),
+                                            recall_target=req.recallTarget,
+                                        )
+                    except Exception:
+                        pass  # best-effort: no cut is the old behaviour, not a failure
 
             bundle = _ag_pack(predictor)
         finally:
@@ -827,6 +889,10 @@ def train_model(model_id: str, req: TrainRequest):
             # happens to be ordered by.
             'class_labels': [_to_native_type(c) for c in (predictor.class_labels or [])]
                             if req.task == 'classification' else None,
+            # The cut the served model answers at. Stored beside the bundle for
+            # the same reason the estimator path stores it: predict() is argmax
+            # otherwise, and on an uneven target argmax is "no".
+            'threshold': threshold,
         }
         try:
             artifact_uri = model_store.save_pipeline(model_id, artifact)
@@ -856,6 +922,9 @@ def train_model(model_id: str, req: TrainRequest):
             'rawColumns': artifact['raw_columns'] if feature_engineer else None,
             'rawBaseline': raw_baseline if feature_engineer else None,
             'evaluatedOn': 'holdout' if metrics.get('n_eval') else 'internal_split',
+            # Computed just above and, until this line existed, thrown away:
+            # every screen that reads a cut found nothing on an Auto Lab model.
+            'threshold': threshold,
         }
 
 
@@ -1057,6 +1126,24 @@ def predict_model(model_id: str, req: PredictRequest):
                     by_str = {str(c): c for c in proba.columns}
                     proba = proba[[by_str[str(v)] for v in labels]]
                 probabilities = [[_to_native_type(float(v)) for v in row] for row in proba.values]
+
+                # Answer at the cut rather than at argmax. Same rule as the
+                # estimator path: a stored cut applies by default and a cut
+                # sent with the request overrides it, so moving the line on
+                # the Deploy screen changes the answer without a refit.
+                t_ag = artifact.get('threshold')
+                cut_ag = (req.threshold if req.threshold is not None
+                          else (t_ag or {}).get('value'))
+                if cut_ag is not None and proba.shape[1] == 2:
+                    cols = list(proba.columns)
+                    idx_ag = int((t_ag or {}).get('positive_index', 1))
+                    if 0 <= idx_ag < len(cols):
+                        pos_col = cols[idx_ag]
+                        neg_col = cols[1 - idx_ag]
+                        predictions = [
+                            _to_native_type(pos_col if float(v) >= float(cut_ag) else neg_col)
+                            for v in proba[pos_col].tolist()
+                        ]
             except Exception:
                 probabilities = None
 

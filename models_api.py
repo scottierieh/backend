@@ -144,6 +144,13 @@ class TrainRequest(BaseModel):
     evalMetric: Optional[str] = None
     preset: Optional[str] = None
 
+    # Which mistake the caller would rather make, and optionally how much of
+    # the smaller class they need to find. See _choose_threshold. Absent keeps
+    # the old behaviour exactly ('max_f1', no target), so a caller that
+    # predates these fields gets the response it always got.
+    thresholdCriterion: Optional[str] = None
+    recallTarget: Optional[float] = None
+
 
 class PredictRequest(BaseModel):
     artifactUri: str
@@ -335,12 +342,55 @@ def _scores_at(y_true: np.ndarray, proba: np.ndarray, cut: float) -> dict:
         'recall': _to_native_type(recall),
         'f1': _to_native_type(f1),
         'predicted_positive': tp + fp,
+        # The two counts the screen actually talks about: how many of the
+        # class we were built to find are still missed, and how many of the
+        # calls made were wrong. Precision and recall say the same thing in
+        # ratios, and nobody budgets in ratios.
+        'missed': fn,
+        'false_alarms': fp,
     }
 
 
+# How many operating points the response carries.
+#
+# One cut is a decision made for the reader. The deploy screen asks them to
+# move it -- "find more of them" against "call fewer people wrongly" -- and
+# every point on that table has to be a real measurement on the held-out rows,
+# not a curve interpolated in the browser. Nine is enough to show the shape of
+# the trade and small enough to read without scrolling.
+THRESHOLD_POINTS = 9
+
+
+def _threshold_curve(y_bin: np.ndarray, proba: np.ndarray) -> list:
+    """A few real operating points across the range, coarsest-to-finest.
+
+    Sampled on the quantiles of the predicted probabilities rather than on an
+    even 0..1 grid: a model whose scores all sit between .02 and .35 has
+    nothing to say about a cut at .9, and an even grid spends eight of its
+    nine rows there.
+    """
+    qs = np.quantile(proba, np.linspace(0.05, 0.95, THRESHOLD_POINTS))
+    cuts = sorted({round(float(c), 4) for c in qs if 0.0 < float(c) < 1.0})
+    return [_scores_at(y_bin, proba, c) for c in cuts]
+
+
 def _choose_threshold(estimator, X_test: pd.DataFrame, y_test: np.ndarray,
-                      classes) -> Optional[dict]:
-    """The cut that maximises F1 on the smaller class, chosen on held-out rows.
+                      classes, criterion: str = 'max_f1',
+                      recall_target: Optional[float] = None) -> Optional[dict]:
+    """The cut to serve at, chosen on held-out rows.
+
+    `criterion` says which mistake the caller would rather make, because that
+    is a question about their business and not about the model:
+
+      max_f1     the balance, and the default -- it is what the leaderboard
+                 already reports, so the served number stays comparable.
+      recall     missing one costs more than calling one wrongly. Maximises
+                 F2, which weights recall twice; with `recall_target` set it
+                 instead takes the most precise cut that still reaches the
+                 target, and falls back to plain F2 when nothing does.
+      precision  a wrong call costs more than a miss. Maximises F0.5.
+
+    The docstring below is the original note on why this exists at all.
 
     The smaller class, not `classes_[1]`, because that is the one this exists
     for: a 0.5 cut on a 12% minority answers "no" almost always, and the
@@ -385,15 +435,35 @@ def _choose_threshold(estimator, X_test: pd.DataFrame, y_test: np.ndarray,
 
     # precision_recall_curve returns one more point than it does thresholds;
     # the extra point is (recall 0, precision 1) and has no cut behind it.
+    p = precision[:-1]
+    r = recall[:-1]
+    beta = 2.0 if criterion == 'recall' else (0.5 if criterion == 'precision' else 1.0)
+    bb = beta * beta
     with np.errstate(divide='ignore', invalid='ignore'):
-        f1s = np.nan_to_num(2 * precision[:-1] * recall[:-1] / (precision[:-1] + recall[:-1]))
-    best = float(cuts[int(np.argmax(f1s))])
+        fbeta = np.nan_to_num((1 + bb) * p * r / (bb * p + r))
+
+    best = None
+    if criterion == 'recall' and recall_target is not None:
+        # The most precise cut that still finds the share they asked for. If
+        # no cut reaches it, F2 is the honest fallback and `recall_target_met`
+        # says so rather than the screen quietly showing a number that misses.
+        reach = np.flatnonzero(r >= recall_target)
+        if reach.size:
+            best = float(cuts[int(reach[np.argmax(p[reach])])])
+    if best is None:
+        best = float(cuts[int(np.argmax(fbeta))])
 
     chosen = _scores_at(y_bin, proba, best)
     default = _scores_at(y_bin, proba, 0.5)
     return {
         'value': chosen['threshold'],
-        'criterion': 'max_f1',
+        'criterion': criterion,
+        'recall_target': recall_target,
+        'recall_target_met': (None if recall_target is None
+                              else bool(chosen['recall'] >= recall_target)),
+        # Real points on the held-out rows, for the screen that lets the
+        # reader move the cut without refitting anything.
+        'points': _threshold_curve(y_bin, proba),
         # The label, not the index -- /predict answers in labels and the screen
         # prints one.
         'positive_class': _to_native_type(classes[positive_idx]),
@@ -853,7 +923,9 @@ def train_model(model_id: str, req: TrainRequest):
         # mistake the two-stage split exists to prevent, one step later.
         if req.task == 'classification' and label_encoder is not None:
             threshold = _choose_threshold(
-                eval_pipeline, X_test, np.asarray(y_test), list(label_encoder.classes_))
+                eval_pipeline, X_test, np.asarray(y_test), list(label_encoder.classes_),
+                criterion=(req.thresholdCriterion or 'max_f1'),
+                recall_target=req.recallTarget)
     except HTTPException:
         raise  # a bad holdout is the caller's error, not a metric we can skip
     except Exception:

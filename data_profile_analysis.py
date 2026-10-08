@@ -59,6 +59,20 @@ MAX_CLASSES = 15
 # Enough shares to describe a column at a glance; the rest folds into 'other'
 # rather than becoming a legend nobody reads.
 TOP_CATEGORIES = 6
+# Under this many complete pairs, a column-to-target figure is noise wearing
+# three decimal places. The screen draws "—" instead.
+MIN_RELATION_ROWS = 20
+# A name that says the value is about a person rather than their behaviour.
+# Matched on the name alone, so this flags rather than excludes: whether the
+# column belongs in the model is the reader's call, not a regex's.
+#
+# Age is deliberately not here. It is a protected attribute in some settings
+# and an ordinary predictor in most, and a mark on every table that has an age
+# column is a mark nobody reads by the third screen. The ones below are the
+# ones whose presence in a model is a question worth stopping on.
+SENSITIVE_NAME = re.compile(
+    r'(^|_)(gender|sex|race|ethnic\w*|religion|disab\w*|pregnan\w*|marital|'
+    r'nationality|성별|인종|종교|장애|결혼|국적)($|_)', re.I)
 
 
 def _infer_kind(name: str, series: pd.Series) -> str:
@@ -113,6 +127,104 @@ def _histogram(values: pd.Series, lower: float, upper: float, bins: int) -> Dict
     }
 
 
+def _relation(series: pd.Series, kind: str, y: pd.Series,
+              target_kind: str) -> Optional[Dict[str, Any]]:
+    """
+    How much this column has to say about the target, in the terms the Data
+    screen reads out loud.
+
+    Three shapes, because one number cannot describe both a measurement and a
+    set of labels:
+
+      auc        a numeric column against a two-class target, folded to >= 0.5.
+                 0.50 is "knows nothing"; 1.00 would separate the classes
+                 perfectly, which in real data usually means the column was
+                 written down AFTER the outcome was known.
+      rate_range a categorical column against a two-class target: the positive
+                 rate of its own levels. "9.4% ~ 14.7%" says what a correlation
+                 coefficient cannot -- which value is the risky one.
+      corr       anything against a numeric target: |Spearman|, which catches a
+                 monotone relationship that is not a straight line.
+
+    Returns None rather than a zero when the question does not apply (the
+    target itself, an identifier, a column with one value, too few rows). The
+    screen draws "—" there; a zero would read as "measured, and unrelated".
+    """
+    pair = pd.DataFrame({'x': series, 'y': y}).dropna()
+    if len(pair) < MIN_RELATION_ROWS or pair['x'].nunique() < 2:
+        return None
+
+    if target_kind == 'regression':
+        x = pd.to_numeric(pair['x'], errors='coerce') if kind != 'categorical' else None
+        if x is not None:
+            ok = x.notna()
+            if ok.sum() < MIN_RELATION_ROWS or x[ok].nunique() < 2:
+                return None
+            rho = x[ok].corr(pair['y'][ok], method='spearman')
+            return None if pd.isna(rho) else {'kind': 'corr', 'value': abs(float(rho))}
+        groups = pair.groupby(pair['x'].astype(str))['y']
+        means = groups.mean()
+        if len(means) < 2:
+            return None
+        return {
+            'kind': 'mean_range',
+            'min': float(means.min()),
+            'max': float(means.max()),
+            'levels': _levels(groups.mean(), groups.size()),
+        }
+
+    # Two classes: the positive one is the minority, which is the one the
+    # screen is about ("이탈률"). Multiclass gets no single rate to quote.
+    classes = pair['y'].astype(str).value_counts()
+    if len(classes) != 2:
+        return None
+    positive = str(classes.index[-1])
+    hit = (pair['y'].astype(str) == positive)
+
+    if kind == 'categorical' or not pd.api.types.is_numeric_dtype(pair['x']):
+        groups = hit.groupby(pair['x'].astype(str))
+        rates = groups.mean() * 100
+        if len(rates) < 2:
+            return None
+        return {
+            'kind': 'rate_range',
+            'positive': positive,
+            'min': float(rates.min()),
+            'max': float(rates.max()),
+            'levels': _levels(rates, groups.size()),
+        }
+
+    x = pd.to_numeric(pair['x'], errors='coerce')
+    ok = x.notna()
+    if ok.sum() < MIN_RELATION_ROWS or hit[ok].nunique() < 2:
+        return None
+    # Mann-Whitney U / (n1*n2) is the ROC AUC, and needs no sklearn import:
+    # the rank sum of the positive class says how often a positive row
+    # outranks a negative one, which is what the area under the curve is.
+    ranks = x[ok].rank()
+    pos = hit[ok]
+    n1 = int(pos.sum())
+    n0 = int((~pos).sum())
+    if n1 == 0 or n0 == 0:
+        return None
+    u = float(ranks[pos].sum()) - n1 * (n1 + 1) / 2
+    auc = u / (n1 * n0)
+    return {'kind': 'auc', 'value': max(auc, 1.0 - auc)}
+
+
+def _levels(rates: pd.Series, sizes: pd.Series) -> List[Dict[str, Any]]:
+    """The per-level figures behind a range, biggest level first, capped."""
+    out = []
+    for value, rate in rates.items():
+        out.append({
+            'value': str(value),
+            'rate': float(rate),
+            'count': int(sizes.get(value, 0)),
+        })
+    out.sort(key=lambda d: d['count'], reverse=True)
+    return out[:TOP_CATEGORIES]
+
+
 def _profile_columns(df: pd.DataFrame, bins: int) -> List[Dict[str, Any]]:
     rows = len(df)
     out: List[Dict[str, Any]] = []
@@ -128,6 +240,10 @@ def _profile_columns(df: pd.DataFrame, bins: int) -> List[Dict[str, Any]]:
             'missing': missing,
             'missing_pct': (missing / rows * 100) if rows else 0.0,
             'unique': int(series.nunique(dropna=True)),
+            # Flagged, never dropped: a model that must not use gender is a
+            # decision about the model, and this script does not get to make
+            # it. The screen shows the mark and leaves the column checked.
+            'sensitive': bool(SENSITIVE_NAME.search(str(name))),
         }
 
         # Category shares and a date range. Without these the Data screen's
@@ -300,6 +416,22 @@ def main():
             else None
         )
 
+        # Relation to the target, in a second pass: it is the one per-column
+        # figure that cannot be computed until the target is known, and the
+        # target is only settled here.
+        if target:
+            y = df[target['column']]
+            for c in columns:
+                # Identifiers and dates get none. An id has a different value
+                # per row, so any figure is about the row order. A raw date is
+                # one level per day, which produces a 2%~31% spread read off
+                # a handful of rows each -- the engine turns dates into month
+                # and weekday before it models them, and those are the columns
+                # worth a relation, not the timestamp.
+                if c['name'] == target['column'] or c['kind'] in ('id', 'date'):
+                    continue
+                c['relation'] = _relation(df[c['name']], c['kind'], y, target['kind'])
+
         missing_pct = (missing_cells / total_cells * 100) if total_cells else 0.0
         duplicate_pct = (duplicate_rows / rows * 100) if rows else 0.0
         outlier_pct = (outlier_cells / numeric_cells * 100) if numeric_cells else 0.0
@@ -310,6 +442,10 @@ def main():
             'columns': columns,
             'missing_pct': missing_pct,
             'duplicate_pct': duplicate_pct,
+            # The count as well as the share: the screen says "중복 14행",
+            # and rounding a percentage back into rows is how a 14 becomes
+            # a 13.
+            'duplicate_rows': duplicate_rows,
             'outlier_pct': outlier_pct,
             'kind_counts': kind_counts,
             'suggested_target': suggested,

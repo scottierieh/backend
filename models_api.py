@@ -163,6 +163,25 @@ class PredictRequest(BaseModel):
     # Tuesday. Omitted keeps the stored cut, which keeps every existing caller
     # answering exactly as before.
     threshold: Optional[float] = None
+    # Whether the response should also carry `shapImportance`.
+    #
+    # It is a separate switch from `explain` because the two cost wildly
+    # different amounts and are wanted at different times. Contributions
+    # explain the ONE row that was sent. `shapImportance` is a beeswarm over
+    # BEESWARM_SAMPLE_SIZE rows of the artifact's background -- a hundred
+    # explanations, so about a hundred times the work -- and it is the same
+    # values every call, because the background and its seeds are fixed on the
+    # artifact.
+    #
+    # The Explain screen asks about one case at a time and lets the reader pick
+    # another. Recomputing an unchanged beeswarm for each pick is what made a
+    # pick cost minutes instead of seconds on an AutoGluon predictor. So the
+    # caller may now say "contributions only" and keep the importance it
+    # already has.
+    #
+    # Defaults to None, read as "yes", so every existing caller gets exactly
+    # what it got before.
+    explainImportance: Optional[bool] = None
 
 
 def _fail(status: int, detail: str):
@@ -1168,7 +1187,9 @@ def predict_model(model_id: str, req: PredictRequest):
                 # about: "what matters to this model in general" rather than
                 # "what mattered to this one prediction", which is what
                 # `contributions` above already answers.
-                shap_importance = _compute_beeswarm(ag_estimator, artifact.get('task'), background)
+                if req.explainImportance is not False:
+                    shap_importance = _compute_beeswarm(
+                        ag_estimator, artifact.get('task'), background)
 
         return {
             'predictions': predictions,
@@ -1263,7 +1284,8 @@ def predict_model(model_id: str, req: PredictRequest):
         # Mean |SHAP| over the persisted background sample -- see the
         # matching comment on the AutoGluon branch above for why this is
         # computed here rather than only at train time.
-        shap_importance = _compute_beeswarm(pipeline, task, background)
+        if req.explainImportance is not False:
+            shap_importance = _compute_beeswarm(pipeline, task, background)
 
     return {
         'predictions': [_to_native_type(p) for p in predictions],

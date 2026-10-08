@@ -156,6 +156,13 @@ class PredictRequest(BaseModel):
     artifactUri: str
     rows: list[dict[str, Any]]
     explain: Optional[bool] = False
+    # The cut to answer at, when the caller has moved it from the one chosen
+    # at train time. Sent rather than written back into the artifact: the
+    # artifact records what the fit produced, and where a team decides to draw
+    # the line afterwards is an operating decision they may change on a
+    # Tuesday. Omitted keeps the stored cut, which keeps every existing caller
+    # answering exactly as before.
+    threshold: Optional[float] = None
 
 
 def _fail(status: int, detail: str):
@@ -1143,9 +1150,15 @@ def predict_model(model_id: str, req: PredictRequest):
             # data and applied to the final model, which is what tuning one
             # has always meant.
             t = artifact.get('threshold')
+            # A cut sent with the request still needs the artifact's own
+            # positive_index to mean anything -- "0.29" says nothing without
+            # which column it applies to -- so an override rides on top of the
+            # stored object rather than replacing it.
+            if t is None and req.threshold is not None and label_encoder is not None:
+                t = {'positive_index': 1, 'value': req.threshold}
             if t and label_encoder is not None and proba.shape[1] == 2:
                 idx = int(t.get('positive_index', 1))
-                cut = float(t.get('value', 0.5))
+                cut = float(req.threshold if req.threshold is not None else t.get('value', 0.5))
                 classes = list(label_encoder.classes_)
                 predictions = [
                     _to_native_type(classes[idx] if row[idx] >= cut else classes[1 - idx])

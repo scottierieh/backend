@@ -100,6 +100,12 @@ _DEFAULT_METRIC = {'classification': 'accuracy', 'regression': 'root_mean_square
 # a decision rather than a side effect of what happens to be installed.
 _NO_TORCH = ['NN_TORCH', 'FASTAI']
 
+# Sealed (score, outcome) pairs sent per model before thinning. A pair is two
+# small numbers, so ten thousand of them per model is a few hundred KB across a
+# board -- enough for a curve with a point at every row, and short of a
+# response that is slow to send.
+SEALED_SCORED_MAX = 10000
+
 # Regularisation strengths for the linear model, as fixed values rather than a
 # search space. AutoGluon trains one model per dict in the list, so this walks
 # C without turning on HPO -- and a search space would not merely be ignored
@@ -298,6 +304,36 @@ def _compute_pdp(predictor, df: pd.DataFrame, features: list, task_type: str,
         })
     return out or None
 
+
+
+def _sealed_scored(y_true, proba) -> dict:
+    """The sealed (score, outcome) pairs themselves, not just cuts through them.
+
+    `sealed_points` above is nine measured cuts, which cannot answer "how much
+    of the answer sits in the top 10%" -- that needs a count at every row --
+    and cannot be resampled for a range, because resampling nine points gives
+    a range that steps between them and reads far steadier than the data is.
+    The screens that read this (gain and lift, the profit curve, the margin
+    spread) were written against this field; until it was sent they drew
+    nothing or fell back to the nine.
+
+    Thinned by an even stride past the cap rather than a random draw: the same
+    response twice gives the same curve, and a file that arrives grouped by
+    outcome still thins to the same mix. `sampled` travels with it, so the
+    screen can say the curve is off a thinned sample instead of implying it
+    read every row.
+    """
+    n_total = int(len(proba))
+    step = 1 if n_total <= SEALED_SCORED_MAX else int(np.ceil(n_total / SEALED_SCORED_MAX))
+    pred = [round(float(v), 6) for v in proba[::step]]
+    actual = [int(v) for v in y_true[::step]]
+    return {
+        'n': len(pred),
+        'n_total': n_total,
+        'sampled': step > 1,
+        'pred': pred,
+        'actual': actual,
+    }
 
 def _points_at(y_true, proba, cuts) -> list:
     """Operating points on the sealed rows, in counts as well as ratios.
@@ -627,6 +663,7 @@ def main():
                                                    if 0.0 < float(c) < 1.0})
                                     if cuts:
                                         m['sealed_points'] = _points_at(y_h, score_h, cuts)
+                                    m['sealed_scored'] = _sealed_scored(y_h, score_h)
                                 except Exception:
                                     continue
                             # The calibration and subgroup checks describe the

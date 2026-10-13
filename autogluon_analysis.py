@@ -100,6 +100,60 @@ _DEFAULT_METRIC = {'classification': 'accuracy', 'regression': 'root_mean_square
 # a decision rather than a side effect of what happens to be installed.
 _NO_TORCH = ['NN_TORCH', 'FASTAI']
 
+# Regularisation strengths for the linear model, as fixed values rather than a
+# search space. AutoGluon trains one model per dict in the list, so this walks
+# C without turning on HPO -- and a search space would not merely be ignored
+# here, it raises: "Any provided search spaces will error if
+# hyperparameter_tune_kwargs=None", which is this script's call. Each value
+# becomes its own leaderboard row, which is also what the screen wants: how the
+# score moves with C is the readable part.
+#
+# The range reaches well below sklearn's default C=1 on purpose. On a small,
+# low-dimensional table a strongly regularised logistic regression is often
+# the model to beat, and AutoGluon's own default search space starts at 0.1 --
+# above where such a winner tends to sit.
+_LR_GRID = [{'C': c, 'penalty': 'L2'} for c in (0.003, 0.01, 0.03, 0.1, 0.3, 1, 3)]
+
+
+def _hyperparameters_for(preset: str):
+    """The preset's own portfolio, plus a linear model.
+
+    No AutoGluon portfolio carries one: `best_quality` maps to `zeroshot`,
+    which is CAT/FASTAI/GBM/NN_TORCH/RF/XGB/XT, and the `default` config is the
+    same list. So every board this engine has ever produced was chosen from
+    trees and nets only -- on a small table that can exclude the best model
+    before the search starts.
+
+    Returns None when the preset's portfolio cannot be resolved, which leaves
+    AutoGluon to do exactly what it did before.
+    """
+    try:
+        from autogluon.tabular.configs.hyperparameter_configs import get_hyperparameter_config
+        from autogluon.tabular.configs.presets_configs import (
+            tabular_presets_alias, tabular_presets_dict,
+        )
+    except ImportError:
+        return None
+    # 'best_quality' is a key; 'best' and 'bq' are aliases for it.
+    resolved = tabular_presets_alias.get(preset, preset)
+    if resolved not in tabular_presets_dict:
+        return None
+    # A preset that names no portfolio (medium_quality is one) leaves AutoGluon
+    # on its own 'default' config, so that is what has to be extended -- not
+    # nothing, which would quietly skip the linear model for that preset.
+    name = tabular_presets_dict[resolved].get('hyperparameters', 'default')
+    if not isinstance(name, str):
+        return None
+    try:
+        config = get_hyperparameter_config(name)
+    except ValueError:
+        return None
+    if not isinstance(config, dict):
+        return None
+    config = dict(config)
+    config.setdefault('LR', _LR_GRID)
+    return config
+
 
 class _StderrSink:
     """Holds whatever AutoGluon writes to stderr while it is fitting.
@@ -413,6 +467,18 @@ def main():
         n_input = len(df_all)
         df = df_all[list(features) + [target]].dropna(subset=[target]).reset_index(drop=True)
         n_target_missing_dropped = n_input - len(df)
+
+        # Repeated rows, dropped only when the caller asks. A duplicate is
+        # counted twice by every fold and every score, so leaving them in
+        # quietly weights those rows double -- but removing them changes the
+        # data a previous run was ranked on, so this script does not decide it.
+        # The Data screen shows the count and offers the choice; this flag is
+        # that choice arriving.
+        n_duplicates_dropped = 0
+        if bool(payload.get('drop_duplicate_rows')):
+            before = len(df)
+            df = df.drop_duplicates().reset_index(drop=True)
+            n_duplicates_dropped = before - len(df)
         if len(df) < 50:
             raise ValueError(
                 f'At least 50 rows with a target are required; {len(df)} usable of {n_input}.'
@@ -469,6 +535,7 @@ def main():
                     df,
                     time_limit=time_limit,
                     presets=preset,
+                    hyperparameters=_hyperparameters_for(preset),
                     excluded_model_types=_NO_TORCH,
                 )
 
@@ -677,15 +744,74 @@ def main():
             # from, so these numbers run high and run highest exactly where
             # they would mislead. A ranking is still worth having; a ranking
             # presented as held-out evidence is not.
+            # ---- the data checks every other script already runs -------
+            #
+            # Sixteen scripts call compute_guardrails; this one never did, and
+            # Auto Lab's only engine is this one. So the leaderboard's "any
+            # column that gives the answer away?" row has been reporting
+            # "clear" for every Auto Lab run while checking nothing -- a false
+            # all-clear, which is worse than an empty panel.
+            #
+            # Run on the frame that was fitted, after the duplicate drop, so it
+            # describes the data the board was ranked on.
+            try:
+                from guardrails import compute_guardrails
+                guardrails = compute_guardrails(
+                    df[list(features)], df[target], list(features), task_type,
+                    {'accuracy': None, 'r2': None},
+                )
+            except Exception:
+                guardrails = []
+            redundant_pairs = [
+                g['pair'] for g in guardrails
+                if g.get('id') == 'redundant_pair' and isinstance(g.get('pair'), list)
+                and len(g['pair']) == 2
+            ]
+
             perm_importance = None
             perm_scope = None
             try:
-                fi = predictor.feature_importance(df, silent=True)
+                # Features that say the same thing are measured together.
+                # Shuffling one of a correlated pair leaves the other to answer,
+                # so both come back near zero and the information they share
+                # looks unimportant. A tuple makes AutoGluon shuffle the group
+                # in one go: "This importance will differ from adding the
+                # individual importances of each feature in feature_list, and
+                # will be more accurate to the overall group importance."
+                #
+                # The pairs come from the guardrail that found them, so this
+                # does not re-derive the statistic. Date parts need no group:
+                # at feature_stage='original' (the default) the raw column is
+                # shuffled and the engine's own expansion runs afterwards, so
+                # the parts it derives from a date already move together.
+                groups, grouped = [], set()
+                for pair in (redundant_pairs or []):
+                    a, b = pair
+                    if a in grouped or b in grouped:
+                        continue
+                    groups.append((f'{a} + {b}', [a, b]))
+                    grouped.update((a, b))
+                ask = [c for c in features if c not in grouped] + groups
+
+                # Five shuffle sets is AutoGluon's default without a time
+                # limit, and its own docstring asks for at least ten before
+                # trusting the spread -- which this response reports.
+                fi = predictor.feature_importance(
+                    df, features=ask or None, num_shuffle_sets=10, silent=True,
+                )
                 perm_importance = [
                     {
                         'feature': str(name),
                         'importance_mean': _finite(row.get('importance')),
                         'importance_std': _finite(row.get('stddev')),
+                        # Already computed: include_confidence_band defaults to
+                        # True at a 99% level, and the screen was drawing only
+                        # the standard deviation while these sat unread.
+                        'importance_p': _finite(row.get('p_value')),
+                        'importance_low': _finite(row.get('p99_low')),
+                        'importance_high': _finite(row.get('p99_high')),
+                        'shuffles': _finite(row.get('n')),
+                        'grouped': str(name) in {g[0] for g in groups},
                     }
                     for name, row in fi.iterrows()
                 ]
@@ -734,6 +860,7 @@ def main():
                 # The contract the Explain screen already reads. None when
                 # AutoGluon could not compute it -- the screen draws nothing
                 # rather than a ranking that is not there.
+                'guardrails': guardrails,
                 'perm_importance': perm_importance,
                 # None for three or more classes: a single curve cannot follow
                 # one class there, and the screen draws nothing rather than a
@@ -765,6 +892,7 @@ def main():
                 'row_counts': {
                     'n_input': n_input,
                     'n_target_missing_dropped': n_target_missing_dropped,
+                    'n_duplicates_dropped': n_duplicates_dropped,
                     # AutoGluon owns its own train/validation split inside the
                     # rows it was handed, and does not report the sizes, so
                     # these describe what it received rather than what it made

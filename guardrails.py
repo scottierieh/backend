@@ -18,10 +18,17 @@ src/lib/types/model-result.ts):
     target_duplicate  (critical) -- a feature is (near-)identical to the target
     perfect_score     (warning)  -- test score is suspiciously perfect
     class_imbalance   (warning)  -- smallest class is very underrepresented
+    redundant_pair    (warning)  -- two features carry the same information
 """
 
 import numpy as np
 import pandas as pd
+
+
+# Two features above this absolute correlation are treated as one piece of
+# information. Deliberately below the .97 used against the target: that one is
+# a leakage alarm and should be rare, this one is a modelling note.
+REDUNDANT_PAIR_R = 0.95
 
 
 def _to_numeric_series(s: pd.Series) -> pd.Series:
@@ -70,6 +77,49 @@ def compute_guardrails(X: pd.DataFrame, y: pd.Series, feature_names, task_type: 
                     'title': 'Possible data leakage',
                     'detail': f"'{col}' correlates {corr:.3f} with the target — check whether it's computed from, or only known after, the target (a common source of unrealistically high scores).",
                     'feature': col,
+                })
+    except Exception:
+        pass
+
+    # Two features that say the same thing. The check above only looks at each
+    # feature against the target, which is blind to this: a column and its own
+    # restatement (a signup date beside a tenure in months, a price beside a
+    # log price) both pass it, and then permutation importance reports both as
+    # unimportant because shuffling either one leaves the other to answer. The
+    # pair is reported, not removed -- which of the two to keep is the caller's
+    # call, and the importance step uses the pairs to measure them together.
+    try:
+        numeric = {}
+        for col in feature_names:
+            if col not in X.columns:
+                continue
+            vals = _to_numeric_series(X[col])
+            if vals.std() == 0 or vals.isna().all():
+                continue
+            numeric[col] = vals
+        names = list(numeric)
+        seen = set()
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                r = float(np.corrcoef(numeric[a].values, numeric[b].values)[0, 1])
+                if np.isnan(r) or abs(r) <= REDUNDANT_PAIR_R:
+                    continue
+                key = (a, b)
+                if key in seen:
+                    continue
+                seen.add(key)
+                warnings.append({
+                    'id': 'redundant_pair',
+                    'severity': 'warning',
+                    'title': 'Two features carry the same information',
+                    'detail': (
+                        f"'{a}' and '{b}' correlate {r:.3f} with each other. Importance "
+                        f"splits between them and both look smaller than they are; "
+                        f"consider keeping one."
+                    ),
+                    'feature': a,
+                    'pair': [a, b],
+                    'r': round(r, 4),
                 })
     except Exception:
         pass

@@ -85,4 +85,30 @@ if not all(isinstance(v, float) for v in got['pred']):
 if not all(isinstance(v, int) for v in got['actual']):
     fail('actual에 int가 아닌 값이 섞였습니다 — JSON으로 나가지 못합니다')
 
+# ── 응답 전체의 상한 ──────────────────────────────────────────────────
+# 모델당 상한만 있으면 모델 수만큼 곱해집니다. 120초 best_quality 한 번에
+# 44개가 돌아왔으니 가정이 아니라 실측입니다.
+for n_models in (1, 4):
+    if A._sealed_cap(n_models) != A.SEALED_SCORED_MAX:
+        fail(f'모델 {n_models}개에서 상한이 {A._sealed_cap(n_models)}입니다 (기대 {A.SEALED_SCORED_MAX})')
+
+for n_models in (44, 100, 500):
+    cap = A._sealed_cap(n_models)
+    if cap * n_models > A.SEALED_SCORED_TOTAL:
+        fail(f'모델 {n_models}개 × 상한 {cap} = {cap * n_models}쌍으로 전체 상한을 넘깁니다')
+
+# 모델이 아무리 많아도 한 쌍은 보냅니다 — 0 이면 화면이 「서버가 낡았다」고
+# 잘못 말합니다. 보낼 것이 없는 게 아니라 잘라낸 것입니다.
+if A._sealed_cap(10_000_000) < 1:
+    fail('모델이 아주 많을 때 상한이 0이 됩니다')
+
+# 상한이 실제로 쓰이는지 — 인자를 받고도 무시하면 위 계산은 장식입니다.
+_got = A._sealed_scored(np.zeros(1000, dtype=int), np.linspace(0, 1, 1000), 100)
+if _got['n'] > 100:
+    fail(f"상한 100을 넘겨 {_got['n']}쌍을 보냅니다 — 인자를 무시합니다")
+if not _got['sampled']:
+    fail('상한에 걸려 솎아냈는데 sampled가 거짓입니다')
+if _got['n_total'] != 1000:
+    fail(f"원래 행 수를 {_got['n_total']}로 보고했습니다")
+
 print('✅ 봉인 쌍 검사 통과')

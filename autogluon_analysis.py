@@ -100,11 +100,22 @@ _DEFAULT_METRIC = {'classification': 'accuracy', 'regression': 'root_mean_square
 # a decision rather than a side effect of what happens to be installed.
 _NO_TORCH = ['NN_TORCH', 'FASTAI']
 
-# Sealed (score, outcome) pairs sent per model before thinning. A pair is two
-# small numbers, so ten thousand of them per model is a few hundred KB across a
-# board -- enough for a curve with a point at every row, and short of a
-# response that is slow to send.
+# Sealed (score, outcome) pairs. A pair costs about 13 bytes of JSON.
+#
+# Two limits, because one is not enough. The per-model cap keeps a single
+# enormous holdout from filling the response on its own. The total cap exists
+# because the first one is multiplied by however many models the search
+# returns, and that number is not small: a 120s best_quality run on 720 rows
+# came back with 44. At ten thousand each that is 5.7 MB of pairs for a board
+# the reader will look at one model of at a time.
+#
+# 150,000 pairs is about 1.9 MB -- large for a response and small next to the
+# alternative, which is the screens falling back to nine coarse cuts. A board
+# of four models still gets the full ten thousand each; one of forty-four gets
+# about 3,400, which is far more than the ten slices a gain curve draws and
+# enough for the profit curve to step at every count a team would act on.
 SEALED_SCORED_MAX = 10000
+SEALED_SCORED_TOTAL = 150000
 
 # Regularisation strengths for the linear model, as fixed values rather than a
 # search space. AutoGluon trains one model per dict in the list, so this walks
@@ -306,7 +317,18 @@ def _compute_pdp(predictor, df: pd.DataFrame, features: list, task_type: str,
 
 
 
-def _sealed_scored(y_true, proba) -> dict:
+def _sealed_cap(n_models: int) -> int:
+    """Pairs each model may send, once the board's size is known.
+
+    Dividing the total by the model count rather than handing it out first
+    come, first served: the screens compare models against each other, so a
+    board where the first few carry every row and the rest carry none would
+    draw curves that are not comparable.
+    """
+    return max(1, min(SEALED_SCORED_MAX, SEALED_SCORED_TOTAL // max(1, n_models)))
+
+
+def _sealed_scored(y_true, proba, cap: int = SEALED_SCORED_MAX) -> dict:
     """The sealed (score, outcome) pairs themselves, not just cuts through them.
 
     `sealed_points` above is nine measured cuts, which cannot answer "how much
@@ -324,7 +346,7 @@ def _sealed_scored(y_true, proba) -> dict:
     read every row.
     """
     n_total = int(len(proba))
-    step = 1 if n_total <= SEALED_SCORED_MAX else int(np.ceil(n_total / SEALED_SCORED_MAX))
+    step = 1 if n_total <= cap else int(np.ceil(n_total / cap))
     pred = [round(float(v), 6) for v in proba[::step]]
     actual = [int(v) for v in y_true[::step]]
     return {
@@ -652,6 +674,7 @@ def main():
                                  if predictor.positive_class in labels_h else labels_h[-1])
                         y_h = (holdout_df[target] == pos_h).astype(int).to_numpy()
                         if len(np.unique(y_h)) == 2:
+                            cap = _sealed_cap(len(models))
                             for m in models:
                                 try:
                                     pr = predictor.predict_proba(holdout_df, model=m['name'])
@@ -663,7 +686,7 @@ def main():
                                                    if 0.0 < float(c) < 1.0})
                                     if cuts:
                                         m['sealed_points'] = _points_at(y_h, score_h, cuts)
-                                    m['sealed_scored'] = _sealed_scored(y_h, score_h)
+                                    m['sealed_scored'] = _sealed_scored(y_h, score_h, cap)
                                 except Exception:
                                     continue
                             # The calibration and subgroup checks describe the

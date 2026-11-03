@@ -63,7 +63,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, f1_score, r2_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, f1_score, r2_score, mean_absolute_error, mean_squared_error
 
 from analysis_common import _to_native_type, balanced_weighting
 from algorithm_registry import build_estimator
@@ -143,6 +143,10 @@ class TrainRequest(BaseModel):
     timeLimit: Optional[int] = None
     evalMetric: Optional[str] = None
     preset: Optional[str] = None
+    # 'log1p' fits on log(1+y) and answers in y's own units -- the same switch
+    # autogluon_analysis.py takes as `target_transform`, so the model saved
+    # from a run is fitted the way that run was. Regression only.
+    targetTransform: Optional[str] = None
 
     # Which mistake the caller would rather make, and optionally how much of
     # the smaller class they need to find. See _choose_threshold. Absent keeps
@@ -541,12 +545,16 @@ class AutoGluonEstimator:
     Both are settled here, once, instead of at three call sites.
     """
 
-    def __init__(self, predictor, ag_model: Optional[str] = None):
+    def __init__(self, predictor, ag_model: Optional[str] = None, inverse=None):
         self._predictor = predictor
         self._model = ag_model
+        # Undoes a target transform, so a contribution is measured in the
+        # target's own units rather than the log units the model was fitted in.
+        self._inverse = inverse
 
     def predict(self, frame: pd.DataFrame):
-        return np.asarray(self._predictor.predict(frame, model=self._model))
+        out = np.asarray(self._predictor.predict(frame, model=self._model))
+        return self._inverse(out.astype(float)) if self._inverse is not None else out
 
     def predict_proba(self, frame: pd.DataFrame):
         return np.asarray(self._predictor.predict_proba(frame, model=self._model))
@@ -790,6 +798,19 @@ def train_model(model_id: str, req: TrainRequest):
 
         ag_metric = req.evalMetric or ('accuracy' if req.task == 'classification' else 'root_mean_squared_error')
         ag_frame = df[req.features + [req.target]].dropna(subset=[req.target]).reset_index(drop=True)
+
+        transform = req.targetTransform or 'none'
+        if transform not in ('none', 'log1p'):
+            _fail(400, f"Unsupported targetTransform '{transform}' — expected 'none' or 'log1p'")
+        if transform == 'log1p' and req.task != 'regression':
+            transform = 'none'
+        if transform == 'log1p':
+            y_num = pd.to_numeric(ag_frame[req.target], errors='coerce')
+            if y_num.isna().any() or (y_num < 0).any():
+                _fail(400, 'targetTransform log1p needs a numeric target with no negative values.')
+            ag_frame = ag_frame.copy()
+            ag_frame[req.target] = np.log1p(y_num.astype(float))
+        inverse = np.expm1 if transform == 'log1p' else None
         work_dir = tempfile.mkdtemp(prefix='ag_train_')
         try:
             try:
@@ -816,6 +837,32 @@ def train_model(model_id: str, req: TrainRequest):
             if req.agModel and ag_model is None:
                 _fail(400, f"Model '{req.agModel}' is not on this predictor. Have: {available}")
 
+            # The 90% band /predict draws around a regression answer, calibrated
+            # on the served model's own out-of-fold residuals (split-conformal),
+            # in the space the model was fitted in. None when the predictor
+            # holds no out-of-fold predictions -- a band without a calibration
+            # set would be a guess with a percentage on it.
+            interval: Optional[dict] = None
+            if req.task == 'regression':
+                try:
+                    from autogluon_analysis import _conformal_half_width, INTERVAL_LEVEL
+                    served = ag_model or predictor.model_best
+                    oof_pred = predictor.predict_oof(model=served)
+                    y_fit = ag_frame[req.target].to_numpy(dtype=float)[oof_pred.index.to_numpy()]
+                    q = _conformal_half_width(y_fit - oof_pred.to_numpy(dtype=float), INTERVAL_LEVEL)
+                    if q is not None:
+                        interval = {
+                            'level': INTERVAL_LEVEL,
+                            'method': 'split_conformal_oof',
+                            'half_width': float(q),
+                            'space': transform if transform != 'none' else 'identity',
+                            'n_calibration': int(len(oof_pred)),
+                            'coverage': None,
+                            'n_holdout': 0,
+                        }
+                except Exception:
+                    interval = None
+
             metrics: dict[str, float] = {}
             # The cut, chosen below from the same held-out rows the metrics
             # come from. None when there are none to choose on, which is the
@@ -838,12 +885,37 @@ def train_model(model_id: str, req: TrainRequest):
                 h = h[req.features + [req.target]].dropna(subset=[req.target])
                 if len(h) >= MIN_HOLDOUT_ROWS:
                     try:
-                        scored = predictor.evaluate(h, silent=True)
-                        metrics = {k: _to_native_type(float(v)) for k, v in scored.items()
-                                   if isinstance(v, (int, float)) and not isinstance(v, bool)}
+                        if inverse is not None:
+                            # evaluate() would score log-unit predictions; these
+                            # keys and signs are the ones it returns, in y's units.
+                            y_h = pd.to_numeric(h[req.target], errors='coerce').to_numpy(dtype=float)
+                            p_h = inverse(np.asarray(predictor.predict(h, model=ag_model), dtype=float))
+                            metrics = {
+                                'root_mean_squared_error': -float(np.sqrt(mean_squared_error(y_h, p_h))),
+                                'mean_absolute_error': -float(mean_absolute_error(y_h, p_h)),
+                                'r2': float(r2_score(y_h, p_h)),
+                            }
+                        else:
+                            scored = predictor.evaluate(h, silent=True)
+                            metrics = {k: _to_native_type(float(v)) for k, v in scored.items()
+                                       if isinstance(v, (int, float)) and not isinstance(v, bool)}
                         metrics['n_eval'] = float(len(h))
                     except Exception:
                         pass  # best-effort, same as the estimator path
+
+                    # How often the band held on rows the model never saw. The
+                    # level is a promise; this is the check on it.
+                    if interval is not None:
+                        try:
+                            y_h = pd.to_numeric(h[req.target], errors='coerce').to_numpy(dtype=float)
+                            raw = np.asarray(predictor.predict(h, model=ag_model), dtype=float)
+                            lo, hi = raw - interval['half_width'], raw + interval['half_width']
+                            if inverse is not None:
+                                lo, hi = inverse(lo), inverse(hi)
+                            interval['coverage'] = float(((y_h >= lo) & (y_h <= hi)).mean())
+                            interval['n_holdout'] = int(len(h))
+                        except Exception:
+                            pass
 
                     # The cut this model will answer at.
                     #
@@ -912,6 +984,10 @@ def train_model(model_id: str, req: TrainRequest):
             # the same reason the estimator path stores it: predict() is argmax
             # otherwise, and on an uneven target argmax is "no".
             'threshold': threshold,
+            # Read by /predict: undo the fit's transform, and draw the band.
+            'target_transform': transform,
+            'interval': ({k: interval[k] for k in ('level', 'half_width', 'space')}
+                         if interval else None),
         }
         try:
             artifact_uri = model_store.save_pipeline(model_id, artifact)
@@ -944,6 +1020,10 @@ def train_model(model_id: str, req: TrainRequest):
             # Computed just above and, until this line existed, thrown away:
             # every screen that reads a cut found nothing on an Auto Lab model.
             'threshold': threshold,
+            'targetTransform': transform,
+            # With its coverage on the sealed rows, so the screen can print the
+            # promise and the check side by side.
+            'interval': interval,
         }
 
 
@@ -1123,8 +1203,26 @@ def predict_model(model_id: str, req: PredictRequest):
         # `model=None` serves AutoGluon's own best, which is what a caller who
         # never picked one gets.
         ag_model = artifact.get('ag_model')
+        inverse = np.expm1 if artifact.get('target_transform') == 'log1p' else None
+        interval = None
         try:
-            predictions = [_to_native_type(v) for v in predictor.predict(X, model=ag_model).tolist()]
+            raw_pred = predictor.predict(X, model=ag_model)
+            if artifact.get('task') == 'regression':
+                raw = np.asarray(raw_pred, dtype=float)
+                values = inverse(raw) if inverse is not None else raw
+                predictions = [_to_native_type(float(v)) for v in values]
+                band = artifact.get('interval')
+                if band and band.get('half_width') is not None:
+                    lo, hi = raw - band['half_width'], raw + band['half_width']
+                    if inverse is not None:
+                        lo, hi = inverse(lo), inverse(hi)
+                    interval = {
+                        'level': band.get('level'),
+                        'lower': [_to_native_type(float(v)) for v in lo],
+                        'upper': [_to_native_type(float(v)) for v in hi],
+                    }
+            else:
+                predictions = [_to_native_type(v) for v in raw_pred.tolist()]
         except Exception as e:
             _fail(422, f'Prediction failed: {e}')
 
@@ -1176,7 +1274,7 @@ def predict_model(model_id: str, req: PredictRequest):
         if req.explain:
             background = artifact.get('background')
             if background is not None:
-                ag_estimator = AutoGluonEstimator(predictor, ag_model)
+                ag_estimator = AutoGluonEstimator(predictor, ag_model, inverse)
                 contributions = _compute_row_contributions(
                     ag_estimator, artifact.get('task'), background, X)
                 # Mean |SHAP| over the persisted background sample itself --
@@ -1196,6 +1294,9 @@ def predict_model(model_id: str, req: PredictRequest):
             'probabilities': probabilities,
             'shapContributions': contributions,
             'shapImportance': shap_importance,
+            # Regression only, and only for a model saved with a calibrated
+            # band: {level, lower[], upper[]} per row, in the target's units.
+            'interval': interval,
         }
 
 

@@ -531,6 +531,13 @@ def _score(metric: str, y_true, pred=None, pos_score=None, positive=None):
     return None
 
 
+def _cv_form(value, metric: str):
+    """A score in the higher-is-better form `cv_mean` travels in."""
+    if value is None:
+        return None
+    return -value if metric in _NEGATED else value
+
+
 def _cv_partition(y: pd.Series, task_type: str) -> np.ndarray:
     """Slice id per training row, stratified for classification, fixed seed."""
     from sklearn.model_selection import StratifiedKFold, KFold
@@ -1035,7 +1042,14 @@ def main():
                         # the preset bags; reporting it here lets the board show
                         # stability beside the score, as it does for the other
                         # fourteen.
-                        'cv_mean': score,
+                        #
+                        # Higher-is-better, as the other fourteen send it and as
+                        # automl-client.ts reads it: an error metric comes back
+                        # negated (RMSE 3.0 as -3.0), which is score_val's own
+                        # form. Sending the positive error here is what printed
+                        # "RMSE -148308" on the board -- the screen flipped a
+                        # sign that had already been flipped.
+                        'cv_mean': _cv_form(score, eval_metric),
                     },
                     'fit_seconds': _finite(r.get('fit_time')),
                     'predict_seconds': _finite(r.get('pred_time_val')),
@@ -1093,7 +1107,7 @@ def main():
                     if transform:
                         cv_score = _score(eval_metric, y_o, pred_o)
                         m['metrics'][metric_field] = cv_score
-                        m['metrics']['cv_mean'] = cv_score
+                        m['metrics']['cv_mean'] = _cv_form(cv_score, eval_metric)
                     if task_type == 'regression':
                         m['metrics'].setdefault('rmse', _score('root_mean_squared_error', y_o, pred_o))
                         m['metrics'].setdefault('mae', _score('mean_absolute_error', y_o, pred_o))
@@ -1106,7 +1120,13 @@ def main():
 
                     fold_scores = _fold_scores(eval_metric, folds[idx], y_o, pred_o, pos_o, positive)
                     if fold_scores:
-                        m['cv_results'] = {'cv_scoring': eval_metric, 'fold_scores': fold_scores}
+                        # Same form as cv_mean (higher is better), so their
+                        # mean sits beside it and a resample can rank on it.
+                        m['cv_results'] = {
+                            'cv_scoring': eval_metric,
+                            'fold_scores': [_cv_form(v, eval_metric) for v in fold_scores],
+                            'higher_is_better': True,
+                        }
                         m['metrics']['cv_std'] = _finite(np.std(fold_scores, ddof=1))
                 except Exception:
                     continue

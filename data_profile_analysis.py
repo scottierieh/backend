@@ -323,7 +323,11 @@ def _profile_target(df: pd.DataFrame, column: str,
     # A numeric column with many distinct values is a regression target; a
     # numeric flag with two levels is still classification.
     if meta and meta['kind'] == 'numeric' and meta['unique'] > MAX_CLASSES:
-        return {'column': column, 'kind': 'regression', 'classes': [], 'minority_pct': None}
+        # The same Fisher-Pearson skew the column's own profile carries,
+        # repeated here because it is the figure that decides whether the
+        # setup screen recommends fitting on log(1+y).
+        return {'column': column, 'kind': 'regression', 'classes': [], 'minority_pct': None,
+                'skew': meta.get('skew')}
 
     counts = values.astype(str).value_counts()
     total = int(counts.sum())

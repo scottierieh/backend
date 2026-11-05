@@ -841,6 +841,19 @@ def _linear_coefficients(frame: pd.DataFrame, target: str, features: list, task_
     return rows, meta
 
 
+def _library_versions() -> dict:
+    """Installed versions of the packages that decide what the board holds."""
+    from importlib import metadata
+    out = {'python': sys.version.split()[0]}
+    for pkg in ('autogluon.tabular', 'lightgbm', 'catboost', 'xgboost',
+                'scikit-learn', 'numpy', 'pandas'):
+        try:
+            out[pkg] = metadata.version(pkg)
+        except Exception:
+            out[pkg] = None
+    return out
+
+
 def _detect_task_type(y: pd.Series) -> str:
     vals = y.dropna()
     if vals.empty:
@@ -1658,6 +1671,10 @@ def main():
                     # because it is the one case where more time would help.
                     'hit_limit': bool(seconds_used >= time_limit - 5),
                 },
+                # What produced this board, so a rerun can be told whether it
+                # ran on the same stack -- the report otherwise has to say it
+                # cannot promise the same pick under the same settings.
+                'versions': _library_versions(),
                 'error': None,
             }
             print(json.dumps(response, default=_to_native_type))

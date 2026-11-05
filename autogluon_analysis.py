@@ -711,7 +711,11 @@ def _learning_curve(frame: pd.DataFrame, target: str, task_type: str, eval_metri
     if remaining < 40:
         return {'skipped': 'time', 'seconds_left': _finite(remaining)}
     per_fit = max(8, min(45, int(remaining / len(LEARNING_FRACTIONS)) - 3))
+    # train/cv are the metric in its own form (RMSE as a positive error), not
+    # the higher-is-better form cv_mean and fold_scores use -- so say which
+    # way is up, as cv_results does, instead of leaving the screen to guess.
     out = {'metric': eval_metric, 'model': 'LightGBM', 'scope': 'oof_5fold',
+           'higher_is_better': eval_metric not in _NEGATED,
            'fractions': [], 'n_rows': [], 'train': [], 'cv': []}
     for frac in LEARNING_FRACTIONS:
         if time.time() + per_fit > deadline:

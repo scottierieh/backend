@@ -19,6 +19,15 @@ joblib==1.4.2
 # possibly different, Cloud Run instance.
 google-cloud-storage==2.18.2
 scikit-learn-extra==0.3.0
+# hdbscan · minisom: hdbscan_analysis.py · som_analysis.py import these and, when
+# they are missing, silently fall back to a DBSCAN approximation ("Pseudo-GLOSH")
+# and a small numpy SOM. Both were missing here, so the HDBSCAN and SOM analyses
+# never ran the real libraries. hdbscan 0.8.40 ships a cp311 manylinux wheel and
+# accepts numpy>=1.20,<3 (fits the 1.26.4 pin); minisom is pure Python.
+# Checked: both install next to the numpy/scipy/scikit-learn/joblib pins above and
+# fit a toy dataset.
+hdbscan==0.8.40
+minisom==2.3.5
 mlxtend==0.23.3
 statsmodels==0.14.4
 matplotlib==3.9.3

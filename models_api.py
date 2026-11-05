@@ -572,9 +572,35 @@ def _predict_fn_for(estimator, task: Task, columns: list[str], categories: dict[
         frame = _decode_row(data, columns, categories)
         if task == 'classification':
             proba = np.asarray(estimator.predict_proba(frame))
-            return proba[:, 1] if proba.shape[1] == 2 else proba.max(axis=1)
+            # Two classes: the positive class's probability. More than two:
+            # every class's, so the caller can follow ONE class through the
+            # explanation (_toward_predicted). The max over classes this used
+            # to return is not one class's probability: each background row
+            # and each coalition takes the max of a different class, so the
+            # bars of "why was this row called D" summed to a quantity that
+            # was never P(D).
+            return proba[:, 1] if proba.shape[1] == 2 else proba
         return np.asarray(estimator.predict(frame))
     return fn
+
+
+def _toward_predicted(sv) -> tuple[np.ndarray, Optional[np.ndarray]]:
+    """(rows x features) SHAP values, plus each row's explained class index.
+
+    One output (binary, regression): the values as they are, no index. One
+    output per class: each row's values toward the class that row is
+    predicted as -- the argmax of base + sum(values), which is the model's own
+    probability for that row since the explainer is additive -- so a row's
+    bars explain the probability of the class it was called.
+    """
+    values = np.asarray(sv.values)
+    if values.ndim != 3:
+        return values, None
+    base = np.asarray(sv.base_values, dtype=float)
+    if base.ndim == 1:
+        base = np.broadcast_to(base, (values.shape[0], values.shape[2]))
+    k = np.argmax(base + values.sum(axis=1), axis=1)
+    return values[np.arange(values.shape[0]), :, k], k
 
 
 def _compute_beeswarm(estimator, task: Task, X: pd.DataFrame) -> Optional[dict]:
@@ -590,7 +616,9 @@ def _compute_beeswarm(estimator, task: Task, X: pd.DataFrame) -> Optional[dict]:
 
         explainer = shap.Explainer(_predict_fn_for(estimator, task, list(X.columns), categories), background)
         sv = explainer(sample, silent=True)
-        values = np.asarray(sv.values)
+        # More than two classes: each point is toward the class that row is
+        # predicted as, the same reading the row explanation uses.
+        values, _ = _toward_predicted(sv)
 
         features_out = []
         for j, feat in enumerate(X.columns):
@@ -618,17 +646,23 @@ def _compute_row_contributions(estimator, task: Task, background_raw: pd.DataFra
 
         explainer = shap.Explainer(_predict_fn_for(estimator, task, list(rows_raw.columns), categories), background)
         sv = explainer(rows, silent=True)
-        values = np.asarray(sv.values)
+        values, explained = _toward_predicted(sv)
         out = []
         for i in range(len(rows)):
-            out.append([
+            entries = [
                 {
                     'feature': feat,
                     'value': _to_native_type(float(rows[feat].iloc[i])),
                     'shap': _to_native_type(float(values[i, j])),
                 }
                 for j, feat in enumerate(rows_raw.columns)
-            ])
+            ]
+            if explained is not None:
+                # Position in the response's `probabilities` row (class
+                # order), so the screen can name the class these bars are for.
+                for e in entries:
+                    e['classIndex'] = int(explained[i])
+            out.append(entries)
         return out
     except Exception:
         return None

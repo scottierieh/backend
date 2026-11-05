@@ -34,6 +34,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 from hb_mnl import run_hb_mnl
+from price_levels import price_slope
 
 router = APIRouter()
 
@@ -155,22 +156,9 @@ def _byo_summary(attributes, responses):
 
 
 def _wtp(part_worths_flat, price_name):
-    import numpy as np
-    price = [p for p in part_worths_flat if p["attribute"] == price_name]
-    if len(price) < 2:
-        return None
-    prices, utils = [], []
-    for p in price:
-        try:
-            prices.append(float("".join(c for c in str(p["level"]) if c.isdigit() or c in ".,")))
-            utils.append(p["value"])
-        except (ValueError, TypeError):
-            continue
-    if len(prices) < 2:
-        return None
-    Xp = np.vstack([np.ones(len(prices)), np.array(prices)]).T
-    slope = np.linalg.lstsq(Xp, np.array(utils), rcond=None)[0][1]
-    if abs(slope) < 1e-9:
+    # Price levels are read by price_levels.py, so "12,000원" counts too.
+    slope = price_slope((p["level"], p["value"]) for p in part_worths_flat if p["attribute"] == price_name)
+    if slope is None:
         return None
     return {f"{p['attribute']}_{p['level']}": float(-p["value"] / slope)
             for p in part_worths_flat if p["attribute"] != price_name}

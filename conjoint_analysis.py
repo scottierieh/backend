@@ -410,23 +410,10 @@ def compute_partworths_and_importance(
 
 
 # ─────────────────────────────────────────────────────────────
-# Price Parser
+# Price Parser — price_levels.py, shared with the other conjoint routers
 # ─────────────────────────────────────────────────────────────
 
-import re
-
-def parse_price_value(val) -> Optional[float]:
-    """Extract numeric value from price string like '$799', '1,200원', '€50.99'."""
-    if val is None:
-        return None
-    s = str(val).strip()
-    # Remove currency symbols, commas, spaces
-    cleaned = re.sub(r'[^\d.]', '', s)
-    try:
-        f = float(cleaned)
-        return f if f > 0 else None
-    except (ValueError, TypeError):
-        return None
+from price_levels import parse_price_level
 
 
 # ─────────────────────────────────────────────────────────────
@@ -441,10 +428,18 @@ def compute_wtp_cbc(
     Compute WTP by fitting a model with price as continuous variable.
     WTP_k = -beta_k / beta_price
 
+    The WTP model is the main model with the price dummies swapped for one
+    linear price term — so when the data has a "none" alternative it keeps the
+    same none constant (_ASC_none) the main model was fitted with. Without it
+    the none row (all reference levels, price 0) reads as a free reference
+    product that people keep turning down, and the only way the model can
+    explain that is by making price matter less: beta_price is pulled toward
+    0 and every WTP blows up (planted beta_price -0.00030 came back as
+    -0.00002, WTP ~15x).
+
     Returns:
         wtp_results: list of {attribute, level, wtp, wtp_ci_lower, wtp_ci_upper}
         beta_price: float
-        price_col_name: str (the design column name for price)
     """
     # Build design matrix: dummies for non-price attrs + continuous price
     design_cols_wtp = []
@@ -459,10 +454,13 @@ def compute_wtp_cbc(
             if col in df.columns:
                 design_cols_wtp.append(col)
 
-    # Parse price to numeric
-    price_raw = df[price_col].apply(parse_price_value)
-    if price_raw.isna().sum() > len(df) * 0.5:
-        return None, None  # too many unparseable prices
+    # Parse price to numeric. Every real alternative needs its amount: one
+    # whose price label cannot be read would be filled in as free below,
+    # which drags beta_price toward 0 the same way a missing none constant
+    # does. None rows have no price; _ASC_none carries them.
+    price_raw = df[price_col].apply(parse_price_level)
+    if price_raw[~df['_is_none'].astype(bool)].isna().any():
+        return None, None  # a price level that is not a readable amount
 
     # Scale price before fitting — raw currency values (often in the hundreds
     # of thousands to millions) badly skew BFGS's implicit parameter scaling
@@ -476,15 +474,21 @@ def compute_wtp_cbc(
     price_numeric = price_raw / price_scale
     df['_price_numeric'] = price_numeric.fillna(0)  # none option: price=0 (no purchase = no payment)
     design_cols_wtp.append('_price_numeric')
+    # Same none constant as the main model. parse_conjoint_data adds the
+    # column only when the data has none rows, so no-none data fits exactly
+    # the model it did before.
+    if '_ASC_none' in df.columns:
+        design_cols_wtp.append('_ASC_none')
 
     # Fit conditional logit with continuous (scaled) price
     fit_wtp = conditional_logit_fit(df, design_cols_wtp, response_col, choice_id_col)
     beta_wtp = fit_wtp['beta']
     se_wtp = fit_wtp['se']
 
-    # Price coefficient is the last one — rescale back to raw-currency units
-    beta_price = beta_wtp[-1] / price_scale
-    se_price = se_wtp[-1] / price_scale
+    # Price coefficient — rescale back to raw-currency units
+    i_price = design_cols_wtp.index('_price_numeric')
+    beta_price = beta_wtp[i_price] / price_scale
+    se_price = se_wtp[i_price] / price_scale
 
     if abs(beta_price) < 1e-10:
         return None, None  # price has no effect, can't compute WTP

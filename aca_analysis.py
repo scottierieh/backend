@@ -39,6 +39,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import numpy as np
 
+from price_levels import price_slope
+
 router = APIRouter()
 
 
@@ -412,28 +414,19 @@ def run_aca_analysis(attributes, responses, price_attribute_id=None):
     }
 
     # ── WTP (reuse RC convention: price slope of level utilities) ──
+    # Price levels are read by price_levels.py, so "12,000원" counts too.
     wtp = None
     if price_attribute_id:
         price_pw = next((p for p in part_worths if p["attributeId"] == price_attribute_id), None)
         if price_pw:
-            prices, utils = [], []
-            for lvl in price_pw["levels"]:
-                try:
-                    pval = float("".join(c for c in lvl["value"] if c.isdigit() or c in ".,"))
-                    prices.append(pval)
-                    utils.append(lvl["utility"])
-                except (ValueError, TypeError):
-                    continue
-            if len(prices) >= 2:
-                Xp = np.vstack([np.ones(len(prices)), np.array(prices)]).T
-                slope = np.linalg.lstsq(Xp, np.array(utils), rcond=None)[0][1]
-                if abs(slope) > 1e-9:
-                    wtp = {}
-                    for pw in part_worths:
-                        if pw["attributeId"] == price_attribute_id:
-                            continue
-                        for lvl in pw["levels"]:
-                            wtp[f"{pw['attributeName']}_{lvl['value']}"] = float(-lvl["utility"] / slope)
+            slope = price_slope((lvl["value"], lvl["utility"]) for lvl in price_pw["levels"])
+            if slope is not None:
+                wtp = {}
+                for pw in part_worths:
+                    if pw["attributeId"] == price_attribute_id:
+                        continue
+                    for lvl in pw["levels"]:
+                        wtp[f"{pw['attributeName']}_{lvl['value']}"] = float(-lvl["utility"] / slope)
 
     bootstrap = _bootstrap_aca(resp_blocks, attributes, col_index, ref, n_cols)
     individual = _individual_aca(resp_blocks, attributes, col_index, ref, n_cols)

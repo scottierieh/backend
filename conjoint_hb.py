@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 from hb_mnl import run_hb_mnl
+from price_levels import price_slope
 
 router = APIRouter()
 
@@ -28,29 +29,37 @@ class ConjointHBPayload(BaseModel):
     chains: int = 2
 
 
-def _compute_wtp(part_worths, price_col):
-    """WTP = -(part-worth / price slope); price slope from OLS of numeric price levels."""
-    import numpy as np
-    price_levels = [p for p in part_worths if p["attribute"] == price_col]
-    if len(price_levels) < 2:
-        return None
-    prices, utils = [], []
-    for p in price_levels:
-        try:
-            prices.append(float("".join(c for c in str(p["level"]) if c.isdigit() or c in ".,")))
-            utils.append(p["value"])
-        except (ValueError, TypeError):
+def _compute_wtp(partworth_rows, price_col):
+    """WTP = -(part-worth / price slope); price slope from OLS of the price
+    levels' part-worths on their amounts (price_levels.py).
+
+    Takes the `charts.partworth_data` rows and returns WTP rows in the same
+    shape the aggregate endpoint sends as `wtp` (conjoint_analysis.py:
+    attribute, level, wtp, wtp_ci_lower, wtp_ci_upper, is_reference, label),
+    because the CBC screen reads both endpoints' results with the same code
+    and walks `wtp` as a list. The range is each level's 95% interval divided
+    by the same slope; the slope's own uncertainty is not included.
+
+    Returns (rows, slope), or (None, None) when the price levels give no slope.
+    """
+    slope = price_slope((p["level"], p["coef"]) for p in partworth_rows if p["attribute"] == price_col)
+    if slope is None:
+        return None, None
+    rows = []
+    for p in partworth_rows:
+        if p["attribute"] == price_col:
             continue
-    if len(prices) < 2:
-        return None
-    Xp = np.vstack([np.ones(len(prices)), np.array(prices)]).T
-    slope = np.linalg.lstsq(Xp, np.array(utils), rcond=None)[0][1]
-    if abs(slope) < 1e-9:
-        return None
-    return {
-        f"{p['attribute']}_{p['level']}": float(-p["value"] / slope)
-        for p in part_worths if p["attribute"] != price_col
-    }
+        ref = bool(p.get("is_reference"))
+        lo, hi = -p["ci_lower"] / slope, -p["ci_upper"] / slope
+        rows.append({
+            "attribute": p["attribute"], "level": p["level"],
+            "wtp": 0.0 if ref else float(-p["coef"] / slope),
+            "wtp_ci_lower": 0.0 if ref else float(min(lo, hi)),
+            "wtp_ci_upper": 0.0 if ref else float(max(lo, hi)),
+            "is_reference": ref,
+            "label": f"{p['attribute']}: {p['level']}",
+        })
+    return rows, float(slope)
 
 
 @router.post("/conjoint-hb")
@@ -68,9 +77,11 @@ async def analyze_conjoint_hb(payload: ConjointHBPayload):
         )
         res["price_col"] = None
         if payload.priceCol:
-            wtp = _compute_wtp(res["partWorths"], payload.priceCol)
+            wtp, slope = _compute_wtp(res["charts"]["partworth_data"], payload.priceCol)
             if wtp is not None:
                 res["wtp"] = wtp
+                res["beta_price"] = slope
+                res["charts"]["wtp_data"] = wtp
                 res["price_col"] = payload.priceCol
         return {"results": res}
     except HTTPException:

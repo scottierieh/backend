@@ -226,8 +226,8 @@ def run_hb_mnl(
                 'significant': pw['significant'], 'is_reference': pw['is_reference'],
                 'ci_lower': row['ci_lower'], 'ci_upper': row['ci_upper'],
             })
-            # `value` (not `coef`) — the key conjoint_hb.py/acbc_analysis.py's WTP
-            # helpers read off this flat list.
+            # `value` (not `coef`) — the key acbc_analysis.py's WTP helper reads
+            # off this flat list (conjoint_hb.py reads charts.partworth_data).
             pw_flat.append({'attribute': attr, 'level': pw['level'], 'value': row['coef']})
 
     imp_chart_data = [{'attribute': a, 'importance': safe_float(v)} for a, v in sorted(importance.items(), key=lambda x: -x[1])]
@@ -321,7 +321,7 @@ def run_hb_mnl(
             'coefficient_table': _to_native(coef_table),
         },
         'convergence': {'maxRhat': safe_float(max_rhat) if max_rhat == max_rhat else None, 'chains': chains, 'draws': draws, 'tune': tune},
-        # Flat list for the calling routers' WTP helpers (conjoint_hb.py / acbc_analysis.py).
+        # Flat list for acbc_analysis.py's WTP helper.
         'partWorths': _to_native(pw_flat),
         'partWorthsFlat': _to_native(pw_flat),
         'individualPartWorths': _to_native(individual_part_worths),

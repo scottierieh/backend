@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import numpy as np
 
+from price_levels import price_slope
+
 router = APIRouter()
 
 
@@ -241,25 +243,14 @@ def derive_part_worths(beta, attributes, info=None):
 
 
 def compute_wtp(part_worths, price_attribute_id):
+    # Price levels are read by price_levels.py ("12,000원", "₩12,000",
+    # "1.2만원" ...). The old inline digit filter kept the thousands comma,
+    # so every won price failed float() and WTP was never returned.
     price_pw = next((p for p in part_worths if p["attributeId"] == price_attribute_id), None)
     if not price_pw:
         return None
-    prices, utilities = [], []
-    for lvl in price_pw["levels"]:
-        try:
-            pval = float("".join(c for c in lvl["value"] if c.isdigit() or c in ".,"))
-            prices.append(pval)
-            utilities.append(lvl["utility"])
-        except (ValueError, TypeError):
-            continue
-    if len(prices) < 2:
-        return None
-    Xp = np.vstack([np.ones(len(prices)), np.array(prices)]).T
-    try:
-        slope = np.linalg.lstsq(Xp, np.array(utilities), rcond=None)[0][1]
-    except Exception:
-        return None
-    if abs(slope) < 1e-9:
+    slope = price_slope((lvl["value"], lvl["utility"]) for lvl in price_pw["levels"])
+    if slope is None:
         return None
     wtp_map = {}
     for pw in part_worths:

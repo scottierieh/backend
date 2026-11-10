@@ -11,16 +11,16 @@
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
-  "runtime_version": "3.13.17",
-  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "runtime_version": "3.11.15",
+  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
   "packages": {
-    "numpy": "2.5.3",
-    "pandas": "3.0.5",
-    "scipy": "1.18.1",
-    "sklearn": "1.9.1"
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0"
   },
-  "git_commit": "cc04515",
-  "validation_date": "2026-11-10",
+  "git_commit": "e3b8cac",
+  "validation_date": "2026-07-12",
   "checks": [
     {
       "name": "lasso.intercept",

@@ -64,7 +64,7 @@ class KMeansAnalysis:
         db_scores = []
 
         for k in k_range:
-            kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=42)
+            kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=self.RANDOM_STATE)
             kmeans.fit(self.cluster_data_scaled)
             inertias.append(kmeans.inertia_)
             if len(np.unique(kmeans.labels_)) > 1:
@@ -109,9 +109,14 @@ class KMeansAnalysis:
 
         return self.results['optimal_k']
 
+    # Seed of the reported fit (and of find_optimal_k). The payload has no seed
+    # field, so this fixed value is what every run uses; it is reported in
+    # clustering_summary.random_state so the run can be reproduced.
+    RANDOM_STATE = 42
+
     def perform_clustering(self, n_clusters, init_method='k-means++', n_init=10, algorithm='lloyd'):
         self.n_clusters = n_clusters
-        kmeans = KMeans(n_clusters=n_clusters, init=init_method, n_init=n_init, random_state=42, algorithm=algorithm)
+        kmeans = KMeans(n_clusters=n_clusters, init=init_method, n_init=n_init, random_state=self.RANDOM_STATE, algorithm=algorithm)
         self.cluster_labels = kmeans.fit_predict(self.cluster_data_scaled)
 
         self.results['clustering_summary'] = {
@@ -121,6 +126,12 @@ class KMeansAnalysis:
             'labels': self.cluster_labels.tolist(),
             'algorithm': kmeans.algorithm,
             'init': init_method,
+            # Reproducibility, read back from the fitted estimator: the seed it
+            # was given, how many k-means++ starts it kept the best of, and
+            # the Lloyd iterations the kept start ran.
+            'random_state': kmeans.get_params()['random_state'],
+            'n_init': kmeans.get_params()['n_init'],
+            'n_iter': int(kmeans.n_iter_),
             'scaler': 'StandardScaler' if self.standardize else 'None',
             'scaler_note': (
                 "Standardized using sample SD (ddof=1), matching R's scale() exactly — "
@@ -188,6 +199,7 @@ class KMeansAnalysis:
         identical = int(sum(1 for a in aris if a > 0.999))
         return {
             'n_restarts': int(n_restarts),
+            'restart_seed_range': [1, int(n_restarts)],  # random_state of each restart, inclusive
             'ari_mean': float(np.mean(aris)),
             'ari_min': float(np.min(aris)),
             'identical': identical,

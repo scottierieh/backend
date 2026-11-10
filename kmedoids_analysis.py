@@ -147,6 +147,19 @@ class KMedoidsAnalysis:
             'algorithm': 'PAM',
             'scaler': self.scaler_name if self.standardize else 'None',
             'metric': kmedoids.metric,
+            # Reproducibility, read back from the fitted estimator. The payload
+            # has no seed field, so the fixed seed below is used on every run
+            # (it only affects the k-medoids++ start; PAM swaps are
+            # deterministic). KMedoids has no n_init: it fits one start.
+            'random_state': kmedoids.get_params()['random_state'],
+            'init': kmedoids.get_params()['init'],
+            'max_iter': kmedoids.get_params()['max_iter'],
+            'n_iter': int(kmedoids.n_iter_),
+            # Full PAM over all n observations is always run here; the
+            # sampling variant (CLARA) is never used, so there are no sample
+            # settings to report.
+            'clara_used': False,
+            'clara_settings': None,
         }
 
         self.analyze_clusters()

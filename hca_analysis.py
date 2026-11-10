@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.cluster.hierarchy import dendrogram, linkage, fcluster, cophenet
+from scipy.cluster.hierarchy import dendrogram, linkage, fcluster, cophenet, maxdists
 from scipy.spatial.distance import pdist, squareform
 from scipy.spatial import ConvexHull
 from analysis_common import cluster_projection
@@ -31,6 +31,11 @@ sns.set_context("notebook", font_scale=1.1)
 # nearest subsample-cluster centroid (see `is_large_data` in clustering_summary).
 LARGE_DATA_THRESHOLD = 5000
 SUBSAMPLE_SIZE = 2000
+# Fixed seeds (the payload has no seed field). The tree itself is
+# deterministic; these only drive the large-data subsample and the bootstrap
+# resamples of stability_analysis(). Both are reported in the results.
+SUBSAMPLE_RANDOM_STATE = 42
+BOOTSTRAP_RANDOM_STATE = 123
 
 
 def _to_native_type(obj):
@@ -137,7 +142,7 @@ class HierarchicalClusterAnalysis:
         # ── Large-data guard: build the linkage/dendrogram from a bounded random
         # subsample instead of the full O(n^2) pairwise-distance matrix. ────────
         if self.is_large_data:
-            rng = np.random.RandomState(42)
+            rng = np.random.RandomState(SUBSAMPLE_RANDOM_STATE)
             subsample_n = min(SUBSAMPLE_SIZE, self.n_samples)
             sub_positions = rng.choice(self.n_samples, size=subsample_n, replace=False)
             self.subsample_index = self.cluster_data_scaled.index[sub_positions]
@@ -207,6 +212,56 @@ class HierarchicalClusterAnalysis:
             'n_samples': self.n_samples,
             'is_large_data': self.is_large_data,
             'subsample_size': int(len(basis)) if self.is_large_data else None,
+            # Seed of the large-data subsample draw; None when the full data
+            # was used (the agglomerative tree itself involves no randomness).
+            'subsample_random_state': SUBSAMPLE_RANDOM_STATE if self.is_large_data else None,
+        }
+        self.results['linkage_tree'] = self._linkage_tree_summary(n_clusters)
+
+    def _linkage_tree_summary(self, n_clusters):
+        """The scipy linkage matrix Z the dendrogram is drawn from, and the
+        height band in which a horizontal cut gives `n_clusters` clusters.
+
+        Z has n_leaves - 1 rows [left, right, distance, size]: row i merges
+        clusters `left` and `right` (ids < n_leaves are observations, id
+        n_leaves + j is the cluster formed in row j) at `distance`, giving a
+        cluster of `size` observations.
+
+        fcluster(criterion='maxclust') cuts on scipy's maxdists(Z) (the largest
+        merge height inside each subtree; equal to Z[:, 2] for monotone
+        linkages). With those heights sorted, performing the first
+        n_leaves - k merges leaves k clusters, so any cut height in
+        [cut_height_lower, cut_height_upper) gives k clusters. cut_height is
+        the midpoint of that band, the convention R's rect.hclust() uses.
+        """
+        Z = self.linkage_matrix
+        n_leaves = int(Z.shape[0] + 1)
+        k = int(n_clusters)
+        md = np.sort(maxdists(Z))
+        lower = float(md[n_leaves - k - 1]) if 1 <= n_leaves - k <= n_leaves - 1 else None
+        upper = float(md[n_leaves - k]) if 0 <= n_leaves - k <= n_leaves - 2 else None
+        cut = None
+        note = None
+        if lower is not None and upper is not None:
+            if upper > lower:
+                cut = (lower + upper) / 2.0
+                n_at_cut = int(len(np.unique(fcluster(Z, t=cut, criterion='distance'))))
+                if n_at_cut != k:
+                    cut = None
+                    note = f'A cut at the band midpoint gives {n_at_cut} clusters, not {k}; no single cut height reproduces k.'
+            else:
+                note = f'Tied merge heights at {lower:.6g}: no single horizontal cut gives exactly {k} clusters.'
+        return {
+            'Z': [[int(a), int(b), _safe_float(d, default=None), int(c)] for a, b, d, c in Z.tolist()],
+            'columns': ['left', 'right', 'distance', 'size'],
+            'n_leaves': n_leaves,
+            'basis': 'subsample' if self.is_large_data else 'full',
+            'n_clusters': k,
+            'cut_height': cut,
+            'cut_height_lower': lower,
+            'cut_height_upper': upper,
+            'cut_rule': 'midpoint of the merge-height band that leaves n_clusters clusters (R rect.hclust convention)',
+            'note': note,
         }
 
     def _find_optimal_clusters(self, basis=None, max_k=10):
@@ -300,7 +355,7 @@ class HierarchicalClusterAnalysis:
         # ── Bootstrap stability: mean Adjusted Rand Index between the basis
         # clustering and re-clustered bootstrap resamples of the basis. ───────
         basis_labels = fcluster(self.linkage_matrix, t=self.n_clusters, criterion='maxclust')
-        rng = np.random.RandomState(123)
+        rng = np.random.RandomState(BOOTSTRAP_RANDOM_STATE)
         aris = []
         for _ in range(n_bootstrap):
             idx = rng.choice(n_basis, n_basis, replace=True)
@@ -319,6 +374,9 @@ class HierarchicalClusterAnalysis:
         self.results['stability'] = {
             'cophenetic_r': cophenetic_r,
             'stability_score': stability_score,
+            'random_state': BOOTSTRAP_RANDOM_STATE,
+            'n_bootstrap': int(n_bootstrap),
+            'n_bootstrap_ok': int(len(aris)),
             'note': ('Cophenetic correlation measures how faithfully the dendrogram represents the original '
                      'pairwise distances (closer to 1 is better). Stability score is the mean Adjusted Rand '
                      'Index between the clustering and bootstrap resamples (0-1, higher = more reproducible).'),

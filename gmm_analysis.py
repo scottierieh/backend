@@ -59,6 +59,39 @@ def safe_float(val, default=0.0):
         return default
 
 
+def _full_covariances(gmm: GaussianMixture, n_features: int) -> np.ndarray:
+    """gmm.covariances_ expanded to one (n_features x n_features) matrix per
+    component, whatever covariance_type stored it as:
+      full      (K, D, D) as is
+      tied      (D, D)    the one shared matrix, repeated for every component
+      diag      (K, D)    variances on the diagonal, zeros off it
+      spherical (K,)      one variance times the identity
+    Nothing is re-estimated; this only changes the storage layout."""
+    cov = np.asarray(gmm.covariances_, dtype=float)
+    k = gmm.n_components
+    ct = gmm.covariance_type
+    if ct == 'full':
+        return cov
+    if ct == 'tied':
+        return np.repeat(cov[np.newaxis, :, :], k, axis=0)
+    if ct == 'diag':
+        return np.stack([np.diag(cov[i]) for i in range(k)])
+    if ct == 'spherical':
+        return np.stack([cov[i] * np.eye(n_features) for i in range(k)])
+    raise ValueError(f"Unknown covariance_type: {ct}")
+
+
+def _scaled_to_original_factors(scaler) -> np.ndarray:
+    """Per-feature factor f with x_original - c = f * x_scaled for the fitted
+    scaler (each scaler is a per-feature affine map). StandardScaler and
+    RobustScaler divide by scale_, so f = scale_; MinMaxScaler multiplies by
+    scale_, so f = 1 / scale_. A covariance in scaled units maps back as
+    diag(f) @ S @ diag(f)."""
+    if isinstance(scaler, MinMaxScaler):
+        return 1.0 / np.asarray(scaler.scale_, dtype=float)
+    return np.asarray(scaler.scale_, dtype=float)
+
+
 def _validate_input(df: pd.DataFrame, items: List[str], n_components: int):
     """Comprehensive input validation matching KMeans/DBSCAN standards."""
     input_warnings = []
@@ -438,6 +471,13 @@ def main():
 
         unique_labels, counts = np.unique(labels, return_counts=True)
 
+        # Component covariance matrices as full D x D matrices, in the scaled
+        # space the model was fitted in (the space `means` is in) and mapped
+        # back to the original variable units through the fitted scaler.
+        covariances_scaled = _full_covariances(gmm, n_features)
+        _f = _scaled_to_original_factors(scaler)
+        covariances_original = covariances_scaled * _f[np.newaxis, :, np.newaxis] * _f[np.newaxis, np.newaxis, :]
+
         # ── 5. Quality metrics ─────────────────────────────────────────────
         if len(unique_labels) > 1:
             silhouette = safe_float(silhouette_score(cluster_data_scaled, labels))
@@ -761,7 +801,35 @@ def main():
                     'covariance_model_note': gmm_covariance_model_note,
                     'scaler_note': gmm_scaler_note,
                     'n_free_params': n_free_params,
+                    # Reproducibility, read back from the fitted estimator.
+                    # The payload has no seed field, so this fixed seed is
+                    # used on every run (and for the k search above).
+                    'random_state': gmm.get_params()['random_state'],
+                    'n_init': gmm.get_params()['n_init'],
+                    'max_iter': gmm.get_params()['max_iter'],
+                    'tol': gmm.get_params()['tol'],
+                    'reg_covar': gmm.get_params()['reg_covar'],
+                    # (n_components, n_features, n_features), row/column
+                    # order = `features`. `covariances` is in the scaled
+                    # space (same space as `means`); the second is in the
+                    # original variable units.
+                    'features': list(items),
+                    'covariances': covariances_scaled,
+                    'covariances_original_scale': covariances_original,
+                    'covariance_note': (
+                        f"gmm.covariances_ (stored as '{covariance_type}') expanded to one full matrix "
+                        "per component; 'covariances' is in the scaled space the model was fitted in "
+                        "(same space as 'means'), 'covariances_original_scale' maps it back through the "
+                        "fitted scaler (diag(s) S diag(s)). sklearn adds reg_covar to the scaled-space diagonal, so both include it."
+                    ),
                 },
+                # Per-observation membership probabilities (predict_proba):
+                # one row per analysed observation, one column per component,
+                # in the order of clustering_summary.labels. The row's position
+                # in the submitted data is in membership_row_index (rows with
+                # missing values were dropped before fitting).
+                'membership_probabilities': probabilities,
+                'membership_row_index': [int(i) for i in cluster_data.index],
                 'profiles': profiles,
                 'soft_diagnostics': soft_diagnostics,
                 'feature_drivers': feature_drivers,

@@ -4,7 +4,39 @@
     "reference": "1.0"
   },
   {
+    "name": "dbscan.labels_exact",
+    "reference": "1"
+  },
+  {
     "name": "dbscan.n_clusters",
-    "reference": "len(set(ref))-(1 if -1 in ref else 0)"
+    "reference": "n_clusters"
+  },
+  {
+    "name": "dbscan.n_noise",
+    "reference": "n_noise"
+  },
+  {
+    "name": "dbscan.n_samples",
+    "reference": "150"
+  },
+  {
+    "name": "dbscan.eps",
+    "reference": "0.8"
+  },
+  {
+    "name": "dbscan.min_samples",
+    "reference": "5"
+  },
+  {
+    "name": "f\"dbscan.size[{name}]\"",
+    "reference": "int(mask.sum())"
+  },
+  {
+    "name": "f\"dbscan.pct[{name}]\"",
+    "reference": "float(mask.sum()/150*100)"
+  },
+  {
+    "name": "f\"dbscan.centroid[{name}][{col}]\"",
+    "reference": "ref_centroid[col]"
   }
 ]

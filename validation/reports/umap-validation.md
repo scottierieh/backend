@@ -1,5 +1,5 @@
 # UMAP (Python) — Validation Report
 - **Target**: `umap_analysis.py` · Backend: `scottierieh/backend` (Python)
-- **Method**: Ran the CLI script; reproduced the pipeline (StandardScaler → **umap.UMAP**, random_state=42) and compared the 2D embedding exactly.
+- **Method**: Ran the CLI script; reproduced the pipeline (StandardScaler → **umap.UMAP**, random_state=42) and compared the 2D embedding exactly; the diagnostics the handler returns (trustworthiness, continuity, coordinate statistics, feature–axis correlations, HDBSCAN cluster detection) are recomputed independently on its own embedding.
 ## Summary — pass
-Embedding matches a direct `umap.UMAP` fit exactly (max coordinate diff = 0). With `random_state` set, UMAP runs single-threaded and is fully deterministic. Effective `n_neighbors = min(15, max(2, n-1))` verified. Package (`umap-learn`) already pinned in `requirements.txt`. Repro: `validation/validate_umap.py`.
+Embedding matches a direct `umap.UMAP` fit exactly (max coordinate diff = 0). With `random_state` set, UMAP runs single-threaded and is fully deterministic. Effective `n_neighbors = min(15, max(2, n-1))` verified. Trustworthiness / continuity match `sklearn.manifold.trustworthiness` (arguments swapped for continuity), correlations match `numpy.corrcoef`, and the cluster labels match a `sklearn.cluster.HDBSCAN` refit exactly; coordinate means / SDs agree to float32 precision (the embedding is float32). Package (`umap-learn`) already pinned in `requirements.txt`. Repro: `validation/validate_umap.py`.

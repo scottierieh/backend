@@ -1,23 +1,135 @@
 [
   {
-    "name": "som.silhouette",
-    "reference": "silhouette_score(Xs, assign)"
+    "name": "som.grid_size[0]",
+    "reference": "gx"
   },
   {
-    "name": "som.n_nodes_activated",
-    "reference": "len(np.unique(assign))"
+    "name": "som.grid_size[1]",
+    "reference": "gy"
+  },
+  {
+    "name": "som.features.len",
+    "reference": "n_feat"
+  },
+  {
+    "name": "f\"som.features[{i}]\"",
+    "reference": "f"
   },
   {
     "name": "som.assignments_count",
-    "reference": "Xs.shape[0]"
+    "reference": "n_samples"
+  },
+  {
+    "name": "som.bmu_count",
+    "reference": "n_samples"
+  },
+  {
+    "name": "som.n_nodes_activated",
+    "reference": "len(unique)"
   },
   {
     "name": "som.nodes_within_grid",
     "reference": "1.0"
   },
   {
+    "name": "f\"som.assign_from_bmu[{i}]\"",
+    "reference": "int(bmu[i, 0] * gy + bmu[i, 1])"
+  },
+  {
+    "name": "som.silhouette",
+    "reference": "float(silhouette_score(Xs, assign))"
+  },
+  {
     "name": "som.qerror_finite_nonneg",
     "reference": "1.0"
+  },
+  {
+    "name": "som.topographic_error_in[0,1]",
+    "reference": "1.0"
+  },
+  {
+    "name": "som.explained_variance<=1",
+    "reference": "1.0"
+  },
+  {
+    "name": "f\"som.{key}_in[0,1]\"",
+    "reference": "1.0"
+  },
+  {
+    "name": "f\"som.{key}.size\"",
+    "reference": "int(mask.sum())"
+  },
+  {
+    "name": "f\"som.{key}.percentage\"",
+    "reference": "float(mask.sum() / n_samples * 100)"
+  },
+  {
+    "name": "f\"som.{key}.centroid[{f}]\"",
+    "reference": "float(raw_centroid[f])"
+  },
+  {
+    "name": "f\"som.{key}.centroid_zscore[{f}]\"",
+    "reference": "float(zc[i])"
+  },
+  {
+    "name": "f\"som.{key}.auto.top[{k}].feature\"",
+    "reference": "feat[idx]"
+  },
+  {
+    "name": "f\"som.{key}.auto.top[{k}].z_score\"",
+    "reference": "float(z[idx])"
+  },
+  {
+    "name": "f\"som.fc[{f}].f_stat\"",
+    "reference": "fs"
+  },
+  {
+    "name": "f\"som.fc[{f}].p_value\"",
+    "reference": "pv"
+  },
+  {
+    "name": "som.cdm.clusters",
+    "reference": "True"
+  },
+  {
+    "name": "f\"som.cdm[{i},{j}]\"",
+    "reference": "float(dmat[i, j])"
+  },
+  {
+    "name": "f\"som.{key}.rep.row_index\"",
+    "reference": "int(best)"
+  },
+  {
+    "name": "f\"som.{key}.rep.dist\"",
+    "reference": "float(d.min())"
+  },
+  {
+    "name": "som.nd.total_nodes",
+    "reference": "total"
+  },
+  {
+    "name": "f\"som.nd.counts[{k}]\"",
+    "reference": "dens[k]"
+  },
+  {
+    "name": "f\"som.nd.pct[{k}]\"",
+    "reference": "float(dens[k] / total * 100)"
+  },
+  {
+    "name": "som.qm.empty_node_rate",
+    "reference": "float(dens['empty'] / total)"
+  },
+  {
+    "name": "som.qm.dead_unit_rate",
+    "reference": "float(dens['empty'] / total)"
+  },
+  {
+    "name": "som.qm.average_hit_count",
+    "reference": "float(nz.mean()) if len(nz) else 0.0"
+  },
+  {
+    "name": "som.qm.neighbor_preservation",
+    "reference": "float(np.mean(fracs))"
   },
   {
     "name": "som.quantization_error(minisom)",

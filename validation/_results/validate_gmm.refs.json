@@ -4,8 +4,44 @@
     "reference": "1.0"
   },
   {
+    "name": "gmm.labels_exact",
+    "reference": "1"
+  },
+  {
     "name": "gmm.n_components",
     "reference": "3"
+  },
+  {
+    "name": "gmm.converged",
+    "reference": "bool(g.converged_)"
+  },
+  {
+    "name": "gmm.n_iter",
+    "reference": "int(g.n_iter_)"
+  },
+  {
+    "name": "gmm.n_samples",
+    "reference": "150"
+  },
+  {
+    "name": "f\"gmm.weight[{i}]\"",
+    "reference": "g.weights_[i]"
+  },
+  {
+    "name": "f\"gmm.mean[{i}][{j}]\"",
+    "reference": "g.means_[i][j]"
+  },
+  {
+    "name": "gmm.silhouette",
+    "reference": "silhouette_score(Xs, lab)"
+  },
+  {
+    "name": "gmm.davies_bouldin",
+    "reference": "davies_bouldin_score(Xs, lab)"
+  },
+  {
+    "name": "gmm.calinski_harabasz",
+    "reference": "calinski_harabasz_score(Xs, lab)"
   },
   {
     "name": "gmm.bic",
@@ -14,5 +50,65 @@
   {
     "name": "gmm.aic",
     "reference": "float(g.aic(Xs))"
+  },
+  {
+    "name": "gmm.log_likelihood",
+    "reference": "float(g.score(Xs)*150)"
+  },
+  {
+    "name": "f\"gmm.size[{label}]\"",
+    "reference": "int(sizes[label])"
+  },
+  {
+    "name": "f\"gmm.pct[{label}]\"",
+    "reference": "float(sizes[label]/150*100)"
+  },
+  {
+    "name": "f\"gmm.prof.weight[{label}]\"",
+    "reference": "g.weights_[label]"
+  },
+  {
+    "name": "f\"gmm.avg_prob[{label}]\"",
+    "reference": "float(proba[mask,label].mean())"
+  },
+  {
+    "name": "f\"gmm.prof.mean[{label}][{col}]\"",
+    "reference": "rm[col]"
+  },
+  {
+    "name": "gmm.sd.avg_probability",
+    "reference": "float(max_probs.mean())"
+  },
+  {
+    "name": "gmm.sd.low_confidence_count",
+    "reference": "int((max_probs<0.6).sum())"
+  },
+  {
+    "name": "gmm.sd.ambiguous_count",
+    "reference": "int(((sp[:,0]-sp[:,1])<0.1).sum())"
+  },
+  {
+    "name": "f\"gmm.fdriver.f_stat[{col}]\"",
+    "reference": "float(fstat[i])"
+  },
+  {
+    "name": "f\"gmm.fdriver.p_value[{col}]\"",
+    "reference": "float(pval[i])"
+  },
+  {
+    "name": "f\"gmm.optk.bic[{k}]\"",
+    "reference": "float(gk.bic(Xs))"
+  },
+  {
+    "name": "f\"gmm.optk.aic[{k}]\"",
+    "reference": "float(gk.aic(Xs))"
+  },
+  {
+    "name": "f\"gmm.optk.sil[{k}]\"",
+    "reference": "ref_sil"
+  },
+  {
+    "name": "gmm.optk.recommended_k",
+    "reference": "k_range[int(np.argmin(ref_bic))]"
   }
 ]

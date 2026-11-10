@@ -11,6 +11,17 @@ P=dict(data=df.to_dict('records'),target_col='species',feature_cols=feat,task_ty
 r=run_script('random_forest_analysis.py',P); acc=find_key(r,'accuracy')
 X=df[feat].values; y=df['species']
 Xtr,Xte,ytr,yte=train_test_split(X,y,test_size=0.2,random_state=42,stratify=y)
-le=LabelEncoder(); m=RandomForestClassifier(n_estimators=100,max_depth=None,min_samples_split=2,min_samples_leaf=1,max_features='sqrt',bootstrap=True,oob_score=False,random_state=42,n_jobs=-1).fit(Xtr,le.fit_transform(ytr))
+# The handler applies balanced class weighting by default (balanced_weighting ->
+# class_weight='balanced', since 3cc890f), so the reference forest does too. On
+# iris' stratified split the training classes are 40/40/40 and the balanced
+# weights are all 1, but that is not a no-op everywhere: scikit-learn >= 1.8
+# draws each tree's bootstrap sample from the sample weights, so an unweighted
+# reference grows a different forest there (accuracy 0.9 vs the handler's 0.967
+# under scikit-learn 1.9). Mirroring the handler's setting keeps the comparison
+# like-for-like on every scikit-learn version.
+le=LabelEncoder(); m=RandomForestClassifier(n_estimators=100,max_depth=None,min_samples_split=2,min_samples_leaf=1,max_features='sqrt',bootstrap=True,oob_score=False,random_state=42,n_jobs=-1,class_weight='balanced').fit(Xtr,le.fit_transform(ytr))
+cw=find_key(r,'class_weighting') or {}
+chk("rf.class_weighting.applied", cw.get('applied'), True)
+chk("rf.class_weighting.method", cw.get('method'), "class_weight='balanced'")
 classifier_checks("rf", r, m, Xtr, le.transform(ytr), Xte, le.transform(yte))
 report("RANDOM FOREST (Python)")

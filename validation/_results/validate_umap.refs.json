@@ -4,8 +4,40 @@
     "reference": "eff_nn"
   },
   {
+    "name": "min_dist",
+    "reference": "0.1"
+  },
+  {
+    "name": "metric",
+    "reference": "\"euclidean\""
+  },
+  {
+    "name": "n_components",
+    "reference": "2"
+  },
+  {
     "name": "n_samples",
     "reference": "n"
+  },
+  {
+    "name": "n_neighbors_requested",
+    "reference": "15"
+  },
+  {
+    "name": "random_state",
+    "reference": "42"
+  },
+  {
+    "name": "n_features",
+    "reference": "len(cols)"
+  },
+  {
+    "name": "variables.len",
+    "reference": "len(cols)"
+  },
+  {
+    "name": "f\"variables[{i}]\"",
+    "reference": "c"
   },
   {
     "name": "embedding.shape.rows",
@@ -16,7 +48,75 @@
     "reference": "2"
   },
   {
+    "name": "f\"embedding[{i}].x\"",
+    "reference": "float(ref_emb[i, 0])"
+  },
+  {
+    "name": "f\"embedding[{i}].y\"",
+    "reference": "float(ref_emb[i, 1])"
+  },
+  {
     "name": "embedding.maxdiff",
     "reference": "0.0"
+  },
+  {
+    "name": "trustworthiness(own emb, k=5) in [0,1]",
+    "reference": "1.0"
+  },
+  {
+    "name": "trustworthiness(own emb, k=5) high",
+    "reference": "1.0"
+  },
+  {
+    "name": "diagnostics.trustworthiness",
+    "reference": "float(trustworthiness(scaled, emb, n_neighbors=k_tc))"
+  },
+  {
+    "name": "diagnostics.continuity",
+    "reference": "float(trustworthiness(emb, scaled, n_neighbors=k_tc))"
+  },
+  {
+    "name": "f\"coordinate_stats[{j}].component\"",
+    "reference": "f\"UMAP-{j + 1}\""
+  },
+  {
+    "name": "f\"coordinate_stats[{j}].min\"",
+    "reference": "float(emb[:, j].min())"
+  },
+  {
+    "name": "f\"coordinate_stats[{j}].max\"",
+    "reference": "float(emb[:, j].max())"
+  },
+  {
+    "name": "f\"coordinate_stats[{j}].mean\"",
+    "reference": "float(emb[:, j].mean())"
+  },
+  {
+    "name": "f\"coordinate_stats[{j}].sd\"",
+    "reference": "float(emb[:, j].std(ddof=1))"
+  },
+  {
+    "name": "f\"feature_correlations[{i}].feature\"",
+    "reference": "c"
+  },
+  {
+    "name": "f\"feature_correlations[{i}].umap_{j + 1}\"",
+    "reference": "float(np.corrcoef(scaled[:, i], emb[:, j])[0, 1])"
+  },
+  {
+    "name": "cluster_detection.min_cluster_size",
+    "reference": "mcs"
+  },
+  {
+    "name": "cluster_detection.n_clusters",
+    "reference": "len(set(hl[hl != -1].tolist()))"
+  },
+  {
+    "name": "cluster_detection.n_noise",
+    "reference": "int(np.sum(hl == -1))"
+  },
+  {
+    "name": "cluster_detection.labels_identical",
+    "reference": "1.0"
   }
 ]

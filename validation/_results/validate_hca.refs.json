@@ -4,7 +4,55 @@
     "reference": "1.0"
   },
   {
+    "name": "hca.labels_exact",
+    "reference": "1"
+  },
+  {
     "name": "hca.n_clusters",
     "reference": "3"
+  },
+  {
+    "name": "hca.linkage_method",
+    "reference": "'ward'"
+  },
+  {
+    "name": "hca.distance_metric",
+    "reference": "'euclidean'"
+  },
+  {
+    "name": "hca.silhouette",
+    "reference": "silhouette_score(Xs, ref)"
+  },
+  {
+    "name": "hca.calinski_harabasz",
+    "reference": "calinski_harabasz_score(Xs, ref)"
+  },
+  {
+    "name": "hca.davies_bouldin",
+    "reference": "davies_bouldin_score(Xs, ref)"
+  },
+  {
+    "name": "f\"hca.size[{label}]\"",
+    "reference": "int(mask.sum())"
+  },
+  {
+    "name": "f\"hca.pct[{label}]\"",
+    "reference": "float(mask.sum()/150*100)"
+  },
+  {
+    "name": "f\"hca.centroid[{label}][{col}]\"",
+    "reference": "m[col]"
+  },
+  {
+    "name": "f\"hca.std[{label}][{col}]\"",
+    "reference": "s[col]"
+  },
+  {
+    "name": "f\"hca.min[{label}][{col}]\"",
+    "reference": "mn[col]"
+  },
+  {
+    "name": "f\"hca.max[{label}][{col}]\"",
+    "reference": "mx[col]"
   }
 ]

@@ -1,27 +1,29 @@
 {
   "title": "UMAP (umap-learn)",
-  "total_checks": 56,
-  "numeric_checks": 50,
-  "exact_checks": 6,
-  "pass": 56,
+  "total_checks": 90,
+  "numeric_checks": 77,
+  "exact_checks": 13,
+  "pass": 90,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-12,
   "tolerance_max": 0.001,
-  "max_abs_difference": 0.0,
+  "max_abs_difference": 6.225374011847862e-07,
   "all_within_tolerance": true,
   "language": "Python",
-  "runtime_version": "3.11.15",
-  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "runtime_version": "3.11.17",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
   "packages": {
-    "numpy": "2.4.6",
-    "pandas": "3.0.3",
-    "scipy": "1.17.1",
-    "sklearn": "1.9.0",
-    "umap": "0.5.12"
+    "keras": "3.15.1",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "sklearn": "1.5.2",
+    "tensorflow": "2.17.0",
+    "umap": "0.5.7"
   },
-  "git_commit": "3aa5188",
-  "validation_date": "2026-07-12",
+  "git_commit": "e9d069b",
+  "validation_date": "2026-11-10",
   "checks": [
     {
       "name": "n_neighbors_used",
@@ -59,6 +61,30 @@
       "name": "n_samples",
       "got": "90",
       "expected": "90",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "n_neighbors_requested",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "random_state",
+      "got": "42",
+      "expected": "42",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "n_features",
+      "got": "5",
+      "expected": "5",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -129,320 +155,320 @@
     },
     {
       "name": "embedding[0].x",
-      "got": "12.8931",
-      "expected": "12.8931",
+      "got": "12.6926",
+      "expected": "12.6926",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[0].y",
-      "got": "4.7658",
-      "expected": "4.7658",
+      "got": "1.80563",
+      "expected": "1.80563",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[1].x",
-      "got": "12.9059",
-      "expected": "12.9059",
+      "got": "11.2585",
+      "expected": "11.2585",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[1].y",
-      "got": "3.05457",
-      "expected": "3.05457",
+      "got": "1.4436",
+      "expected": "1.4436",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[2].x",
-      "got": "13.103",
-      "expected": "13.103",
+      "got": "12.5545",
+      "expected": "12.5545",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[2].y",
-      "got": "4.56709",
-      "expected": "4.56709",
+      "got": "1.83751",
+      "expected": "1.83751",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[3].x",
-      "got": "12.694",
-      "expected": "12.694",
+      "got": "11.7045",
+      "expected": "11.7045",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[3].y",
-      "got": "3.47698",
-      "expected": "3.47698",
+      "got": "1.70613",
+      "expected": "1.70613",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[4].x",
-      "got": "13.7298",
-      "expected": "13.7298",
+      "got": "12.2096",
+      "expected": "12.2096",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[4].y",
-      "got": "3.62854",
-      "expected": "3.62854",
+      "got": "0.732775",
+      "expected": "0.732775",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[5].x",
-      "got": "12.2837",
-      "expected": "12.2837",
+      "got": "11.6134",
+      "expected": "11.6134",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[5].y",
-      "got": "3.57885",
-      "expected": "3.57885",
+      "got": "1.87842",
+      "expected": "1.87842",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[6].x",
-      "got": "12.288",
-      "expected": "12.288",
+      "got": "11.923",
+      "expected": "11.923",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[6].y",
-      "got": "3.94665",
-      "expected": "3.94665",
+      "got": "2.05832",
+      "expected": "2.05832",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[7].x",
-      "got": "13.0499",
-      "expected": "13.0499",
+      "got": "11.8357",
+      "expected": "11.8357",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[7].y",
-      "got": "3.66712",
-      "expected": "3.66712",
+      "got": "1.53183",
+      "expected": "1.53183",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[8].x",
-      "got": "12.8815",
-      "expected": "12.8815",
+      "got": "11.4742",
+      "expected": "11.4742",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[8].y",
-      "got": "3.55216",
-      "expected": "3.55216",
+      "got": "1.55456",
+      "expected": "1.55456",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[9].x",
-      "got": "13.9049",
-      "expected": "13.9049",
+      "got": "12.3532",
+      "expected": "12.3532",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[9].y",
-      "got": "3.88901",
-      "expected": "3.88901",
+      "got": "0.652691",
+      "expected": "0.652691",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[10].x",
-      "got": "12.2568",
-      "expected": "12.2568",
+      "got": "12.0671",
+      "expected": "12.0671",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[10].y",
-      "got": "4.05461",
-      "expected": "4.05461",
+      "got": "2.27305",
+      "expected": "2.27305",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[11].x",
-      "got": "13.66",
-      "expected": "13.66",
+      "got": "12.6065",
+      "expected": "12.6065",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[11].y",
-      "got": "4.3392",
-      "expected": "4.3392",
+      "got": "1.13552",
+      "expected": "1.13552",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[12].x",
-      "got": "13.8611",
-      "expected": "13.8611",
+      "got": "11.9514",
+      "expected": "11.9514",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[12].y",
-      "got": "3.74146",
-      "expected": "3.74146",
+      "got": "0.471283",
+      "expected": "0.471283",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[13].x",
-      "got": "13.9485",
-      "expected": "13.9485",
+      "got": "11.4306",
+      "expected": "11.4306",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[13].y",
-      "got": "3.20994",
-      "expected": "3.20994",
+      "got": "0.850735",
+      "expected": "0.850735",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[14].x",
-      "got": "13.2115",
-      "expected": "13.2115",
+      "got": "11.7701",
+      "expected": "11.7701",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[14].y",
-      "got": "3.33686",
-      "expected": "3.33686",
+      "got": "1.08396",
+      "expected": "1.08396",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[15].x",
-      "got": "13.3688",
-      "expected": "13.3688",
+      "got": "12.1047",
+      "expected": "12.1047",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[15].y",
-      "got": "3.43897",
-      "expected": "3.43897",
+      "got": "0.852683",
+      "expected": "0.852683",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[16].x",
-      "got": "13.409",
-      "expected": "13.409",
+      "got": "11.8809",
+      "expected": "11.8809",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[16].y",
-      "got": "3.87342",
-      "expected": "3.87342",
+      "got": "1.20795",
+      "expected": "1.20795",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[17].x",
-      "got": "13.1989",
-      "expected": "13.1989",
+      "got": "12.2996",
+      "expected": "12.2996",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[17].y",
-      "got": "4.08668",
-      "expected": "4.08668",
+      "got": "1.44315",
+      "expected": "1.44315",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[18].x",
-      "got": "12.8241",
-      "expected": "12.8241",
+      "got": "12.6171",
+      "expected": "12.6171",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[18].y",
-      "got": "4.6638",
-      "expected": "4.6638",
+      "got": "1.97644",
+      "expected": "1.97644",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[19].x",
-      "got": "13.0328",
-      "expected": "13.0328",
+      "got": "12.2775",
+      "expected": "12.2775",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[19].y",
-      "got": "4.25945",
-      "expected": "4.25945",
+      "got": "1.53006",
+      "expected": "1.53006",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -465,6 +491,254 @@
     },
     {
       "name": "trustworthiness(own emb, k=5) high",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "diagnostics.trustworthiness",
+      "got": "0.971907",
+      "expected": "0.971907",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "diagnostics.continuity",
+      "got": "0.977501",
+      "expected": "0.977501",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[0].component",
+      "got": "UMAP-1",
+      "expected": "UMAP-1",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[0].min",
+      "got": "-5.88955",
+      "expected": "-5.88955",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[0].max",
+      "got": "12.7681",
+      "expected": "12.7681",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[0].mean",
+      "got": "6.11187",
+      "expected": "6.11187",
+      "tolerance": 1e-05,
+      "abs_difference": 6.225374011847862e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[0].sd",
+      "got": "7.72527",
+      "expected": "7.72527",
+      "tolerance": 1e-05,
+      "abs_difference": 1.713483070986399e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[1].component",
+      "got": "UMAP-2",
+      "expected": "UMAP-2",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[1].min",
+      "got": "-4.776",
+      "expected": "-4.776",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[1].max",
+      "got": "16.1684",
+      "expected": "16.1684",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[1].mean",
+      "got": "4.17416",
+      "expected": "4.17416",
+      "tolerance": 1e-05,
+      "abs_difference": 3.8577450656163137e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "coordinate_stats[1].sd",
+      "got": "8.18111",
+      "expected": "8.18111",
+      "tolerance": 1e-05,
+      "abs_difference": 1.4658202296402578e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[0].feature",
+      "got": "v0",
+      "expected": "v0",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[0].umap_1",
+      "got": "0.798792",
+      "expected": "0.798792",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[0].umap_2",
+      "got": "0.952663",
+      "expected": "0.952663",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[1].feature",
+      "got": "v1",
+      "expected": "v1",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[1].umap_1",
+      "got": "0.809676",
+      "expected": "0.809676",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[1].umap_2",
+      "got": "0.930758",
+      "expected": "0.930758",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[2].feature",
+      "got": "v2",
+      "expected": "v2",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[2].umap_1",
+      "got": "0.818169",
+      "expected": "0.818169",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[2].umap_2",
+      "got": "0.945136",
+      "expected": "0.945136",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[3].feature",
+      "got": "v3",
+      "expected": "v3",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[3].umap_1",
+      "got": "0.820585",
+      "expected": "0.820585",
+      "tolerance": 1e-12,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[3].umap_2",
+      "got": "0.936184",
+      "expected": "0.936184",
+      "tolerance": 1e-12,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[4].feature",
+      "got": "v4",
+      "expected": "v4",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[4].umap_1",
+      "got": "0.843291",
+      "expected": "0.843291",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "feature_correlations[4].umap_2",
+      "got": "0.933277",
+      "expected": "0.933277",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cluster_detection.min_cluster_size",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cluster_detection.n_clusters",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cluster_detection.n_noise",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cluster_detection.labels_identical",
       "got": "1",
       "expected": "1",
       "tolerance": 1e-06,

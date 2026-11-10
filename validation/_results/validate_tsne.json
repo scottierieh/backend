@@ -8,7 +8,7 @@
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
   "tolerance_max": 0.001,
-  "max_abs_difference": 1.862645149230957e-09,
+  "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.17",
@@ -19,7 +19,7 @@
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "4794d67",
+  "git_commit": "8f60167",
   "validation_date": "2026-11-10",
   "checks": [
     {
@@ -123,7 +123,7 @@
       "got": "0.0308642",
       "expected": "0.0308642",
       "tolerance": 0.0001,
-      "abs_difference": 1.862645149230957e-09,
+      "abs_difference": 0.0,
       "status": "PASS"
     },
     {

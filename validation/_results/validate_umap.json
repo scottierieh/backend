@@ -22,7 +22,7 @@
     "tensorflow": "2.17.0",
     "umap": "0.5.7"
   },
-  "git_commit": "e9d069b",
+  "git_commit": "8f60167",
   "validation_date": "2026-11-10",
   "checks": [
     {

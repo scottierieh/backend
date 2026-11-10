@@ -20,7 +20,7 @@
     "sklearn": "1.5.2",
     "sklearn_extra": "0.3.0"
   },
-  "git_commit": "4794d67",
+  "git_commit": "8f60167",
   "validation_date": "2026-11-10",
   "checks": [
     {

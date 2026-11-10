@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sklearn.metrics import adjusted_rand_score, silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.decomposition import PCA
 from analysis_common import cluster_projection
 
@@ -35,6 +35,20 @@ import warnings
 
 warnings.filterwarnings('ignore')
 sns.set_theme(style="darkgrid")
+
+
+def _profile_extremes(deviations):
+    """Top-2 above-average and bottom-2 below-average variables of a standardized deviation Series,
+    as the 'characterized by ...' phrase. A variable is only called high (low) when it is above (below)
+    the overall mean."""
+    top = [f for f in deviations.nlargest(2).index if deviations[f] > 0]
+    bottom = [f for f in deviations.nsmallest(2).index if deviations[f] < 0]
+    parts = []
+    if top:
+        parts.append(f"high values in <strong>{', '.join(top)}</strong>")
+    if bottom:
+        parts.append(f"low values in <strong>{', '.join(bottom)}</strong>")
+    return ' and '.join(parts) if parts else 'values close to the overall average'
 
 
 def _to_native(obj):
@@ -530,12 +544,10 @@ def main():
         for name, profile in profiles.items():
             centroid = pd.Series(profile['mean'])
             deviations = (centroid - overall_means) / overall_std.replace(0, 1)
-            top_features = deviations.nlargest(2).index.tolist()
-            bottom_features = deviations.nsmallest(2).index.tolist()
+            profile_extremes = _profile_extremes(deviations)
             profile_desc = (
                 f"<strong>{name} ({profile['percentage']:.1f}% of data, weight: {profile['weight']:.3f}):</strong> "
-                f"Characterized by high values in <strong>{', '.join(top_features)}</strong> "
-                f"and low values in <strong>{', '.join(bottom_features)}</strong>. "
+                f"Characterized by {profile_extremes}. "
                 f"Average membership probability: {profile['avg_probability']:.1%}."
             )
             cluster_profiles_text.append(profile_desc)
@@ -700,28 +712,51 @@ def main():
             pca_proc_data = pca_proc.fit_transform(cluster_data_scaled)
 
             target_iters = [1, 3, 6]
-            max_manual_iters = 15
-            snapshots = []  # list of (title, labels_snapshot, means_pca_snapshot)
+            max_manual_iters = 300  # same cap as the reported fit's max_iter
 
-            gmm_step = GaussianMixture(
-                n_components=n_components, covariance_type=covariance_type,
-                max_iter=1, warm_start=True, n_init=1, random_state=42
-            )
+            def em_steps(seed):
+                """One EM run from one k-means start, one iteration per fit() call."""
+                gmm_step = GaussianMixture(
+                    n_components=n_components, covariance_type=covariance_type,
+                    max_iter=1, warm_start=True, n_init=1, random_state=seed
+                )
+                snaps, it, lab, means_pca, conv, prev = [], 0, None, None, False, None
+                while it < max_manual_iters:
+                    it += 1
+                    gmm_step.fit(cluster_data_scaled)
+                    lab = gmm_step.predict(cluster_data_scaled)
+                    means_pca = pca_proc.transform(gmm_step.means_)
+                    # max_iter=1 per call, so judge convergence on the lower bound
+                    # across calls with the estimator's own tolerance.
+                    lb = float(gmm_step.lower_bound_)
+                    conv = prev is not None and abs(lb - prev) < gmm_step.tol
+                    prev = lb
+                    if it in target_iters:
+                        snaps.append((f'Iteration {it}', lab.copy(), means_pca.copy()))
+                    if conv:
+                        break
+                return snaps, it, lab, means_pca, conv
 
-            it = 0
-            step_labels, step_means_pca, step_converged = None, None, False
-            while it < max_manual_iters:
-                it += 1
-                gmm_step.fit(cluster_data_scaled)
-                step_labels = gmm_step.predict(cluster_data_scaled)
-                step_means_pca = pca_proc.transform(gmm_step.means_)
-                step_converged = bool(gmm_step.converged_)
-
-                if it in target_iters:
-                    snapshots.append((f'Iteration {it}', step_labels.copy(), step_means_pca.copy()))
-
-                if step_converged:
+            # The reported model keeps the best of n_init=10 starts; a single start
+            # (the old fixed seed 42) can end in another local optimum, which the
+            # last panel then showed as "Converged!". Step through the first start that
+            # ends in the reported partition (ARI = 1), else the closest one.
+            reported = np.asarray(labels)
+            best = None
+            for seed in range(42, 62):
+                run = em_steps(seed)
+                ari = adjusted_rand_score(reported, run[2])
+                if best is None or ari > best[0]:
+                    best = (ari, run)
+                if ari >= 1.0 - 1e-12:
                     break
+            snapshots, it, step_labels, step_means_pca, step_converged = best[1]
+            # Colour with the reported component numbers (majority mapping from the end state).
+            remap = {j: int(np.bincount(reported[step_labels == j]).argmax()) if np.any(step_labels == j) else j
+                     for j in range(n_components)}
+            relabel = np.vectorize(remap.get)
+            snapshots = [(t, relabel(l), m) for t, l, m in snapshots]
+            step_labels = relabel(step_labels)
 
             final_title = 'Converged!' if step_converged else f'Final State (iter {it})'
             final_snapshot = (final_title, step_labels.copy(), step_means_pca.copy())

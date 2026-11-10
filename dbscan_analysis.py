@@ -22,6 +22,20 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+def _profile_extremes(deviations):
+    """Top-2 above-average and bottom-2 below-average variables of a standardized deviation Series,
+    as the 'characterized by ...' phrase. A variable is only called high (low) when it is above (below)
+    the overall mean."""
+    top = [f for f in deviations.nlargest(2).index if deviations[f] > 0]
+    bottom = [f for f in deviations.nsmallest(2).index if deviations[f] < 0]
+    parts = []
+    if top:
+        parts.append(f"high values in <strong>{', '.join(top)}</strong>")
+    if bottom:
+        parts.append(f"low values in <strong>{', '.join(bottom)}</strong>")
+    return ' and '.join(parts) if parts else 'values close to the overall average'
+
+
 def _fig_to_data_url(fig):
     buf = io.BytesIO()
     fig.savefig(buf, format='png', bbox_inches='tight')
@@ -247,12 +261,10 @@ def _generate_interpretations(profiles, final_metrics, clustering_summary, raw_d
             continue
         centroid = pd.Series(profile['centroid'])
         deviations = (centroid - overall_means) / overall_std
-        top_features = deviations.nlargest(2).index.tolist()
-        bottom_features = deviations.nsmallest(2).index.tolist()
+        profile_extremes = _profile_extremes(deviations)
         profile_desc = (
             f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> "
-            f"Characterized by high values in <strong>{', '.join(top_features)}</strong> "
-            f"and low values in <strong>{', '.join(bottom_features)}</strong>."
+            f"Characterized by {profile_extremes}."
         )
         interpretations['cluster_profiles'].append(profile_desc)
 
@@ -353,7 +365,10 @@ def main():
         elif noise_pct > 30:
             quality_warnings.append(f'High noise level ({noise_pct:.1f}%) — consider increasing eps or decreasing min_samples.')
         if n_clusters_ == 1:
-            quality_warnings.append('Only one cluster was detected — consider decreasing eps for finer granularity.')
+            # With high noise the line above already says eps is too small; "decrease eps"
+            # would be the opposite advice in the same list.
+            quality_warnings.append('Only one cluster was detected.' if noise_pct > 30 else
+                                    'Only one cluster was detected — consider decreasing eps for finer granularity.')
 
         pca_note = None
         if df.shape[1] > 2:

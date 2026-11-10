@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
+from sklearn.metrics import adjusted_rand_score, silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
 from sklearn.feature_selection import f_classif
 from analysis_common import cluster_projection
 
@@ -21,6 +21,20 @@ import io
 import base64
 
 warnings.filterwarnings('ignore')
+
+def _profile_extremes(deviations):
+    """Top-2 above-average and bottom-2 below-average variables of a standardized deviation Series,
+    as the 'characterized by ...' phrase. A variable is only called high (low) when it is above (below)
+    the overall mean."""
+    top = [f for f in deviations.nlargest(2).index if deviations[f] > 0]
+    bottom = [f for f in deviations.nsmallest(2).index if deviations[f] < 0]
+    parts = []
+    if top:
+        parts.append(f"high values in <strong>{', '.join(top)}</strong>")
+    if bottom:
+        parts.append(f"low values in <strong>{', '.join(bottom)}</strong>")
+    return ' and '.join(parts) if parts else 'values close to the overall average'
+
 
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
@@ -368,12 +382,11 @@ class KMedoidsAnalysis:
         
         for name, profile in self.results['profiles'].items():
             centroid = pd.Series(profile['centroid'])
-            deviations = (centroid - overall_means) / overall_means.std()
+            deviations = (centroid - overall_means) / self.cluster_data.std().replace(0, 1)  # per-variable SD
             
-            top_features = deviations.nlargest(2).index.tolist()
-            bottom_features = deviations.nsmallest(2).index.tolist()
+            profile_extremes = _profile_extremes(deviations)
             
-            profile_desc = f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> This cluster is characterized by high values in <strong>{', '.join(top_features)}</strong> and low values in <strong>{', '.join(bottom_features)}</strong>."
+            profile_desc = f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> This cluster is characterized by {profile_extremes}."
             interpretations['cluster_profiles'].append(profile_desc)
 
         # 3. Cluster Distribution Interpretation
@@ -412,67 +425,88 @@ class KMedoidsAnalysis:
             purely for illustrating convergence, not for the reported result.
         """
         X = self.cluster_data_scaled.values
-        n_samples = X.shape[0]
         k = self.n_clusters
 
-        seeds, _ = kmeans_plusplus(X, n_clusters=k, random_state=42)
-        medoid_idx = []
-        for seed in seeds:
-            dists = np.linalg.norm(X - seed, axis=1)
-            for cand in np.argsort(dists):
-                if cand not in medoid_idx:
-                    medoid_idx.append(int(cand))
-                    break
-        medoid_idx = np.array(medoid_idx)
+        def simulate(seed, max_iter=50):
+            seeds, _ = kmeans_plusplus(X, n_clusters=k, random_state=seed)
+            medoid_idx = []
+            for sd in seeds:
+                dists = np.linalg.norm(X - sd, axis=1)
+                for cand in np.argsort(dists):
+                    if cand not in medoid_idx:
+                        medoid_idx.append(int(cand))
+                        break
+            medoid_idx = np.array(medoid_idx)
+            history = []
+            for iteration in range(1, max_iter + 1):
+                medoid_points = X[medoid_idx]
+                dists_to_medoids = np.linalg.norm(X[:, None, :] - medoid_points[None, :, :], axis=2)
+                labels = np.argmin(dists_to_medoids, axis=1)
+                history.append({'iter': iteration, 'medoid_idx': medoid_idx.copy(), 'labels': labels.copy()})
+                new_medoid_idx = medoid_idx.copy()
+                for ci in range(k):
+                    members = np.where(labels == ci)[0]
+                    if len(members) == 0:
+                        continue
+                    cluster_mean = X[members].mean(axis=0)
+                    local_dists = np.linalg.norm(X[members] - cluster_mean, axis=1)
+                    new_medoid_idx[ci] = members[np.argmin(local_dists)]
+                if np.array_equal(new_medoid_idx, medoid_idx):
+                    break  # converged - medoids stopped changing
+                medoid_idx = new_medoid_idx
+            return history
 
-        history = []
-        max_iter = 8
-        for iteration in range(1, max_iter + 1):
-            medoid_points = X[medoid_idx]
-            dists_to_medoids = np.linalg.norm(X[:, None, :] - medoid_points[None, :, :], axis=2)
-            labels = np.argmin(dists_to_medoids, axis=1)
-            history.append({'iter': iteration, 'medoid_idx': medoid_idx.copy(), 'labels': labels.copy()})
-
-            new_medoid_idx = medoid_idx.copy()
-            for ci in range(k):
-                members = np.where(labels == ci)[0]
-                if len(members) == 0:
-                    continue
-                cluster_mean = X[members].mean(axis=0)
-                local_dists = np.linalg.norm(X[members] - cluster_mean, axis=1)
-                new_medoid_idx[ci] = members[np.argmin(local_dists)]
-
-            if np.array_equal(new_medoid_idx, medoid_idx):
-                break  # converged - medoids stopped changing
-            medoid_idx = new_medoid_idx
+        # A single k-means++ start (the old fixed seed 42) can settle in a different
+        # partition than the reported PAM fit, and its last panel was titled
+        # "Converged!" regardless, contradicting the reported clusters. Use the first
+        # start whose end state reproduces the reported partition (ARI = 1); if none
+        # does (this stand-in is not the real PAM swap, and it is Euclidean only), the
+        # last panel shows the reported PAM solution itself instead.
+        reported = np.asarray(self.cluster_labels)
+        best = None
+        for seed in range(42, 72):
+            hist = simulate(seed)
+            ari = adjusted_rand_score(reported, hist[-1]['labels'])
+            if best is None or ari > best[0]:
+                best = (ari, hist)
+            if ari >= 1.0 - 1e-12:
+                break
+        best_ari, history = best
+        final_lab = history[-1]['labels']
+        remap = {j: int(np.bincount(reported[final_lab == j]).argmax()) if np.any(final_lab == j) else j for j in range(k)}
+        for h in history:
+            h['labels'] = np.vectorize(remap.get)(h['labels'])
+        matches = best_ari >= 1.0 - 1e-12
 
         n_hist = len(history)
-        raw_targets = [1, 3, 6, n_hist]
         picked = []
-        for t in raw_targets:
+        for t in [1, 3, 6, n_hist]:
             i = min(t, n_hist) - 1
             if i not in picked:
                 picked.append(i)
-        while len(picked) < 4:
-            picked.append(n_hist - 1)
-        picked = picked[:4]
-
-        snapshots = [history[i] for i in picked]
+        snapshots = [dict(history[i], title=f"Iteration {history[i]['iter']}") for i in picked]
+        if matches:
+            snapshots[-1]['title'] = 'Converged!'
+        else:
+            snapshots.append({'iter': None, 'title': 'Reported PAM solution',
+                              'labels': reported.copy(), 'medoid_idx': np.asarray(self.medoid_indices_)})
+        snapshots = snapshots[-4:] if len(snapshots) > 4 else snapshots
 
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
         axes_flat = axes.flatten()
         for pos, (ax_p, snap) in enumerate(zip(axes_flat, snapshots)):
             ax_p.scatter(pca_2d_data[:, 0], pca_2d_data[:, 1], c=snap['labels'],
-                        cmap='viridis', s=30, alpha=0.6)
+                        cmap='viridis', vmin=0, vmax=max(k - 1, 1), s=30, alpha=0.6)
             medoid_pts = pca_2d_data[snap['medoid_idx']]
             ax_p.scatter(medoid_pts[:, 0], medoid_pts[:, 1], s=200, c='red', marker='X',
                         edgecolors='black', linewidths=1.5, zorder=5)
 
-            title = 'Converged!' if pos == len(snapshots) - 1 else f"Iteration {snap['iter']}"
-            ax_p.set_title(title, fontsize=12, fontweight='bold')
+            ax_p.set_title(snap['title'], fontsize=12, fontweight='bold')
             ax_p.set_xlabel('PC1')
             ax_p.set_ylabel('PC2')
             ax_p.grid(True, alpha=0.3)
+        for ax_j in range(len(snapshots), 4):
+            axes_flat[ax_j].axis('off')
 
         fig.suptitle('K-Medoids (PAM) Clustering Process', fontsize=14)
         plt.tight_layout()

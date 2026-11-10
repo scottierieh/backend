@@ -21,6 +21,20 @@ import base64
 
 warnings.filterwarnings('ignore')
 
+def _profile_extremes(deviations):
+    """Top-2 above-average and bottom-2 below-average variables of a standardized deviation Series,
+    as the 'characterized by ...' phrase. A variable is only called high (low) when it is above (below)
+    the overall mean."""
+    top = [f for f in deviations.nlargest(2).index if deviations[f] > 0]
+    bottom = [f for f in deviations.nsmallest(2).index if deviations[f] < 0]
+    parts = []
+    if top:
+        parts.append(f"high values in <strong>{', '.join(top)}</strong>")
+    if bottom:
+        parts.append(f"low values in <strong>{', '.join(bottom)}</strong>")
+    return ' and '.join(parts) if parts else 'values close to the overall average'
+
+
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
         return int(obj)
@@ -412,12 +426,11 @@ class KMeansAnalysis:
         
         for name, profile in self.results['profiles'].items():
             centroid = pd.Series(profile['centroid'])
-            deviations = (centroid - overall_means) / overall_means.std()
+            deviations = (centroid - overall_means) / self.cluster_data_raw.std().replace(0, 1)  # per-variable SD
             
-            top_features = deviations.nlargest(2).index.tolist()
-            bottom_features = deviations.nsmallest(2).index.tolist()
+            profile_extremes = _profile_extremes(deviations)
             
-            profile_desc = f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> This cluster is characterized by high values in <strong>{', '.join(top_features)}</strong> and low values in <strong>{', '.join(bottom_features)}</strong>."
+            profile_desc = f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> This cluster is characterized by {profile_extremes}."
             interpretations['cluster_profiles'].append(profile_desc)
 
         # 3. Cluster Distribution Interpretation
@@ -446,37 +459,54 @@ class KMeansAnalysis:
         combined 2x2 figure (iteration 1, 3, 6, and the final converged state)."""
         X = self.cluster_data_scaled.values
         k = self.n_clusters
-        seed = 42  # same random_state used elsewhere in this file for reproducibility
-
-        try:
-            init_centroids, _ = kmeans_plusplus(X, n_clusters=k, random_state=seed)
-        except Exception:
-            rng = np.random.RandomState(seed)
-            init_idx = rng.choice(X.shape[0], size=k, replace=False)
-            init_centroids = X[init_idx].copy()
 
         # Project once upfront so points don't jump around between panels.
         pca_2d = PCA(n_components=2)
         pca_data_2d = pca_2d.fit_transform(X)
 
-        history = []  # list of (labels, centroids) captured after each iteration's update
-        centroids = init_centroids.astype(float).copy()
-        max_iters = 15
-        tol = 1e-6
-        converged = False
-        for _ in range(max_iters):
-            dists = np.linalg.norm(X[:, np.newaxis, :] - centroids[np.newaxis, :, :], axis=2)
-            labels = np.argmin(dists, axis=1)
-            new_centroids = np.array([
-                X[labels == j].mean(axis=0) if np.any(labels == j) else centroids[j]
-                for j in range(k)
-            ])
-            history.append((labels.copy(), new_centroids.copy()))
-            shift = np.linalg.norm(new_centroids - centroids)
-            centroids = new_centroids
-            if shift < tol:
-                converged = True
+        def lloyd(seed, max_iters=100, tol=1e-6):
+            """Plain Lloyd iterations from one k-means++ start; returns (history, converged)."""
+            try:
+                init_centroids, _ = kmeans_plusplus(X, n_clusters=k, random_state=seed)
+            except Exception:
+                rng = np.random.RandomState(seed)
+                init_centroids = X[rng.choice(X.shape[0], size=k, replace=False)].copy()
+            hist = []  # (labels, centroids) after each iteration's update
+            centroids = init_centroids.astype(float).copy()
+            for _ in range(max_iters):
+                dists = np.linalg.norm(X[:, np.newaxis, :] - centroids[np.newaxis, :, :], axis=2)
+                labels = np.argmin(dists, axis=1)
+                new_centroids = np.array([
+                    X[labels == j].mean(axis=0) if np.any(labels == j) else centroids[j]
+                    for j in range(k)
+                ])
+                hist.append((labels.copy(), new_centroids.copy()))
+                shift = np.linalg.norm(new_centroids - centroids)
+                centroids = new_centroids
+                if shift < tol:
+                    return hist, True
+            return hist, False
+
+        # The reported fit keeps the best of n_init k-means++ starts, so a single start
+        # (the old fixed seed 42) can converge to a different local optimum and the
+        # "Converged!" panel would contradict the reported clusters. Step through the
+        # start that ends in the reported partition (first seed with ARI = 1 against
+        # the reported labels; otherwise the closest one).
+        reported = np.asarray(self.cluster_labels)
+        best = None
+        for seed in range(self.RANDOM_STATE, self.RANDOM_STATE + 30):
+            hist, conv = lloyd(seed)
+            ari = adjusted_rand_score(reported, hist[-1][0])
+            if best is None or ari > best[0]:
+                best = (ari, hist, conv)
+            if ari >= 1.0 - 1e-12:
                 break
+        _, history, converged = best
+        # Colour every panel with the reported cluster numbers (majority mapping from
+        # the final panel), so the colours match the cluster scatter.
+        final_lab = history[-1][0]
+        remap = {j: int(np.bincount(reported[final_lab == j]).argmax()) if np.any(final_lab == j) else j for j in range(k)}
+        history = [(np.vectorize(remap.get)(lab), cen) for lab, cen in history]
 
         final_idx = len(history) - 1
 
@@ -507,7 +537,7 @@ class KMeansAnalysis:
             ax = axes_flat[ax_i]
             labels_i, centroids_i = history[idx]
             centroids_proj = pca_2d.transform(centroids_i)
-            ax.scatter(pca_data_2d[:, 0], pca_data_2d[:, 1], c=labels_i, cmap='viridis', s=40, alpha=0.8)
+            ax.scatter(pca_data_2d[:, 0], pca_data_2d[:, 1], c=labels_i, cmap='viridis', vmin=0, vmax=max(k - 1, 1), s=40, alpha=0.8)
             ax.scatter(centroids_proj[:, 0], centroids_proj[:, 1], s=200, c='red', marker='X', edgecolor='black')
             ax.set_title(titles[ax_i])
             ax.set_xlabel('PC1')

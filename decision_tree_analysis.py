@@ -402,7 +402,10 @@ def extract_tree_rules(model, feature_names: List[str],
                 if class_names is not None:
                     cls_idx    = int(np.argmax(value[node][0]))
                     prediction = class_names[cls_idx]
-                    confidence = float(value[node][0][cls_idx] / n_samples[node])
+                    # Share of the predicted class in the leaf. tree_.value holds
+                    # (class-weighted) fractions since scikit-learn 1.4, not
+                    # counts, so dividing by n_node_samples gave 1/n.
+                    confidence = float(value[node][0][cls_idx] / value[node][0].sum())
                 else:
                     prediction = float(value[node][0][0])
                     confidence = None
@@ -577,11 +580,17 @@ def generate_regression_plots(y_test, y_pred) -> List[Dict[str, str]]:
 # ─────────────────────────────────────────────
 
 def train_classifier(X_train, X_test, y_train, y_test,
-                     params: dict, feature_names: List[str]) -> Dict[str, Any]:
+                     params: dict, feature_names: List[str],
+                     class_names: Optional[List[str]] = None) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_enc = le.fit_transform(y_train)
     y_test_enc  = le.transform(y_test)
     n_classes   = len(le.classes_)
+    # main() encodes a text target to 0..k-1 before it gets here; `class_names`
+    # are the original labels by code, so every class-keyed output (per-class
+    # metrics, confusion matrix axes, ROC/PR keys, tree rules) names the class
+    # the reader typed instead of its code.
+    names = [class_names[int(c)] if class_names else str(c) for c in le.classes_]
 
     model = DecisionTreeClassifier(
         max_depth=params['max_depth'],
@@ -613,11 +622,10 @@ def train_classifier(X_train, X_test, y_train, y_test,
     }
 
     report = classification_report(y_test_enc, y_pred,
-                                   target_names=[str(c) for c in le.classes_],
+                                   target_names=names,
                                    output_dict=True)
     per_class = []
-    for cls in le.classes_:
-        s = str(cls)
+    for s in names:
         if s in report:
             per_class.append({
                 'class':     s,
@@ -643,7 +651,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
         for i, cls in enumerate(le.classes_):
             y_bin = (y_test_enc == i).astype(int)
             fpr, tpr, _ = roc_curve(y_bin, y_pred_proba[:, i])
-            roc_data[str(cls)] = {
+            roc_data[names[i]] = {
                 'fpr': [_to_native(x) for x in fpr],
                 'tpr': [_to_native(x) for x in tpr],
                 'auc': _to_native(auc(fpr, tpr))
@@ -669,7 +677,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
             y_bin = (y_test_enc == i).astype(int)
             precision_curve, recall_curve, _ = precision_recall_curve(y_bin, y_pred_proba[:, i])
             ap = average_precision_score(y_bin, y_pred_proba[:, i])
-            pr_data[str(cls)] = {
+            pr_data[names[i]] = {
                 'precision': [_to_native(x) for x in precision_curve],
                 'recall':    [_to_native(x) for x in recall_curve],
                 'ap':        _to_native(ap),
@@ -680,7 +688,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
             metrics['average_precision_macro'] = _to_native(float(np.mean(class_aps)))
 
     error_examples = build_error_examples(
-        X_test, le.inverse_transform(y_test_enc), le.inverse_transform(y_pred),
+        X_test, np.asarray(names)[y_test_enc], np.asarray(names)[y_pred],
         feature_names=feature_names, y_pred_proba=y_pred_proba,
     )
 
@@ -688,7 +696,7 @@ def train_classifier(X_train, X_test, y_train, y_test,
         'model': model, 'class_weighting': class_weighting, 'metrics': metrics,
         'per_class_metrics': per_class,
         'confusion_matrix': cm.tolist(),
-        'class_labels': [str(c) for c in le.classes_],
+        'class_labels': names,
         'roc_data': roc_data,
         'pr_data': pr_data,
         'label_encoder': le,
@@ -975,7 +983,7 @@ def main():
 
         if task_type == 'classification':
             result = train_classifier(X_train, X_test, y_train, y_test,
-                                      params, feature_cols)
+                                      params, feature_cols, original_class_names)
         else:
             result = train_regressor(X_train, X_test, y_train, y_test,
                                      params, feature_cols)

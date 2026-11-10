@@ -253,6 +253,31 @@ def train_rf_regressor(X_train, X_test, y_train, y_test, params: dict) -> Dict[s
     }
 
 
+def prediction_distribution(y_test, y_pred, max_bins: int = 12) -> Optional[Dict[str, Any]]:
+    """Regression: histogram of the actual and of the predicted test values on
+    the same bin edges (Sturges' rule, 5..max_bins bins), so a report can show
+    whether the forest's predictions are squeezed toward the mean compared
+    with the outcome itself. Counts only -- no new statistic."""
+    yt = np.asarray(y_test, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    ok = np.isfinite(yt) & np.isfinite(yp)
+    yt, yp = yt[ok], yp[ok]
+    if yt.size < 2:
+        return None
+    lo = float(min(yt.min(), yp.min()))
+    hi = float(max(yt.max(), yp.max()))
+    if not hi > lo:
+        return None
+    n_bins = int(min(max_bins, max(5, np.ceil(np.log2(yt.size) + 1))))
+    edges = np.linspace(lo, hi, n_bins + 1)
+    return {
+        'bin_edges': [float(e) for e in edges],
+        'actual_counts': [int(c) for c in np.histogram(yt, bins=edges)[0]],
+        'predicted_counts': [int(c) for c in np.histogram(yp, bins=edges)[0]],
+        'n': int(yt.size),
+    }
+
+
 def get_feature_importance(model, feature_names: List[str]) -> List[Dict[str, Any]]:
     """Extract Gini feature importance in unified format (DT/GBM compatible)"""
     importance = model.feature_importances_
@@ -572,7 +597,9 @@ def extract_tree_rules(model, feature_names: List[str], task_type: str,
         return {
             'text_rules': text_rules,
             'leaf_rules': leaf_rules,
-            'n_leaves': int(tree_.n_node_samples[0]),
+            # Leaves of this tree. n_node_samples[0] is the root's (bootstrap)
+            # sample count, which is not a leaf count.
+            'n_leaves': int(sample_tree.get_n_leaves()),
             'rules_truncated': rules_truncated,
             'note': f'Rules extracted from 1 representative tree (of {len(model.estimators_)} total).'
         }
@@ -1047,6 +1074,10 @@ def main():
             response['confusion_matrix'] = result['confusion_matrix']
             response['class_labels'] = result['class_labels']
             response['error_examples'] = result.get('error_examples')
+        else:
+            # Classification needs nothing new for this: the confusion matrix's
+            # row and column sums are the actual and predicted class counts.
+            response['prediction_distribution'] = prediction_distribution(result['y_test'], result['y_pred'])
 
         print(json.dumps(response, default=_to_native_type))
 

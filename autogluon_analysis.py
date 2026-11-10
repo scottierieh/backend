@@ -485,6 +485,9 @@ CV_PARTITION_K = 5
 INTERVAL_LEVEL = 0.9
 SHAP_CLASS_ROWS = 60
 SHAP_CLASS_BACKGROUND = 30
+# The one-case explanation: rows the caller may name, and the background.
+CASE_ROWS_MAX = 5
+CASE_BACKGROUND = 50
 LEARNING_FRACTIONS = (0.2, 0.4, 0.6, 0.8, 1.0)
 LINEAR_MAX_LEVELS = 12
 LINEAR_KEEP_LEVELS = 8
@@ -646,9 +649,35 @@ def _shap_by_class(predictor, model_name, explain: pd.DataFrame, background: pd.
     uses for its row explanations.
     """
     import shap
+    encode, decode = _shap_codec(features, background, explain)
+
+    def f(arr):
+        proba = predictor.predict_proba(decode(arr), model=model_name)
+        return proba[labels].to_numpy(dtype=float)
+
+    explainer = shap.PermutationExplainer(f, encode(background))
+    values = np.asarray(explainer(encode(explain), max_evals=2 * len(features) + 1, silent=True).values)
+    if values.ndim != 3:
+        return None
+    mean_abs = np.abs(values).mean(axis=0)  # (features, classes)
+    out = {}
+    for k, label in enumerate(labels):
+        order = np.argsort(-mean_abs[:, k])
+        out[str(label)] = [{'feature': features[j], 'importance': _finite(mean_abs[j, k])}
+                           for j in order]
+    return out
+
+
+def _shap_codec(features: list, *frames):
+    """encode/decode between rows and the all-numeric array shap perturbs.
+
+    Categories travel as integer codes over the levels seen in `frames`;
+    integer columns come back as integers when nothing is missing.
+    """
     cats, kinds = {}, {}
+    background = frames[0]
     for c in features:
-        both = pd.concat([background[c], explain[c]])
+        both = pd.concat([fr[c] for fr in frames])
         if pd.api.types.is_numeric_dtype(both):
             kinds[c] = background[c].dtype
         else:
@@ -680,20 +709,100 @@ def _shap_by_class(predictor, model_name, explain: pd.DataFrame, background: pd.
                 frame[c] = frame[c].round().astype(dtype)
         return frame
 
+    return encode, decode
+
+
+def _cell(v):
+    """One input value as JSON can carry it: missing -> None, numbers stay numbers."""
+    v = _jsonable(v)
+    if v is None or (isinstance(v, float) and not np.isfinite(v)):
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return v
+
+
+def _pick_case_rows(task_type: str, y_h, pred_h, proba_h, positive, labels) -> list:
+    """The one sealed row the report explains when the caller names none.
+
+    Binary: the row given the highest probability of the positive class
+    among those called positive -- the case a reader acts on. More than two
+    classes: the most confident correct call. Regression: the row whose
+    prediction sits at the median, a typical case rather than an outlier.
+    """
+    n = len(pred_h)
+    if n == 0:
+        return []
+    if task_type == 'regression':
+        p = np.asarray(pred_h, dtype=float)
+        return [int(np.nanargmin(np.abs(p - np.nanmedian(p))))]
+    if positive is not None and proba_h is not None and positive in proba_h.columns:
+        pos = proba_h[positive].to_numpy(dtype=float)
+        called = np.flatnonzero(np.asarray(pred_h) == positive)
+        pool = called if len(called) else np.arange(n)
+        return [int(pool[np.argmax(pos[pool])])]
+    if proba_h is not None:
+        conf = proba_h[labels].to_numpy(dtype=float).max(axis=1)
+        right = np.flatnonzero(np.asarray(pred_h) == np.asarray(y_h))
+        pool = right if len(right) else np.arange(n)
+        return [int(pool[np.argmax(conf[pool])])]
+    return [0]
+
+
+def _case_explanations(predictor, model_name, rows: pd.DataFrame, background: pd.DataFrame,
+                       features: list, task_type: str, labels: list, positive,
+                       inverse=None) -> list:
+    """Why the recommended model said what it said, for a few sealed rows.
+
+    The same permutation SHAP the saved-model explanation uses, but here at
+    training time, so the report's "one case" figure exists before anything
+    is saved. Each row is explained toward one output: the positive class's
+    probability (binary), the probability of the class it was called (more
+    than two), or the prediction in the target's own units (regression), so
+    base_value + sum(shap) == prediction for every row.
+    """
+    import shap
+    encode, decode = _shap_codec(features, background, rows)
+    multi = task_type == 'classification' and positive is None
+
     def f(arr):
-        proba = predictor.predict_proba(decode(arr), model=model_name)
-        return proba[labels].to_numpy(dtype=float)
+        frame = decode(arr)
+        if task_type == 'classification':
+            proba = predictor.predict_proba(frame, model=model_name)
+            if multi:
+                return proba[labels].to_numpy(dtype=float)
+            return proba[positive].to_numpy(dtype=float)
+        y = np.asarray(predictor.predict(frame, model=model_name), dtype=float)
+        return inverse(y) if inverse is not None else y
 
     explainer = shap.PermutationExplainer(f, encode(background))
-    values = np.asarray(explainer(encode(explain), max_evals=2 * len(features) + 1, silent=True).values)
-    if values.ndim != 3:
-        return None
-    mean_abs = np.abs(values).mean(axis=0)  # (features, classes)
-    out = {}
-    for k, label in enumerate(labels):
-        order = np.argsort(-mean_abs[:, k])
-        out[str(label)] = [{'feature': features[j], 'importance': _finite(mean_abs[j, k])}
-                           for j in order]
+    sv = explainer(encode(rows), max_evals=2 * (2 * len(features) + 1), silent=True)
+    values = np.asarray(sv.values, dtype=float)
+    base = np.asarray(sv.base_values, dtype=float)
+    out = []
+    for i in range(len(rows)):
+        k = None
+        if values.ndim == 3:
+            b = base[i] if base.ndim == 2 else base
+            k = int(np.argmax(b + values[i].sum(axis=0)))
+            v, b0 = values[i, :, k], float(b[k])
+        else:
+            v = values[i]
+            b0 = float(base[i] if base.ndim else base)
+        order = np.argsort(-np.abs(v))
+        out.append({
+            'base_value': _finite(b0),
+            'prediction': _finite(b0 + float(v.sum())),
+            'explained_class': (_jsonable(labels[k]) if k is not None
+                                else (_jsonable(positive) if positive is not None else None)),
+            'class_index': k,
+            'contributions': [{'feature': features[j],
+                               'value': _cell(rows[features[j]].iloc[i]),
+                               'shap': _finite(v[j])} for j in order],
+        })
     return out
 
 
@@ -839,6 +948,19 @@ def _linear_coefficients(frame: pd.DataFrame, target: str, features: list, task_
         'fit': _finite(res.rsquared if kind == 'ols' else res.prsquared),
     }
     return rows, meta
+
+
+def _library_versions() -> dict:
+    """Installed versions of the packages that decide what the board holds."""
+    from importlib import metadata
+    out = {'python': sys.version.split()[0]}
+    for pkg in ('autogluon.tabular', 'lightgbm', 'catboost', 'xgboost',
+                'scikit-learn', 'numpy', 'pandas'):
+        try:
+            out[pkg] = metadata.version(pkg)
+        except Exception:
+            out[pkg] = None
+    return out
 
 
 def _detect_task_type(y: pd.Series) -> str:
@@ -1184,6 +1306,7 @@ def main():
             # the same predictions.
             sealed_checks = None
             sealed_predictions = None
+            rec = None
             if holdout_df is not None and len(holdout_df) > 0:
                 y_h = holdout_df[target].to_numpy()
                 if task_type == 'regression':
@@ -1533,6 +1656,55 @@ def main():
                     shap_by_class = None
                     shap_by_class_meta = None
 
+            # ---- one case, explained (the report's "why this prediction") ----
+            #
+            # On the recommended model, the one the report describes, and on
+            # sealed rows. The caller may name rows by their position in the
+            # request's `holdout` array (explain_rows); otherwise one
+            # representative row is picked (_pick_case_rows says how).
+            case_explanations = None
+            case_meta = None
+            if rec is not None and holdout_df is not None and len(holdout_df) and time.time() < deadline - 30:
+                case_started = time.time()
+                try:
+                    pred_r, proba_r, _, _ = rec
+                    asked = payload.get('explain_rows')
+                    if isinstance(asked, list) and asked:
+                        where = {int(p): i for i, p in enumerate(holdout_pos)}
+                        picks = [where[int(a)] for a in asked[:CASE_ROWS_MAX]
+                                 if isinstance(a, (int, float)) and int(a) in where]
+                        picked_by = 'request'
+                    else:
+                        picks = _pick_case_rows(task_type, holdout_df[target].to_numpy(), pred_r,
+                                                proba_r, positive, labels)
+                        picked_by = 'auto'
+                    if picks:
+                        background = df[list(features)]
+                        if len(background) > CASE_BACKGROUND:
+                            background = background.sample(n=CASE_BACKGROUND, random_state=2)
+                        rows_x = holdout_df[list(features)].iloc[picks].reset_index(drop=True)
+                        with sink.capturing():
+                            case_explanations = _case_explanations(
+                                predictor, recommended, rows_x, background, list(features),
+                                task_type, labels, positive, inverse)
+                        y_cases = holdout_df[target].to_numpy()
+                        for e, i in zip(case_explanations, picks):
+                            e['row_index'] = int(holdout_pos[i])
+                            e['predicted'] = _cell(pred_r[i])
+                            e['actual'] = _cell(y_cases[i])
+                        case_meta = {
+                            'model': recommended,
+                            'picked_by': picked_by,
+                            'background': int(len(background)),
+                            'method': 'permutation_shap',
+                            'scale': ('probability' if task_type == 'classification'
+                                      else 'target'),
+                            'seconds': round(time.time() - case_started, 1),
+                        }
+                except Exception as e:
+                    case_explanations = None
+                    case_meta = {'reason': 'failed', 'detail': str(e)[:200]}
+
             # ---- does more data still help? (only when asked) ---------------
             learning_curve = None
             if bool(payload.get('learning_curve')):
@@ -1609,6 +1781,10 @@ def main():
                 # D. More than two classes only.
                 'shap_importance_by_class': shap_by_class,
                 'shap_importance_by_class_meta': shap_by_class_meta,
+                # The report's one-case figure: base_value + sum(shap) ==
+                # prediction, on the recommended model, sealed rows only.
+                'case_explanations': case_explanations,
+                'case_explanations_meta': case_meta,
                 # E. Only when the request asked for it.
                 'learning_curve': learning_curve,
                 # F.
@@ -1658,6 +1834,10 @@ def main():
                     # because it is the one case where more time would help.
                     'hit_limit': bool(seconds_used >= time_limit - 5),
                 },
+                # What produced this board, so a rerun can be told whether it
+                # ran on the same stack -- the report otherwise has to say it
+                # cannot promise the same pick under the same settings.
+                'versions': _library_versions(),
                 'error': None,
             }
             print(json.dumps(response, default=_to_native_type))

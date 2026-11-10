@@ -19,7 +19,7 @@
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "9f1ced4",
+  "git_commit": "4794d67",
   "validation_date": "2026-11-10",
   "checks": [
     {
@@ -411,7 +411,7 @@
       "got": "90.3213",
       "expected": "90.3213",
       "tolerance": 1e-06,
-      "abs_difference": 1.4210854715202004e-14,
+      "abs_difference": 0.0,
       "status": "PASS"
     },
     {
@@ -507,7 +507,7 @@
       "got": "54.752",
       "expected": "54.752",
       "tolerance": 1e-06,
-      "abs_difference": 7.105427357601002e-15,
+      "abs_difference": 0.0,
       "status": "PASS"
     },
     {

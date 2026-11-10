@@ -4,19 +4,39 @@
     "reference": "m.intercept_"
   },
   {
+    "name": "ridge.alpha",
+    "reference": "ALPHA"
+  },
+  {
     "name": "f\"ridge.coef.{f}\"",
     "reference": "m.coef_[i]"
   },
   {
     "name": "ridge.test.r2",
-    "reference": "r2_score(yte,m.predict(Xte_s))"
+    "reference": "r2_score(yte,pred_te)"
   },
   {
     "name": "ridge.test.rmse",
-    "reference": "np.sqrt(mean_squared_error(yte,m.predict(Xte_s)))"
+    "reference": "np.sqrt(mean_squared_error(yte,pred_te))"
+  },
+  {
+    "name": "ridge.test.mae",
+    "reference": "mean_absolute_error(yte,pred_te)"
   },
   {
     "name": "ridge.train.r2",
-    "reference": "r2_score(ytr,m.predict(Xtr_s))"
+    "reference": "r2_score(ytr,pred_tr)"
+  },
+  {
+    "name": "ridge.train.rmse",
+    "reference": "np.sqrt(mean_squared_error(ytr,pred_tr))"
+  },
+  {
+    "name": "ridge.train.mae",
+    "reference": "mean_absolute_error(ytr,pred_tr)"
+  },
+  {
+    "name": "f\"has.{k}\"",
+    "reference": "True"
   }
 ]

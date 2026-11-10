@@ -1,9 +1,9 @@
 {
   "title": "SOM (Python)",
-  "total_checks": 372,
-  "numeric_checks": 341,
-  "exact_checks": 31,
-  "pass": 372,
+  "total_checks": 421,
+  "numeric_checks": 386,
+  "exact_checks": 35,
+  "pass": 421,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
@@ -11,16 +11,16 @@
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
-  "runtime_version": "3.11.15",
-  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "runtime_version": "3.11.17",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
   "packages": {
-    "numpy": "2.4.6",
-    "pandas": "3.0.3",
-    "scipy": "1.17.1",
-    "sklearn": "1.9.0"
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "sklearn": "1.5.2"
   },
-  "git_commit": "3aa5188",
-  "validation_date": "2026-07-12",
+  "git_commit": "4794d67",
+  "validation_date": "2026-11-10",
   "checks": [
     {
       "name": "som.grid_size[0]",
@@ -96,8 +96,8 @@
     },
     {
       "name": "som.n_nodes_activated",
-      "got": "13",
-      "expected": "13",
+      "got": "15",
+      "expected": "15",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -112,168 +112,168 @@
     },
     {
       "name": "som.assign_from_bmu[0]",
-      "got": "14",
-      "expected": "14",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[1]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[2]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[3]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[4]",
-      "got": "14",
-      "expected": "14",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[5]",
-      "got": "15",
-      "expected": "15",
+      "got": "7",
+      "expected": "7",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[6]",
-      "got": "14",
-      "expected": "14",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[7]",
-      "got": "14",
-      "expected": "14",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[8]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[9]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[10]",
-      "got": "15",
-      "expected": "15",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[11]",
-      "got": "14",
-      "expected": "14",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[12]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[13]",
-      "got": "13",
-      "expected": "13",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[14]",
-      "got": "15",
-      "expected": "15",
+      "got": "7",
+      "expected": "7",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[15]",
-      "got": "15",
-      "expected": "15",
+      "got": "7",
+      "expected": "7",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[16]",
-      "got": "15",
-      "expected": "15",
+      "got": "7",
+      "expected": "7",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[17]",
-      "got": "14",
-      "expected": "14",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[18]",
-      "got": "15",
-      "expected": "15",
+      "got": "7",
+      "expected": "7",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.assign_from_bmu[19]",
-      "got": "15",
-      "expected": "15",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.silhouette",
-      "got": "0.328409",
-      "expected": "0.328409",
+      "got": "0.244988",
+      "expected": "0.244988",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -328,320 +328,320 @@
     },
     {
       "name": "som.Node 0.size",
-      "got": "8",
-      "expected": "8",
+      "got": "3",
+      "expected": "3",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.percentage",
-      "got": "5.33333",
-      "expected": "5.33333",
+      "got": "2",
+      "expected": "2",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid[sepal length (cm)]",
-      "got": "6.2",
-      "expected": "6.2",
+      "got": "7.6",
+      "expected": "7.6",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid[sepal width (cm)]",
-      "got": "2.4125",
-      "expected": "2.4125",
+      "got": "3.73333",
+      "expected": "3.73333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid[petal length (cm)]",
-      "got": "5.025",
-      "expected": "5.025",
+      "got": "6.4",
+      "expected": "6.4",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid[petal width (cm)]",
-      "got": "1.6125",
-      "expected": "1.6125",
+      "got": "2.23333",
+      "expected": "2.23333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid_zscore[sepal length (cm)]",
-      "got": "0.432165",
-      "expected": "0.432165",
+      "got": "2.12852",
+      "expected": "2.12852",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid_zscore[sepal width (cm)]",
-      "got": "-1.48439",
-      "expected": "-1.48439",
+      "got": "1.55613",
+      "expected": "1.55613",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid_zscore[petal length (cm)]",
-      "got": "0.72013",
-      "expected": "0.72013",
+      "got": "1.50164",
+      "expected": "1.50164",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.centroid_zscore[petal width (cm)]",
-      "got": "0.54386",
-      "expected": "0.54386",
+      "got": "1.36108",
+      "expected": "1.36108",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.size",
-      "got": "15",
-      "expected": "15",
+      "got": "9",
+      "expected": "9",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.percentage",
-      "got": "10",
-      "expected": "10",
+      "got": "6",
+      "expected": "6",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid[sepal length (cm)]",
-      "got": "6.08667",
-      "expected": "6.08667",
+      "got": "5.65556",
+      "expected": "5.65556",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid[sepal width (cm)]",
-      "got": "2.81333",
-      "expected": "2.81333",
+      "got": "2.93333",
+      "expected": "2.93333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid[petal length (cm)]",
-      "got": "5.13333",
-      "expected": "5.13333",
+      "got": "4.21111",
+      "expected": "4.21111",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid[petal width (cm)]",
-      "got": "1.88667",
-      "expected": "1.88667",
+      "got": "1.35556",
+      "expected": "1.35556",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid_zscore[sepal length (cm)]",
-      "got": "0.294842",
-      "expected": "0.294842",
+      "got": "-0.227526",
+      "expected": "-0.227526",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid_zscore[sepal width (cm)]",
-      "got": "-0.56168",
-      "expected": "-0.56168",
+      "got": "-0.285444",
+      "expected": "-0.285444",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid_zscore[petal length (cm)]",
-      "got": "0.781704",
-      "expected": "0.781704",
+      "got": "0.257537",
+      "expected": "0.257537",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.centroid_zscore[petal width (cm)]",
-      "got": "0.904752",
-      "expected": "0.904752",
+      "got": "0.205639",
+      "expected": "0.205639",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.size",
-      "got": "8",
-      "expected": "8",
+      "got": "18",
+      "expected": "18",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.percentage",
-      "got": "5.33333",
-      "expected": "5.33333",
+      "got": "12",
+      "expected": "12",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid[sepal length (cm)]",
-      "got": "7.4625",
-      "expected": "7.4625",
+      "got": "4.71111",
+      "expected": "4.71111",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid[sepal width (cm)]",
-      "got": "2.8875",
-      "expected": "2.8875",
+      "got": "3.11111",
+      "expected": "3.11111",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid[petal length (cm)]",
-      "got": "6.3",
-      "expected": "6.3",
+      "got": "1.40556",
+      "expected": "1.40556",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid[petal width (cm)]",
-      "got": "2.0125",
-      "expected": "2.0125",
+      "got": "0.194444",
+      "expected": "0.194444",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid_zscore[sepal length (cm)]",
-      "got": "1.96191",
-      "expected": "1.96191",
+      "got": "-1.37189",
+      "expected": "-1.37189",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid_zscore[sepal width (cm)]",
-      "got": "-0.390951",
-      "expected": "-0.390951",
+      "got": "0.123795",
+      "expected": "0.123795",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid_zscore[petal length (cm)]",
-      "got": "1.44481",
-      "expected": "1.44481",
+      "got": "-1.33707",
+      "expected": "-1.33707",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 2.centroid_zscore[petal width (cm)]",
-      "got": "1.07039",
-      "expected": "1.07039",
+      "got": "-1.32276",
+      "expected": "-1.32276",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.size",
-      "got": "4",
-      "expected": "4",
+      "got": "23",
+      "expected": "23",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.percentage",
-      "got": "2.66667",
-      "expected": "2.66667",
+      "got": "15.3333",
+      "expected": "15.3333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid[sepal length (cm)]",
-      "got": "7.5",
-      "expected": "7.5",
+      "got": "5.09565",
+      "expected": "5.09565",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid[sepal width (cm)]",
-      "got": "3.6",
-      "expected": "3.6",
+      "got": "3.54348",
+      "expected": "3.54348",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid[petal length (cm)]",
-      "got": "6.3",
-      "expected": "6.3",
+      "got": "1.5",
+      "expected": "1.5",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid[petal width (cm)]",
-      "got": "2.125",
-      "expected": "2.125",
+      "got": "0.26087",
+      "expected": "0.26087",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid_zscore[sepal length (cm)]",
-      "got": "2.00735",
-      "expected": "2.00735",
+      "got": "-0.905949",
+      "expected": "-0.905949",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid_zscore[sepal width (cm)]",
-      "got": "1.2492",
-      "expected": "1.2492",
+      "got": "1.11909",
+      "expected": "1.11909",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid_zscore[petal length (cm)]",
-      "got": "1.44481",
-      "expected": "1.44481",
+      "got": "-1.28339",
+      "expected": "-1.28339",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.centroid_zscore[petal width (cm)]",
-      "got": "1.21848",
-      "expected": "1.21848",
+      "got": "-1.23532",
+      "expected": "-1.23532",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -664,390 +664,150 @@
     },
     {
       "name": "som.Node 4.centroid[sepal length (cm)]",
-      "got": "5.78889",
-      "expected": "5.78889",
+      "got": "7.43333",
+      "expected": "7.43333",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid[sepal width (cm)]",
-      "got": "2.72222",
-      "expected": "2.72222",
+      "got": "2.92222",
+      "expected": "2.92222",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid[petal length (cm)]",
-      "got": "4.21111",
-      "expected": "4.21111",
+      "got": "6.26667",
+      "expected": "6.26667",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid[petal width (cm)]",
-      "got": "1.22222",
-      "expected": "1.22222",
+      "got": "1.98889",
+      "expected": "1.98889",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid_zscore[sepal length (cm)]",
-      "got": "-0.0659692",
-      "expected": "-0.0659692",
+      "got": "1.92657",
+      "expected": "1.92657",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid_zscore[sepal width (cm)]",
-      "got": "-0.771415",
-      "expected": "-0.771415",
+      "got": "-0.311021",
+      "expected": "-0.311021",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid_zscore[petal length (cm)]",
-      "got": "0.257537",
-      "expected": "0.257537",
+      "got": "1.42586",
+      "expected": "1.42586",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.centroid_zscore[petal width (cm)]",
-      "got": "0.0301291",
-      "expected": "0.0301291",
+      "got": "1.03931",
+      "expected": "1.03931",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.size",
-      "got": "13",
-      "expected": "13",
+      "got": "9",
+      "expected": "9",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.percentage",
-      "got": "8.66667",
-      "expected": "8.66667",
+      "got": "6",
+      "expected": "6",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid[sepal length (cm)]",
-      "got": "5.83077",
-      "expected": "5.83077",
+      "got": "6.65556",
+      "expected": "6.65556",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid[sepal width (cm)]",
-      "got": "3.00769",
-      "expected": "3.00769",
+      "got": "3.1",
+      "expected": "3.1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid[petal length (cm)]",
-      "got": "4.36154",
-      "expected": "4.36154",
+      "got": "4.65556",
+      "expected": "4.65556",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid[petal width (cm)]",
-      "got": "1.43077",
-      "expected": "1.43077",
+      "got": "1.47778",
+      "expected": "1.47778",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid_zscore[sepal length (cm)]",
-      "got": "-0.0152237",
-      "expected": "-0.0152237",
+      "got": "0.984152",
+      "expected": "0.984152",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid_zscore[sepal width (cm)]",
-      "got": "-0.114272",
-      "expected": "-0.114272",
+      "got": "0.0982173",
+      "expected": "0.0982173",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid_zscore[petal length (cm)]",
-      "got": "0.343036",
-      "expected": "0.343036",
+      "got": "0.510147",
+      "expected": "0.510147",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.centroid_zscore[petal width (cm)]",
-      "got": "0.304644",
-      "expected": "0.304644",
+      "got": "0.366523",
+      "expected": "0.366523",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 6.size",
-      "got": "14",
-      "expected": "14",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.percentage",
-      "got": "9.33333",
-      "expected": "9.33333",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid[sepal length (cm)]",
-      "got": "6.60714",
-      "expected": "6.60714",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid[sepal width (cm)]",
-      "got": "3.03571",
-      "expected": "3.03571",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid[petal length (cm)]",
-      "got": "4.75714",
-      "expected": "4.75714",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid[petal width (cm)]",
-      "got": "1.50714",
-      "expected": "1.50714",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid_zscore[sepal length (cm)]",
-      "got": "0.925492",
-      "expected": "0.925492",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid_zscore[sepal width (cm)]",
-      "got": "-0.0497663",
-      "expected": "-0.0497663",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid_zscore[petal length (cm)]",
-      "got": "0.567887",
-      "expected": "0.567887",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.centroid_zscore[petal width (cm)]",
-      "got": "0.405176",
-      "expected": "0.405176",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.size",
-      "got": "16",
-      "expected": "16",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.percentage",
-      "got": "10.6667",
-      "expected": "10.6667",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid[sepal length (cm)]",
-      "got": "6.6125",
-      "expected": "6.6125",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid[sepal width (cm)]",
-      "got": "3.175",
-      "expected": "3.175",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid[petal length (cm)]",
-      "got": "5.5125",
-      "expected": "5.5125",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid[petal width (cm)]",
-      "got": "2.25625",
-      "expected": "2.25625",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid_zscore[sepal length (cm)]",
-      "got": "0.931983",
-      "expected": "0.931983",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid_zscore[sepal width (cm)]",
-      "got": "0.270865",
-      "expected": "0.270865",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid_zscore[petal length (cm)]",
-      "got": "0.997213",
-      "expected": "0.997213",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.centroid_zscore[petal width (cm)]",
-      "got": "1.39124",
-      "expected": "1.39124",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.size",
-      "got": "13",
-      "expected": "13",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.percentage",
-      "got": "8.66667",
-      "expected": "8.66667",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid[sepal length (cm)]",
-      "got": "5.33846",
-      "expected": "5.33846",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid[sepal width (cm)]",
-      "got": "2.40769",
-      "expected": "2.40769",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid[petal length (cm)]",
-      "got": "3.72308",
-      "expected": "3.72308",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid[petal width (cm)]",
-      "got": "1.15385",
-      "expected": "1.15385",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid_zscore[sepal length (cm)]",
-      "got": "-0.611742",
-      "expected": "-0.611742",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid_zscore[sepal width (cm)]",
-      "got": "-1.49545",
-      "expected": "-1.49545",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid_zscore[petal length (cm)]",
-      "got": "-0.0198494",
-      "expected": "-0.0198494",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.centroid_zscore[petal width (cm)]",
-      "got": "-0.0598758",
-      "expected": "-0.0598758",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 12.size",
       "got": "1",
       "expected": "1",
       "tolerance": 1e-06,
@@ -1055,7 +815,7 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 12.percentage",
+      "name": "som.Node 6.percentage",
       "got": "0.666667",
       "expected": "0.666667",
       "tolerance": 1e-09,
@@ -1063,23 +823,351 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 12.centroid[sepal length (cm)]",
-      "got": "4.5",
-      "expected": "4.5",
+      "name": "som.Node 6.centroid[sepal length (cm)]",
+      "got": "5.1",
+      "expected": "5.1",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 12.centroid[sepal width (cm)]",
-      "got": "2.3",
-      "expected": "2.3",
+      "name": "som.Node 6.centroid[sepal width (cm)]",
+      "got": "3.3",
+      "expected": "3.3",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 12.centroid[petal length (cm)]",
+      "name": "som.Node 6.centroid[petal length (cm)]",
+      "got": "1.7",
+      "expected": "1.7",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid[petal width (cm)]",
+      "got": "0.5",
+      "expected": "0.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[sepal length (cm)]",
+      "got": "-0.900681",
+      "expected": "-0.900681",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[sepal width (cm)]",
+      "got": "0.558611",
+      "expected": "0.558611",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[petal length (cm)]",
+      "got": "-1.16971",
+      "expected": "-1.16971",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.centroid_zscore[petal width (cm)]",
+      "got": "-0.920548",
+      "expected": "-0.920548",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.size",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.percentage",
+      "got": "4.66667",
+      "expected": "4.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[sepal length (cm)]",
+      "got": "5.52857",
+      "expected": "5.52857",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[sepal width (cm)]",
+      "got": "4.04286",
+      "expected": "4.04286",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[petal length (cm)]",
+      "got": "1.47143",
+      "expected": "1.47143",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid[petal width (cm)]",
+      "got": "0.285714",
+      "expected": "0.285714",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[sepal length (cm)]",
+      "got": "-0.38139",
+      "expected": "-0.38139",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[sepal width (cm)]",
+      "got": "2.26864",
+      "expected": "2.26864",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[petal length (cm)]",
+      "got": "-1.29963",
+      "expected": "-1.29963",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.centroid_zscore[petal width (cm)]",
+      "got": "-1.20262",
+      "expected": "-1.20262",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.size",
+      "got": "15",
+      "expected": "15",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.percentage",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[sepal length (cm)]",
+      "got": "6.62",
+      "expected": "6.62",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[sepal width (cm)]",
+      "got": "3.18667",
+      "expected": "3.18667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[petal length (cm)]",
+      "got": "5.53333",
+      "expected": "5.53333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid[petal width (cm)]",
+      "got": "2.27333",
+      "expected": "2.27333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[sepal length (cm)]",
+      "got": "0.94107",
+      "expected": "0.94107",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[sepal width (cm)]",
+      "got": "0.297721",
+      "expected": "0.297721",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[petal length (cm)]",
+      "got": "1.00905",
+      "expected": "1.00905",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.centroid_zscore[petal width (cm)]",
+      "got": "1.41373",
+      "expected": "1.41373",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.size",
+      "got": "11",
+      "expected": "11",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.percentage",
+      "got": "7.33333",
+      "expected": "7.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid[sepal length (cm)]",
+      "got": "6.21818",
+      "expected": "6.21818",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid[sepal width (cm)]",
+      "got": "3.01818",
+      "expected": "3.01818",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid[petal length (cm)]",
+      "got": "5.19091",
+      "expected": "5.19091",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid[petal width (cm)]",
+      "got": "1.86364",
+      "expected": "1.86364",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid_zscore[sepal length (cm)]",
+      "got": "0.454196",
+      "expected": "0.454196",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid_zscore[sepal width (cm)]",
+      "got": "-0.0901255",
+      "expected": "-0.0901255",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid_zscore[petal length (cm)]",
+      "got": "0.814429",
+      "expected": "0.814429",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.centroid_zscore[petal width (cm)]",
+      "got": "0.874437",
+      "expected": "0.874437",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.size",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.percentage",
+      "got": "4.66667",
+      "expected": "4.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid[sepal length (cm)]",
+      "got": "5.47143",
+      "expected": "5.47143",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid[sepal width (cm)]",
+      "got": "2.62857",
+      "expected": "2.62857",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid[petal length (cm)]",
+      "got": "4.14286",
+      "expected": "4.14286",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid[petal width (cm)]",
       "got": "1.3",
       "expected": "1.3",
       "tolerance": 1e-09,
@@ -1087,23 +1175,335 @@
       "status": "PASS"
     },
     {
+      "name": "som.Node 10.centroid_zscore[sepal length (cm)]",
+      "got": "-0.450629",
+      "expected": "-0.450629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid_zscore[sepal width (cm)]",
+      "got": "-0.986996",
+      "expected": "-0.986996",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid_zscore[petal length (cm)]",
+      "got": "0.218743",
+      "expected": "0.218743",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.centroid_zscore[petal width (cm)]",
+      "got": "0.13251",
+      "expected": "0.13251",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.size",
+      "got": "9",
+      "expected": "9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.percentage",
+      "got": "6",
+      "expected": "6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[sepal length (cm)]",
+      "got": "6.04444",
+      "expected": "6.04444",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[sepal width (cm)]",
+      "got": "2.65556",
+      "expected": "2.65556",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid[petal length (cm)]",
+      "got": "5.13333",
+      "expected": "5.13333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "som.Node 12.centroid[petal width (cm)]",
-      "got": "0.3",
-      "expected": "0.3",
+      "got": "1.95556",
+      "expected": "1.95556",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 12.centroid_zscore[sepal length (cm)]",
-      "got": "-1.62769",
-      "expected": "-1.62769",
+      "got": "0.243682",
+      "expected": "0.243682",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 12.centroid_zscore[sepal width (cm)]",
+      "got": "-0.924879",
+      "expected": "-0.924879",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid_zscore[petal length (cm)]",
+      "got": "0.781704",
+      "expected": "0.781704",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.centroid_zscore[petal width (cm)]",
+      "got": "0.995432",
+      "expected": "0.995432",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.size",
+      "got": "14",
+      "expected": "14",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.percentage",
+      "got": "9.33333",
+      "expected": "9.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[sepal length (cm)]",
+      "got": "6.22857",
+      "expected": "6.22857",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[sepal width (cm)]",
+      "got": "2.8",
+      "expected": "2.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[petal length (cm)]",
+      "got": "4.71429",
+      "expected": "4.71429",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid[petal width (cm)]",
+      "got": "1.43571",
+      "expected": "1.43571",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[sepal length (cm)]",
+      "got": "0.466785",
+      "expected": "0.466785",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[sepal width (cm)]",
+      "got": "-0.592373",
+      "expected": "-0.592373",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[petal length (cm)]",
+      "got": "0.543528",
+      "expected": "0.543528",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.centroid_zscore[petal width (cm)]",
+      "got": "0.311153",
+      "expected": "0.311153",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.size",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.percentage",
+      "got": "6.66667",
+      "expected": "6.66667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[sepal length (cm)]",
+      "got": "5.81",
+      "expected": "5.81",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[sepal width (cm)]",
+      "got": "2.37",
+      "expected": "2.37",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[petal length (cm)]",
+      "got": "4.08",
+      "expected": "4.08",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid[petal width (cm)]",
+      "got": "1.2",
+      "expected": "1.2",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[sepal length (cm)]",
+      "got": "-0.0403893",
+      "expected": "-0.0403893",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[sepal width (cm)]",
+      "got": "-1.58222",
+      "expected": "-1.58222",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[petal length (cm)]",
+      "got": "0.183017",
+      "expected": "0.183017",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.centroid_zscore[petal width (cm)]",
+      "got": "0.000877548",
+      "expected": "0.000877548",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.size",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.percentage",
+      "got": "3.33333",
+      "expected": "3.33333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[sepal length (cm)]",
+      "got": "4.9",
+      "expected": "4.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[sepal width (cm)]",
+      "got": "2.3",
+      "expected": "2.3",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[petal length (cm)]",
+      "got": "2.88",
+      "expected": "2.88",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid[petal width (cm)]",
+      "got": "0.88",
+      "expected": "0.88",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid_zscore[sepal length (cm)]",
+      "got": "-1.14302",
+      "expected": "-1.14302",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 15.centroid_zscore[sepal width (cm)]",
       "got": "-1.74336",
       "expected": "-1.74336",
       "tolerance": 1e-09,
@@ -1111,263 +1511,39 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 12.centroid_zscore[petal length (cm)]",
-      "got": "-1.39706",
-      "expected": "-1.39706",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 12.centroid_zscore[petal width (cm)]",
-      "got": "-1.18381",
-      "expected": "-1.18381",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.size",
-      "got": "16",
-      "expected": "16",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.percentage",
-      "got": "10.6667",
-      "expected": "10.6667",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid[sepal length (cm)]",
-      "got": "4.7",
-      "expected": "4.7",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid[sepal width (cm)]",
-      "got": "3.08125",
-      "expected": "3.08125",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid[petal length (cm)]",
-      "got": "1.40625",
-      "expected": "1.40625",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid[petal width (cm)]",
-      "got": "0.1875",
-      "expected": "0.1875",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid_zscore[sepal length (cm)]",
-      "got": "-1.38535",
-      "expected": "-1.38535",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid_zscore[sepal width (cm)]",
-      "got": "0.0550554",
-      "expected": "0.0550554",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid_zscore[petal length (cm)]",
-      "got": "-1.33667",
-      "expected": "-1.33667",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.centroid_zscore[petal width (cm)]",
-      "got": "-1.3319",
-      "expected": "-1.3319",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.size",
-      "got": "20",
-      "expected": "20",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.percentage",
-      "got": "13.3333",
-      "expected": "13.3333",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid[sepal length (cm)]",
-      "got": "5.04",
-      "expected": "5.04",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid[sepal width (cm)]",
-      "got": "3.45",
-      "expected": "3.45",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid[petal length (cm)]",
-      "got": "1.475",
-      "expected": "1.475",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid[petal width (cm)]",
-      "got": "0.265",
-      "expected": "0.265",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid_zscore[sepal length (cm)]",
-      "got": "-0.973382",
-      "expected": "-0.973382",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid_zscore[sepal width (cm)]",
-      "got": "0.903906",
-      "expected": "0.903906",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid_zscore[petal length (cm)]",
-      "got": "-1.2976",
-      "expected": "-1.2976",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.centroid_zscore[petal width (cm)]",
-      "got": "-1.22988",
-      "expected": "-1.22988",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.size",
-      "got": "13",
-      "expected": "13",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.percentage",
-      "got": "8.66667",
-      "expected": "8.66667",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.centroid[sepal length (cm)]",
-      "got": "5.36923",
-      "expected": "5.36923",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.centroid[sepal width (cm)]",
-      "got": "3.90769",
-      "expected": "3.90769",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.centroid[petal length (cm)]",
-      "got": "1.52308",
-      "expected": "1.52308",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.centroid[petal width (cm)]",
-      "got": "0.284615",
-      "expected": "0.284615",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.centroid_zscore[sepal length (cm)]",
-      "got": "-0.57446",
-      "expected": "-0.57446",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 15.centroid_zscore[sepal width (cm)]",
-      "got": "1.9575",
-      "expected": "1.9575",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
       "name": "som.Node 15.centroid_zscore[petal length (cm)]",
-      "got": "-1.27027",
-      "expected": "-1.27027",
+      "got": "-0.499033",
+      "expected": "-0.499033",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 15.centroid_zscore[petal width (cm)]",
-      "got": "-1.20406",
-      "expected": "-1.20406",
+      "got": "-0.420345",
+      "expected": "-0.420345",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.auto.top[0].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.auto.top[0].z_score",
+      "got": "2.12852",
+      "expected": "2.12852",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 0.auto.top[1].feature",
       "got": "sepal width (cm)",
       "expected": "sepal width (cm)",
       "tolerance": null,
@@ -1375,41 +1551,25 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 0.auto.top[0].z_score",
-      "got": "-1.48439",
-      "expected": "-1.48439",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 0.auto.top[1].feature",
-      "got": "petal length (cm)",
-      "expected": "petal length (cm)",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
       "name": "som.Node 0.auto.top[1].z_score",
-      "got": "0.72013",
-      "expected": "0.72013",
+      "got": "1.55613",
+      "expected": "1.55613",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.auto.top[0].feature",
-      "got": "petal width (cm)",
-      "expected": "petal width (cm)",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 1.auto.top[0].z_score",
-      "got": "0.904752",
-      "expected": "0.904752",
+      "got": "-0.285444",
+      "expected": "-0.285444",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1424,8 +1584,8 @@
     },
     {
       "name": "som.Node 1.auto.top[1].z_score",
-      "got": "0.781704",
-      "expected": "0.781704",
+      "got": "0.257537",
+      "expected": "0.257537",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1440,8 +1600,8 @@
     },
     {
       "name": "som.Node 2.auto.top[0].z_score",
-      "got": "1.96191",
-      "expected": "1.96191",
+      "got": "-1.37189",
+      "expected": "-1.37189",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1456,30 +1616,14 @@
     },
     {
       "name": "som.Node 2.auto.top[1].z_score",
-      "got": "1.44481",
-      "expected": "1.44481",
+      "got": "-1.33707",
+      "expected": "-1.33707",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 3.auto.top[0].feature",
-      "got": "sepal length (cm)",
-      "expected": "sepal length (cm)",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 3.auto.top[0].z_score",
-      "got": "2.00735",
-      "expected": "2.00735",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 3.auto.top[1].feature",
       "got": "petal length (cm)",
       "expected": "petal length (cm)",
       "tolerance": null,
@@ -1487,25 +1631,41 @@
       "status": "PASS"
     },
     {
+      "name": "som.Node 3.auto.top[0].z_score",
+      "got": "-1.28339",
+      "expected": "-1.28339",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 3.auto.top[1].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
       "name": "som.Node 3.auto.top[1].z_score",
-      "got": "1.44481",
-      "expected": "1.44481",
+      "got": "-1.23532",
+      "expected": "-1.23532",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.auto.top[0].feature",
-      "got": "sepal width (cm)",
-      "expected": "sepal width (cm)",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 4.auto.top[0].z_score",
-      "got": "-0.771415",
-      "expected": "-0.771415",
+      "got": "1.92657",
+      "expected": "1.92657",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1520,46 +1680,14 @@
     },
     {
       "name": "som.Node 4.auto.top[1].z_score",
-      "got": "0.257537",
-      "expected": "0.257537",
+      "got": "1.42586",
+      "expected": "1.42586",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 5.auto.top[0].feature",
-      "got": "petal length (cm)",
-      "expected": "petal length (cm)",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 5.auto.top[0].z_score",
-      "got": "0.343036",
-      "expected": "0.343036",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 5.auto.top[1].feature",
-      "got": "petal width (cm)",
-      "expected": "petal width (cm)",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 5.auto.top[1].z_score",
-      "got": "0.304644",
-      "expected": "0.304644",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.auto.top[0].feature",
       "got": "sepal length (cm)",
       "expected": "sepal length (cm)",
       "tolerance": null,
@@ -1567,15 +1695,15 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 6.auto.top[0].z_score",
-      "got": "0.925492",
-      "expected": "0.925492",
+      "name": "som.Node 5.auto.top[0].z_score",
+      "got": "0.984152",
+      "expected": "0.984152",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 6.auto.top[1].feature",
+      "name": "som.Node 5.auto.top[1].feature",
       "got": "petal length (cm)",
       "expected": "petal length (cm)",
       "tolerance": null,
@@ -1583,15 +1711,31 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 6.auto.top[1].z_score",
-      "got": "0.567887",
-      "expected": "0.567887",
+      "name": "som.Node 5.auto.top[1].z_score",
+      "got": "0.510147",
+      "expected": "0.510147",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 7.auto.top[0].feature",
+      "name": "som.Node 6.auto.top[0].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.auto.top[0].z_score",
+      "got": "-1.16971",
+      "expected": "-1.16971",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.auto.top[1].feature",
       "got": "petal width (cm)",
       "expected": "petal width (cm)",
       "tolerance": null,
@@ -1599,9 +1743,25 @@
       "status": "PASS"
     },
     {
+      "name": "som.Node 6.auto.top[1].z_score",
+      "got": "-0.920548",
+      "expected": "-0.920548",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
       "name": "som.Node 7.auto.top[0].z_score",
-      "got": "1.39124",
-      "expected": "1.39124",
+      "got": "2.26864",
+      "expected": "2.26864",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1616,46 +1776,78 @@
     },
     {
       "name": "som.Node 7.auto.top[1].z_score",
-      "got": "0.997213",
-      "expected": "0.997213",
+      "got": "-1.29963",
+      "expected": "-1.29963",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 8.auto.top[0].feature",
-      "got": "sepal width (cm)",
-      "expected": "sepal width (cm)",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 8.auto.top[0].z_score",
-      "got": "-1.49545",
-      "expected": "-1.49545",
+      "got": "1.41373",
+      "expected": "1.41373",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 8.auto.top[1].feature",
-      "got": "sepal length (cm)",
-      "expected": "sepal length (cm)",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 8.auto.top[1].z_score",
-      "got": "-0.611742",
-      "expected": "-0.611742",
+      "got": "1.00905",
+      "expected": "1.00905",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 12.auto.top[0].feature",
+      "name": "som.Node 9.auto.top[0].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.auto.top[0].z_score",
+      "got": "0.874437",
+      "expected": "0.874437",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.auto.top[1].feature",
+      "got": "petal length (cm)",
+      "expected": "petal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.auto.top[1].z_score",
+      "got": "0.814429",
+      "expected": "0.814429",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.auto.top[0].feature",
       "got": "sepal width (cm)",
       "expected": "sepal width (cm)",
       "tolerance": null,
@@ -1663,41 +1855,73 @@
       "status": "PASS"
     },
     {
+      "name": "som.Node 10.auto.top[0].z_score",
+      "got": "-0.986996",
+      "expected": "-0.986996",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.auto.top[1].feature",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.auto.top[1].z_score",
+      "got": "-0.450629",
+      "expected": "-0.450629",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.auto.top[0].feature",
+      "got": "petal width (cm)",
+      "expected": "petal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
       "name": "som.Node 12.auto.top[0].z_score",
-      "got": "-1.74336",
-      "expected": "-1.74336",
+      "got": "0.995432",
+      "expected": "0.995432",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 12.auto.top[1].feature",
-      "got": "sepal length (cm)",
-      "expected": "sepal length (cm)",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 12.auto.top[1].z_score",
-      "got": "-1.62769",
-      "expected": "-1.62769",
+      "got": "-0.924879",
+      "expected": "-0.924879",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 13.auto.top[0].feature",
-      "got": "sepal length (cm)",
-      "expected": "sepal length (cm)",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 13.auto.top[0].z_score",
-      "got": "-1.38535",
-      "expected": "-1.38535",
+      "got": "-0.592373",
+      "expected": "-0.592373",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1712,14 +1936,30 @@
     },
     {
       "name": "som.Node 13.auto.top[1].z_score",
-      "got": "-1.33667",
-      "expected": "-1.33667",
+      "got": "0.543528",
+      "expected": "0.543528",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 14.auto.top[0].feature",
+      "got": "sepal width (cm)",
+      "expected": "sepal width (cm)",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.auto.top[0].z_score",
+      "got": "-1.58222",
+      "expected": "-1.58222",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.auto.top[1].feature",
       "got": "petal length (cm)",
       "expected": "petal length (cm)",
       "tolerance": null,
@@ -1727,25 +1967,9 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 14.auto.top[0].z_score",
-      "got": "-1.2976",
-      "expected": "-1.2976",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 14.auto.top[1].feature",
-      "got": "petal width (cm)",
-      "expected": "petal width (cm)",
-      "tolerance": null,
-      "abs_difference": null,
-      "status": "PASS"
-    },
-    {
       "name": "som.Node 14.auto.top[1].z_score",
-      "got": "-1.22988",
-      "expected": "-1.22988",
+      "got": "0.183017",
+      "expected": "0.183017",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1760,88 +1984,88 @@
     },
     {
       "name": "som.Node 15.auto.top[0].z_score",
-      "got": "1.9575",
-      "expected": "1.9575",
+      "got": "-1.74336",
+      "expected": "-1.74336",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 15.auto.top[1].feature",
-      "got": "petal length (cm)",
-      "expected": "petal length (cm)",
+      "got": "sepal length (cm)",
+      "expected": "sepal length (cm)",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"
     },
     {
       "name": "som.Node 15.auto.top[1].z_score",
-      "got": "-1.27027",
-      "expected": "-1.27027",
+      "got": "-1.14302",
+      "expected": "-1.14302",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[sepal length (cm)].f_stat",
-      "got": "121.344",
-      "expected": "121.344",
+      "got": "109.623",
+      "expected": "109.623",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[sepal length (cm)].p_value",
-      "got": "1.02529e-66",
-      "expected": "1.02529e-66",
+      "got": "2.00569e-66",
+      "expected": "2.00569e-66",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[sepal width (cm)].f_stat",
-      "got": "101.794",
-      "expected": "101.794",
+      "got": "89.8007",
+      "expected": "89.8007",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[sepal width (cm)].p_value",
-      "got": "5.18552e-62",
-      "expected": "5.18552e-62",
+      "got": "3.84794e-61",
+      "expected": "3.84794e-61",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[petal length (cm)].f_stat",
-      "got": "429.133",
-      "expected": "429.133",
+      "got": "303.124",
+      "expected": "303.124",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[petal length (cm)].p_value",
-      "got": "2.90762e-102",
-      "expected": "2.90762e-102",
+      "got": "1.49831e-94",
+      "expected": "1.49831e-94",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[petal width (cm)].f_stat",
-      "got": "239.02",
-      "expected": "239.02",
+      "got": "235.644",
+      "expected": "235.644",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.fc[petal width (cm)].p_value",
-      "got": "1.67024e-85",
-      "expected": "1.67024e-85",
+      "got": "1.89396e-87",
+      "expected": "1.89396e-87",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1864,104 +2088,120 @@
     },
     {
       "name": "som.cdm[0,1]",
-      "got": "1.00214",
-      "expected": "1.00214",
+      "got": "3.43877",
+      "expected": "3.43877",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,2]",
-      "got": "2.08281",
-      "expected": "2.08281",
+      "got": "5.43743",
+      "expected": "5.43743",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,3]",
-      "got": "3.30665",
-      "expected": "3.30665",
+      "got": "4.88842",
+      "expected": "4.88842",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,4]",
-      "got": "1.11103",
-      "expected": "1.11103",
+      "got": "1.90691",
+      "expected": "1.90691",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,5]",
-      "got": "1.5089",
-      "expected": "1.5089",
+      "got": "2.32536",
+      "expected": "2.32536",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,6]",
-      "got": "1.53098",
-      "expected": "1.53098",
+      "got": "4.74479",
+      "expected": "4.74479",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,7]",
-      "got": "2.03115",
-      "expected": "2.03115",
+      "got": "4.60727",
+      "expected": "4.60727",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,8]",
-      "got": "1.4149",
-      "expected": "1.4149",
+      "got": "1.79973",
+      "expected": "1.79973",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,9]",
-      "got": "3.43183",
-      "expected": "3.43183",
+      "got": "2.49451",
+      "expected": "2.49451",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,10]",
-      "got": "3.66363",
-      "expected": "3.66363",
+      "got": "4.03419",
+      "expected": "4.03419",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,11]",
-      "got": "3.85965",
-      "expected": "3.85965",
+      "got": "3.2187",
+      "expected": "3.2187",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[0,12]",
-      "got": "4.45834",
-      "expected": "4.45834",
+      "got": "3.06557",
+      "expected": "3.06557",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,13]",
+      "got": "4.25938",
+      "expected": "4.25938",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[0,14]",
+      "got": "5.36337",
+      "expected": "5.36337",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,0]",
-      "got": "1.00214",
-      "expected": "1.00214",
+      "got": "3.43877",
+      "expected": "3.43877",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -1976,104 +2216,120 @@
     },
     {
       "name": "som.cdm[1,2]",
-      "got": "1.80981",
-      "expected": "1.80981",
+      "got": "2.52107",
+      "expected": "2.52107",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,3]",
-      "got": "2.59809",
-      "expected": "2.59809",
+      "got": "2.6237",
+      "expected": "2.6237",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,4]",
-      "got": "1.10177",
-      "expected": "1.10177",
+      "got": "2.58858",
+      "expected": "2.58858",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,5]",
-      "got": "0.921343",
-      "expected": "0.921343",
+      "got": "1.30578",
+      "expected": "1.30578",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,6]",
-      "got": "0.977276",
-      "expected": "0.977276",
+      "got": "2.11445",
+      "expected": "2.11445",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,7]",
-      "got": "1.17567",
-      "expected": "1.17567",
+      "got": "3.30983",
+      "expected": "3.30983",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,8]",
-      "got": "1.80743",
-      "expected": "1.80743",
+      "got": "1.93131",
+      "expected": "1.93131",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,9]",
-      "got": "3.7685",
-      "expected": "3.7685",
+      "got": "1.12264",
+      "expected": "1.12264",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,10]",
-      "got": "3.5628",
-      "expected": "3.5628",
+      "got": "0.740812",
+      "expected": "0.740812",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,11]",
-      "got": "3.55479",
-      "expected": "3.55479",
+      "got": "1.23671",
+      "expected": "1.23671",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[1,12]",
-      "got": "3.96984",
-      "expected": "3.96984",
+      "got": "0.818045",
+      "expected": "0.818045",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,13]",
+      "got": "1.3282",
+      "expected": "1.3282",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[1,14]",
+      "got": "1.98189",
+      "expected": "1.98189",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,0]",
-      "got": "2.08281",
-      "expected": "2.08281",
+      "got": "5.43743",
+      "expected": "5.43743",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,1]",
-      "got": "1.80981",
-      "expected": "1.80981",
+      "got": "2.52107",
+      "expected": "2.52107",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2088,104 +2344,120 @@
     },
     {
       "name": "som.cdm[2,3]",
-      "got": "1.64745",
-      "expected": "1.64745",
+      "got": "1.10374",
+      "expected": "1.10374",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,4]",
-      "got": "2.59784",
-      "expected": "2.59784",
+      "got": "4.92768",
+      "expected": "4.92768",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,5]",
-      "got": "2.40538",
-      "expected": "2.40538",
+      "got": "3.43765",
+      "expected": "3.43765",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,6]",
-      "got": "1.54986",
-      "expected": "1.54986",
+      "got": "0.775166",
+      "expected": "0.775166",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,7]",
-      "got": "1.3424",
-      "expected": "1.3424",
+      "got": "2.36586",
+      "expected": "2.36586",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,8]",
-      "got": "3.35654",
-      "expected": "3.35654",
+      "got": "4.28634",
+      "expected": "4.28634",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,9]",
-      "got": "5.27938",
-      "expected": "5.27938",
+      "got": "3.58287",
+      "expected": "3.58287",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,10]",
-      "got": "4.99106",
-      "expected": "4.99106",
+      "got": "2.57312",
+      "expected": "2.57312",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,11]",
-      "got": "4.80673",
-      "expected": "4.80673",
+      "got": "3.68415",
+      "expected": "3.68415",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[2,12]",
-      "got": "4.94906",
-      "expected": "4.94906",
+      "got": "3.17804",
+      "expected": "3.17804",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,13]",
+      "got": "2.95737",
+      "expected": "2.95737",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[2,14]",
+      "got": "2.2484",
+      "expected": "2.2484",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,0]",
-      "got": "3.30665",
-      "expected": "3.30665",
+      "got": "4.88842",
+      "expected": "4.88842",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,1]",
-      "got": "2.59809",
-      "expected": "2.59809",
+      "got": "2.6237",
+      "expected": "2.6237",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,2]",
-      "got": "1.64745",
-      "expected": "1.64745",
+      "got": "1.10374",
+      "expected": "1.10374",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2200,104 +2472,120 @@
     },
     {
       "name": "som.cdm[3,4]",
-      "got": "3.34713",
-      "expected": "3.34713",
+      "got": "4.75209",
+      "expected": "4.75209",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,5]",
-      "got": "2.82822",
-      "expected": "2.82822",
+      "got": "3.22449",
+      "expected": "3.22449",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,6]",
-      "got": "2.07079",
-      "expected": "2.07079",
+      "got": "0.652816",
+      "expected": "0.652816",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,7]",
-      "got": "1.53093",
-      "expected": "1.53093",
+      "got": "1.26411",
+      "expected": "1.26411",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,8]",
-      "got": "4.26288",
-      "expected": "4.26288",
+      "got": "4.04461",
+      "expected": "4.04461",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,9]",
-      "got": "6.00134",
-      "expected": "6.00134",
+      "got": "3.48771",
+      "expected": "3.48771",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,10]",
-      "got": "5.2132",
-      "expected": "5.2132",
+      "got": "2.96146",
+      "expected": "2.96146",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,11]",
-      "got": "4.74544",
-      "expected": "4.74544",
+      "got": "3.83931",
+      "expected": "3.83931",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[3,12]",
-      "got": "4.5175",
-      "expected": "4.5175",
+      "got": "3.24695",
+      "expected": "3.24695",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,13]",
+      "got": "3.42415",
+      "expected": "3.42415",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[3,14]",
+      "got": "3.08694",
+      "expected": "3.08694",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,0]",
-      "got": "1.11103",
-      "expected": "1.11103",
+      "got": "1.90691",
+      "expected": "1.90691",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,1]",
-      "got": "1.10177",
-      "expected": "1.10177",
+      "got": "2.58858",
+      "expected": "2.58858",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,2]",
-      "got": "2.59784",
-      "expected": "2.59784",
+      "got": "4.92768",
+      "expected": "4.92768",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,3]",
-      "got": "3.34713",
-      "expected": "3.34713",
+      "got": "4.75209",
+      "expected": "4.75209",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2312,104 +2600,120 @@
     },
     {
       "name": "som.cdm[4,5]",
-      "got": "0.719083",
-      "expected": "0.719083",
+      "got": "1.53193",
+      "expected": "1.53193",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,6]",
-      "got": "1.31937",
-      "expected": "1.31937",
+      "got": "4.39632",
+      "expected": "4.39632",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,7]",
-      "got": "2.11707",
-      "expected": "2.11707",
+      "got": "4.94327",
+      "expected": "4.94327",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,8]",
-      "got": "0.952441",
-      "expected": "0.952441",
+      "got": "1.28674",
+      "expected": "1.28674",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,9]",
-      "got": "2.7559",
-      "expected": "2.7559",
+      "got": "1.61793",
+      "expected": "1.61793",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,10]",
-      "got": "2.6116",
-      "expected": "2.6116",
+      "got": "2.89611",
+      "expected": "2.89611",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,11]",
-      "got": "2.76336",
-      "expected": "2.76336",
+      "got": "1.90415",
+      "expected": "1.90415",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[4,12]",
-      "got": "3.40044",
-      "expected": "3.40044",
+      "got": "1.87586",
+      "expected": "1.87586",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,13]",
+      "got": "2.84743",
+      "expected": "2.84743",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[4,14]",
+      "got": "4.1605",
+      "expected": "4.1605",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,0]",
-      "got": "1.5089",
-      "expected": "1.5089",
+      "got": "2.32536",
+      "expected": "2.32536",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,1]",
-      "got": "0.921343",
-      "expected": "0.921343",
+      "got": "1.30578",
+      "expected": "1.30578",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,2]",
-      "got": "2.40538",
-      "expected": "2.40538",
+      "got": "3.43765",
+      "expected": "3.43765",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,3]",
-      "got": "2.82822",
-      "expected": "2.82822",
+      "got": "3.22449",
+      "expected": "3.22449",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,4]",
-      "got": "0.719083",
-      "expected": "0.719083",
+      "got": "1.53193",
+      "expected": "1.53193",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2424,104 +2728,120 @@
     },
     {
       "name": "som.cdm[5,6]",
-      "got": "0.974562",
-      "expected": "0.974562",
+      "got": "2.87107",
+      "expected": "2.87107",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,7]",
-      "got": "1.62916",
-      "expected": "1.62916",
+      "got": "3.50898",
+      "expected": "3.50898",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,8]",
-      "got": "1.58999",
-      "expected": "1.58999",
+      "got": "1.1778",
+      "expected": "1.1778",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,9]",
-      "got": "3.23997",
-      "expected": "3.23997",
+      "got": "0.816634",
+      "expected": "0.816634",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,10]",
-      "got": "2.72133",
-      "expected": "2.72133",
+      "got": "1.83738",
+      "expected": "1.83738",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,11]",
-      "got": "2.64598",
-      "expected": "2.64598",
+      "got": "1.43676",
+      "expected": "1.43676",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[5,12]",
-      "got": "3.0796",
-      "expected": "3.0796",
+      "got": "0.865312",
+      "expected": "0.865312",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,13]",
+      "got": "2.02836",
+      "expected": "2.02836",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[5,14]",
+      "got": "3.09093",
+      "expected": "3.09093",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,0]",
-      "got": "1.53098",
-      "expected": "1.53098",
+      "got": "4.74479",
+      "expected": "4.74479",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,1]",
-      "got": "0.977276",
-      "expected": "0.977276",
+      "got": "2.11445",
+      "expected": "2.11445",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,2]",
-      "got": "1.54986",
-      "expected": "1.54986",
+      "got": "0.775166",
+      "expected": "0.775166",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,3]",
-      "got": "2.07079",
-      "expected": "2.07079",
+      "got": "0.652816",
+      "expected": "0.652816",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,4]",
-      "got": "1.31937",
-      "expected": "1.31937",
+      "got": "4.39632",
+      "expected": "4.39632",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,5]",
-      "got": "0.974562",
-      "expected": "0.974562",
+      "got": "2.87107",
+      "expected": "2.87107",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2536,104 +2856,120 @@
     },
     {
       "name": "som.cdm[6,7]",
-      "got": "1.12227",
-      "expected": "1.12227",
+      "got": "1.81392",
+      "expected": "1.81392",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,8]",
-      "got": "2.23938",
-      "expected": "2.23938",
+      "got": "3.6954",
+      "expected": "3.6954",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,9]",
-      "got": "3.97151",
-      "expected": "3.97151",
+      "got": "3.06844",
+      "expected": "3.06844",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,10]",
-      "got": "3.46349",
-      "expected": "3.46349",
+      "got": "2.37238",
+      "expected": "2.37238",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,11]",
-      "got": "3.26629",
-      "expected": "3.26629",
+      "got": "3.31501",
+      "expected": "3.31501",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[6,12]",
-      "got": "3.49964",
-      "expected": "3.49964",
+      "got": "2.76532",
+      "expected": "2.76532",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,13]",
+      "got": "2.82881",
+      "expected": "2.82881",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[6,14]",
+      "got": "2.46126",
+      "expected": "2.46126",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,0]",
-      "got": "2.03115",
-      "expected": "2.03115",
+      "got": "4.60727",
+      "expected": "4.60727",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,1]",
-      "got": "1.17567",
-      "expected": "1.17567",
+      "got": "3.30983",
+      "expected": "3.30983",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,2]",
-      "got": "1.3424",
-      "expected": "1.3424",
+      "got": "2.36586",
+      "expected": "2.36586",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,3]",
-      "got": "1.53093",
-      "expected": "1.53093",
+      "got": "1.26411",
+      "expected": "1.26411",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,4]",
-      "got": "2.11707",
-      "expected": "2.11707",
+      "got": "4.94327",
+      "expected": "4.94327",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,5]",
-      "got": "1.62916",
-      "expected": "1.62916",
+      "got": "3.50898",
+      "expected": "3.50898",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,6]",
-      "got": "1.12227",
-      "expected": "1.12227",
+      "got": "1.81392",
+      "expected": "1.81392",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2648,94 +2984,62 @@
     },
     {
       "name": "som.cdm[7,8]",
-      "got": "2.93992",
-      "expected": "2.93992",
+      "got": "4.22004",
+      "expected": "4.22004",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,9]",
-      "got": "4.79296",
-      "expected": "4.79296",
+      "got": "3.87884",
+      "expected": "3.87884",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,10]",
-      "got": "4.27541",
-      "expected": "4.27541",
+      "got": "3.83301",
+      "expected": "3.83301",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,11]",
-      "got": "4.0209",
-      "expected": "4.0209",
+      "got": "4.4444",
+      "expected": "4.4444",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.cdm[7,12]",
-      "got": "4.12204",
-      "expected": "4.12204",
+      "got": "3.82015",
+      "expected": "3.82015",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,13]",
+      "got": "4.31185",
+      "expected": "4.31185",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.cdm[7,14]",
+      "got": "4.23428",
+      "expected": "4.23428",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 0.rep.row_index",
-      "got": "72",
-      "expected": "72",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 0.rep.dist",
-      "got": "0.286757",
-      "expected": "0.286757",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 1.rep.row_index",
-      "got": "126",
-      "expected": "126",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 1.rep.dist",
-      "got": "0.262123",
-      "expected": "0.262123",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 2.rep.row_index",
-      "got": "130",
-      "expected": "130",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 2.rep.dist",
-      "got": "0.284881",
-      "expected": "0.284881",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 3.rep.row_index",
       "got": "117",
       "expected": "117",
       "tolerance": 1e-06,
@@ -2743,111 +3047,31 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 3.rep.dist",
-      "got": "0.576301",
-      "expected": "0.576301",
+      "name": "som.Node 0.rep.dist",
+      "got": "0.263121",
+      "expected": "0.263121",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 4.rep.row_index",
-      "got": "82",
-      "expected": "82",
+      "name": "som.Node 1.rep.row_index",
+      "got": "96",
+      "expected": "96",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 4.rep.dist",
-      "got": "0.186874",
-      "expected": "0.186874",
+      "name": "som.Node 1.rep.dist",
+      "got": "0.119062",
+      "expected": "0.119062",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 5.rep.row_index",
-      "got": "61",
-      "expected": "61",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 5.rep.dist",
-      "got": "0.155193",
-      "expected": "0.155193",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.rep.row_index",
-      "got": "86",
-      "expected": "86",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 6.rep.dist",
-      "got": "0.188949",
-      "expected": "0.188949",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.rep.row_index",
-      "got": "140",
-      "expected": "140",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 7.rep.dist",
-      "got": "0.281648",
-      "expected": "0.281648",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.rep.row_index",
-      "got": "80",
-      "expected": "80",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 8.rep.dist",
-      "got": "0.213448",
-      "expected": "0.213448",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 12.rep.row_index",
-      "got": "41",
-      "expected": "41",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 12.rep.dist",
-      "got": "0",
-      "expected": "0",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.Node 13.rep.row_index",
+      "name": "som.Node 2.rep.row_index",
       "got": "3",
       "expected": "3",
       "tolerance": 1e-06,
@@ -2855,15 +3079,15 @@
       "status": "PASS"
     },
     {
-      "name": "som.Node 13.rep.dist",
-      "got": "0.140195",
-      "expected": "0.140195",
+      "name": "som.Node 2.rep.dist",
+      "got": "0.147359",
+      "expected": "0.147359",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
-      "name": "som.Node 14.rep.row_index",
+      "name": "som.Node 3.rep.row_index",
       "got": "17",
       "expected": "17",
       "tolerance": 1e-06,
@@ -2871,25 +3095,185 @@
       "status": "PASS"
     },
     {
+      "name": "som.Node 3.rep.dist",
+      "got": "0.126208",
+      "expected": "0.126208",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.rep.row_index",
+      "got": "107",
+      "expected": "107",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 4.rep.dist",
+      "got": "0.301492",
+      "expected": "0.301492",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.rep.row_index",
+      "got": "86",
+      "expected": "86",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 5.rep.dist",
+      "got": "0.0662862",
+      "expected": "0.0662862",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.rep.row_index",
+      "got": "23",
+      "expected": "23",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 6.rep.dist",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.rep.row_index",
+      "got": "33",
+      "expected": "33",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 7.rep.dist",
+      "got": "0.382663",
+      "expected": "0.382663",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.rep.row_index",
+      "got": "140",
+      "expected": "140",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 8.rep.dist",
+      "got": "0.280061",
+      "expected": "0.280061",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.rep.row_index",
+      "got": "127",
+      "expected": "127",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 9.rep.dist",
+      "got": "0.237936",
+      "expected": "0.237936",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.rep.row_index",
+      "got": "90",
+      "expected": "90",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 10.rep.dist",
+      "got": "0.210267",
+      "expected": "0.210267",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.rep.row_index",
+      "got": "101",
+      "expected": "101",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 12.rep.dist",
+      "got": "0.322338",
+      "expected": "0.322338",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.rep.row_index",
+      "got": "133",
+      "expected": "133",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 13.rep.dist",
+      "got": "0.250426",
+      "expected": "0.250426",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.Node 14.rep.row_index",
+      "got": "69",
+      "expected": "69",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
       "name": "som.Node 14.rep.dist",
-      "got": "0.149909",
-      "expected": "0.149909",
+      "got": "0.426725",
+      "expected": "0.426725",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 15.rep.row_index",
-      "got": "5",
-      "expected": "5",
+      "got": "93",
+      "expected": "93",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.Node 15.rep.dist",
-      "got": "0.186773",
-      "expected": "0.186773",
+      "got": "0.310835",
+      "expected": "0.310835",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2904,6 +3288,22 @@
     },
     {
       "name": "som.nd.counts[empty]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.pct[empty]",
+      "got": "6.25",
+      "expected": "6.25",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.nd.counts[sparse]",
       "got": "3",
       "expected": "3",
       "tolerance": 1e-06,
@@ -2911,25 +3311,9 @@
       "status": "PASS"
     },
     {
-      "name": "som.nd.pct[empty]",
+      "name": "som.nd.pct[sparse]",
       "got": "18.75",
       "expected": "18.75",
-      "tolerance": 1e-09,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.nd.counts[sparse]",
-      "got": "2",
-      "expected": "2",
-      "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
-    },
-    {
-      "name": "som.nd.pct[sparse]",
-      "got": "12.5",
-      "expected": "12.5",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
@@ -2952,49 +3336,57 @@
     },
     {
       "name": "som.nd.counts[dense]",
-      "got": "3",
-      "expected": "3",
+      "got": "4",
+      "expected": "4",
       "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.nd.pct[dense]",
-      "got": "18.75",
-      "expected": "18.75",
+      "got": "25",
+      "expected": "25",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.qm.empty_node_rate",
-      "got": "0.1875",
-      "expected": "0.1875",
+      "got": "0.0625",
+      "expected": "0.0625",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.qm.dead_unit_rate",
-      "got": "0.1875",
-      "expected": "0.1875",
+      "got": "0.0625",
+      "expected": "0.0625",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.qm.average_hit_count",
-      "got": "11.5385",
-      "expected": "11.5385",
+      "got": "10",
+      "expected": "10",
       "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "som.qm.neighbor_preservation",
-      "got": "0.98",
-      "expected": "0.98",
+      "got": "0.944",
+      "expected": "0.944",
       "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "som.quantization_error(minisom)",
+      "got": "0.480237",
+      "expected": "0.480237",
+      "tolerance": 1e-06,
       "abs_difference": 0.0,
       "status": "PASS"
     }

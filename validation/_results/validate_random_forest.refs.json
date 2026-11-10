@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "name": "rf.class_weighting.applied",
+    "reference": "True"
+  },
+  {
+    "name": "rf.class_weighting.method",
+    "reference": "\"class_weight='balanced'\""
+  }
+]

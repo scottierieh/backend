@@ -4,44 +4,44 @@
     "reference": "m.intercept_"
   },
   {
+    "name": "enet.alpha",
+    "reference": "ALPHA"
+  },
+  {
+    "name": "enet.l1_ratio",
+    "reference": "L1"
+  },
+  {
+    "name": "enet.n_nonzero_coefficients",
+    "reference": "int(np.sum(m.coef_!=0))"
+  },
+  {
     "name": "f\"enet.coef.{f}\"",
     "reference": "m.coef_[i]"
   },
   {
     "name": "enet.test.r2",
-    "reference": "r2_score(yte,m.predict(Xte_s))"
+    "reference": "r2_score(yte,pred_te)"
+  },
+  {
+    "name": "enet.test.rmse",
+    "reference": "np.sqrt(mean_squared_error(yte,pred_te))"
+  },
+  {
+    "name": "enet.test.mae",
+    "reference": "mean_absolute_error(yte,pred_te)"
   },
   {
     "name": "enet.train.r2",
-    "reference": "r2_score(ytr,m.predict(Xtr_s))"
+    "reference": "r2_score(ytr,pred_tr)"
   },
   {
-    "name": "cmp.ols.test_r2",
-    "reference": "r2_score(yte,ols.predict(Xte_s))"
+    "name": "enet.train.rmse",
+    "reference": "np.sqrt(mean_squared_error(ytr,pred_tr))"
   },
   {
-    "name": "cmp.lasso.test_r2",
-    "reference": "r2_score(yte,la.predict(Xte_s))"
-  },
-  {
-    "name": "cmp.enet.test_r2",
-    "reference": "r['metrics']['test']['r2_score']"
-  },
-  {
-    "name": "fs.n_total",
-    "reference": "3"
-  },
-  {
-    "name": "fs.n_selected",
-    "reference": "int(np.sum(m.coef_!=0))"
-  },
-  {
-    "name": "has.n_total",
-    "reference": "n-0"
-  },
-  {
-    "name": "f\"has.{k}\"",
-    "reference": "True"
+    "name": "enet.train.mae",
+    "reference": "mean_absolute_error(ytr,pred_tr)"
   },
   {
     "name": "f\"has.{k}\"",

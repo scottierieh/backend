@@ -436,6 +436,17 @@ def cluster_projection(X_scaled, labels, centroids=None, max_points: int = 5000)
         'sampled': bool(len(keep) < X.shape[0]),
     }
 
+    # Which row each kept point is, but only when that is not already obvious.
+    #
+    # An unsampled projection is 1:1 with the rows it was given, so point i is
+    # row i and sending 0..n-1 would be 5,000 integers saying nothing. Once
+    # rows are sampled the correspondence is gone, and without it a consumer
+    # cannot connect a drawn point to a case: the Clustering Lab's click-a-point
+    # readout has to refuse to name a row rather than show the row sitting at
+    # the same index, which is a real row of the table and not the one clicked.
+    if out['sampled']:
+        out['index'] = [int(v) for v in keep]
+
     # Centroids go through the SAME fitted transform. Fitting a second PCA on
     # the centroids alone would put them in a different space from the points,
     # and the markers would land where the clusters are not.

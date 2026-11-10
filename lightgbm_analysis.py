@@ -55,6 +55,28 @@ def _common_params(params: dict) -> dict:
     )
 
 
+
+def build_learning_curve(train_history: Dict, metric: str, model, early_stopping_rounds) -> Dict[str, Any]:
+    """Per-iteration training and validation metric as numbers, from the
+    evals_result recorded by lgb.record_evaluation ('train' = training rows,
+    'test' = the held-out test rows that early stopping also watches).
+    best_round is LightGBM's best_iteration_ (already 1-based; 0 or None
+    when early stopping did not pick one)."""
+    train = [_to_native_type(float(v)) for v in (train_history.get('train') or [])]
+    valid = [_to_native_type(float(v)) for v in (train_history.get('test') or [])]
+    best = getattr(model, 'best_iteration_', None)
+    return {
+        'metric': metric,
+        'train': train,
+        'validation': valid,
+        'validation_data': 'test_split',
+        'n_rounds': len(train),
+        'best_round': int(best) if best else None,
+        'early_stopping_rounds': int(early_stopping_rounds) if early_stopping_rounds else None,
+        'source': 'lightgbm.record_evaluation',
+    }
+
+
 def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
@@ -163,6 +185,7 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
         'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': eval_metric,
+        'learning_curve': build_learning_curve(train_history, eval_metric, model, params.get('early_stopping_rounds')),
         'label_encoder': le, 'best_iteration': int(model.best_iteration_ or params['n_estimators']),
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
         'error_examples': error_examples,
@@ -202,6 +225,7 @@ def train_lightgbm_regressor(X_train, X_test, y_train, y_test, params: dict) -> 
     return {
         'model': model, 'metrics': metrics, 'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred, 'train_history': train_history, 'eval_metric': 'rmse',
+        'learning_curve': build_learning_curve(train_history, 'rmse', model, params.get('early_stopping_rounds')),
         'best_iteration': int(model.best_iteration_ or params['n_estimators'])
     }
 
@@ -741,6 +765,9 @@ def main():
             'perm_importance': perm_importance,
             'cv_results': cv_result,
             'best_iteration': result['best_iteration'],
+            # Per-iteration train / validation metric as numbers (the arrays
+            # behind learning_plot).
+            'learning_curve': result.get('learning_curve'),
             'importance_plot': importance_plot,
             'learning_plot': learning_plot,
             'shap_plot': shap_result.get('shap_plot'),

@@ -62,7 +62,7 @@ def _git_commit():
 # versions of the analysis-relevant packages actually imported by this run
 def _pkg_versions():
     candidates=["numpy","pandas","scipy","sklearn","statsmodels","xgboost","lightgbm",
-                "catboost","umap","hdbscan","shap","optuna"]
+                "catboost","umap","hdbscan","shap","optuna","sklearn_extra","tensorflow","keras"]
     out={}
     for name in candidates:
         mod=sys.modules.get(name)

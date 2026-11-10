@@ -1,6 +1,5 @@
 import numpy as np, pandas as pd
 from sklearn.datasets import load_iris
-from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import (adjusted_rand_score, silhouette_score,
                              davies_bouldin_score, calinski_harabasz_score)
@@ -12,7 +11,12 @@ res=r['results']
 
 # ---- independent reference (KMeans is deterministic under fixed seed) ----
 Xraw=df[feat]
-Xs=StandardScaler().fit_transform(Xraw)
+# The handler standardizes with the sample SD (ddof=1, R's scale()), not
+# StandardScaler's population SD (ddof=0) — see kmeans_analysis.py. Rebuild that
+# scaling independently: z = (x - mean) / sd(ddof=1). The two differ only by the
+# uniform factor sqrt((n-1)/n), so labels/ARI/silhouette are unchanged but
+# inertia and the scaled centroids are not.
+Xs=((Xraw-Xraw.mean())/Xraw.std(ddof=1)).to_numpy()
 km=KMeans(n_clusters=3,init='k-means++',n_init=10,random_state=42).fit(Xs)
 lab=km.labels_
 

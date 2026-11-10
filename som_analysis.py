@@ -162,13 +162,16 @@ def main():
         scaled_data = scaler.fit_transform(clean_df)
         n_samples, n_features = scaled_data.shape
 
+        # Fixed seed (the payload has no seed field); reported in
+        # results['training'] so the map can be reproduced.
+        som_random_seed = 42
         if HAS_MINISOM:
-            som = MiniSom(grid_x, grid_y, n_features, sigma=sigma, learning_rate=learning_rate, random_seed=42)
+            som = MiniSom(grid_x, grid_y, n_features, sigma=sigma, learning_rate=learning_rate, random_seed=som_random_seed)
             som.random_weights_init(scaled_data)
             som.train_random(scaled_data, num_iteration)
             q_error = float(som.quantization_error(scaled_data))
         else:
-            som = _NumpySom(grid_x, grid_y, n_features, sigma=sigma, learning_rate=learning_rate)
+            som = _NumpySom(grid_x, grid_y, n_features, sigma=sigma, learning_rate=learning_rate, random_seed=som_random_seed)
             som.train_random(scaled_data, num_iteration)
             q_error = som.quantization_error(scaled_data)
 
@@ -440,7 +443,8 @@ def main():
         # 8. Cluster stability via bootstrap (ARI)
         # =========================================================================
         n_boot = 40
-        rng = np.random.RandomState(123)
+        som_bootstrap_seed = 123
+        rng = np.random.RandomState(som_bootstrap_seed)
         ari_scores = []
         for b in range(n_boot):
             sample_idx = rng.randint(0, n_samples, size=n_samples)
@@ -591,6 +595,67 @@ def main():
         results['cluster_stability'] = cluster_stability
         results['variable_correlation_highlights'] = variable_correlation_highlights
         results['quality_metrics'] = quality_metrics
+
+        # Codebook (node weight vectors) of the trained map. The map is trained
+        # on StandardScaler z-scores, so the weights are in that space; the
+        # original-unit version is the fitted scaler's inverse transform
+        # (weight * scale_ + mean_, per variable). Row r is node r = i * gridY
+        # + j, the same id as node_assignments and the 'Node r' profiles.
+        results['codebook'] = {
+            'features': list(features),
+            'node_ids': list(range(grid_x * grid_y)),
+            'node_coordinates': [[int(i), int(j)] for i in range(grid_x) for j in range(grid_y)],
+            'weights_scaled': codebook_flat,
+            'weights_original': scaler.inverse_transform(codebook_flat),
+            'scaling': 'standard',
+            'scaler_mean': scaler.mean_,
+            'scaler_scale': scaler.scale_,
+            'note': (
+                'weights_scaled are the trained node weights in the z-score space the map was trained on '
+                '(StandardScaler: (x - mean) / SD with population SD, ddof=0); weights_original = '
+                'weights_scaled * scaler_scale + scaler_mean, in the original variable units.'
+            ),
+        }
+        if HAS_MINISOM:
+            _nb = getattr(getattr(som, 'neighborhood', None), '__name__', None)
+            _lr = getattr(getattr(som, '_learning_rate_decay_function', None), '__name__', None)
+            _sg = getattr(getattr(som, '_sigma_decay_function', None), '__name__', None)
+            results['training'] = {
+                'backend': 'minisom',
+                'random_seed': som_random_seed,
+                'initialization': 'random_weights_init',
+                'initialization_note': (
+                    'MiniSom.random_weights_init: every node weight starts as a randomly drawn '
+                    'observation of the scaled data (draws from the seeded generator).'
+                ),
+                'training_mode': 'train_random',
+                'scaling': 'standard',
+                'sigma': sigma,
+                'learning_rate': learning_rate,
+                'num_iteration': num_iteration,
+                'topology': getattr(som, 'topology', None),
+                'neighborhood_function': _nb.lstrip('_') if _nb else None,
+                'learning_rate_decay': _lr.lstrip('_') if _lr else None,
+                'sigma_decay': _sg.lstrip('_') if _sg else None,
+                'bootstrap_random_state': som_bootstrap_seed,
+            }
+        else:
+            results['training'] = {
+                'backend': 'numpy fallback (minisom unavailable)',
+                'random_seed': som_random_seed,
+                'initialization': 'random_normal',
+                'initialization_note': 'Fallback SOM: weights start as N(0, 1) draws times 0.1 from the seeded generator.',
+                'training_mode': 'train_random',
+                'scaling': 'standard',
+                'sigma': sigma,
+                'learning_rate': learning_rate,
+                'num_iteration': num_iteration,
+                'topology': 'rectangular',
+                'neighborhood_function': 'gaussian',
+                'learning_rate_decay': 'linear',
+                'sigma_decay': 'linear',
+                'bootstrap_random_state': som_bootstrap_seed,
+            }
 
         plots = []
 

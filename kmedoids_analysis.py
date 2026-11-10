@@ -147,6 +147,19 @@ class KMedoidsAnalysis:
             'algorithm': 'PAM',
             'scaler': self.scaler_name if self.standardize else 'None',
             'metric': kmedoids.metric,
+            # Reproducibility, read back from the fitted estimator. The payload
+            # has no seed field, so the fixed seed below is used on every run
+            # (it only affects the k-medoids++ start; PAM swaps are
+            # deterministic). KMedoids has no n_init: it fits one start.
+            'random_state': kmedoids.get_params()['random_state'],
+            'init': kmedoids.get_params()['init'],
+            'max_iter': kmedoids.get_params()['max_iter'],
+            'n_iter': int(kmedoids.n_iter_),
+            # Full PAM over all n observations is always run here; the
+            # sampling variant (CLARA) is never used, so there are no sample
+            # settings to report.
+            'clara_used': False,
+            'clara_settings': None,
         }
 
         self.analyze_clusters()
@@ -347,7 +360,7 @@ class KMedoidsAnalysis:
             f"The **Silhouette Score of {silhouette:.3f}** indicates the clustering structure is {quality_desc}\n"
             f"The **Calinski-Harabasz Score** ({calinski:.2f}, higher is better) measures the ratio of between-cluster to within-cluster variance.\n"
             f"The **Davies-Bouldin Score** ({davies:.3f}, closer to 0 is better) measures the average similarity between clusters.\n"
-            f"The **Inertia of {inertia:.2f}** represents the sum of squared distances of samples to their closest cluster medoid; lower is better."
+            f"The **Inertia of {inertia:.2f}** is the total cost: the sum of (unsquared) distances of samples to their closest cluster medoid; lower is better."
         )
 
         # 2. Cluster Profile Interpretation

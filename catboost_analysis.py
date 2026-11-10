@@ -63,6 +63,32 @@ def _common_params(params: dict) -> dict:
     )
 
 
+
+def build_learning_curve(train_history: Optional[Dict], metric: Optional[str], model, early_stopping_rounds) -> Optional[Dict[str, Any]]:
+    """Per-iteration training and validation metric as numbers, from
+    get_evals_result() ('learn' = training rows, 'validation' = the held-out
+    test rows passed as eval_set). best_round is 1-based (CatBoost's
+    get_best_iteration() is 0-based)."""
+    if not train_history:
+        return None
+    train = [_to_native_type(float(v)) for v in (train_history.get('train') or [])]
+    valid = [_to_native_type(float(v)) for v in (train_history.get('test') or [])]
+    try:
+        best = model.get_best_iteration()
+    except Exception:
+        best = None
+    return {
+        'metric': metric,
+        'train': train,
+        'validation': valid,
+        'validation_data': 'test_split',
+        'n_rounds': len(train),
+        'best_round': (int(best) + 1) if best is not None else None,
+        'early_stopping_rounds': int(early_stopping_rounds) if early_stopping_rounds else None,
+        'source': 'CatBoost.get_evals_result()',
+    }
+
+
 def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, cat_features: List[int]) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
@@ -173,6 +199,7 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
         'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': metric_name,
+        'learning_curve': build_learning_curve(train_history, metric_name, model, params.get('early_stopping_rounds')),
         'label_encoder': le, 'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations']),
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
@@ -214,6 +241,7 @@ def train_catboost_regressor(X_train, X_test, y_train, y_test, params: dict, cat
         'model': model, 'metrics': metrics,
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred, 'train_history': train_history, 'eval_metric': metric_name,
+        'learning_curve': build_learning_curve(train_history, metric_name, model, params.get('early_stopping_rounds')),
         'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations'])
     }
@@ -887,6 +915,9 @@ def main():
             'shap_error': shap_result.get('error'),
             'cv_results': cv_result,
             'best_iteration': result['best_iteration'],
+            # Per-iteration train / validation metric as numbers (the arrays
+            # behind learning_plot).
+            'learning_curve': result.get('learning_curve'),
             'importance_plot': importance_plot,
             'learning_plot': learning_plot,
             'interpretation': interpretation,

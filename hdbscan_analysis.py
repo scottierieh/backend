@@ -306,6 +306,109 @@ def _cluster_persistence_summary(persistence_dict):
     }
 
 
+# Cap on the cluster nodes listed in condensed_tree.clusters, so a fit with a
+# deep hierarchy does not bloat the response. Selected clusters are always kept.
+CONDENSED_TREE_MAX_NODES = 60
+
+
+def _condensed_tree_summary(clusterer, labels):
+    """Compact per-cluster summary of the fitted condensed tree.
+
+    The tree (clusterer.condensed_tree_.to_numpy()) has one row per
+    (parent, child, lambda_val, child_size); a child with child_size > 1 is a
+    cluster node, child_size == 1 is a point falling out. For each cluster
+    node this reports
+      lambda_birth  lambda at which it splits off its parent (root: 0),
+      lambda_death  largest lambda among its rows (when its last points leave
+                    or it splits into child clusters),
+      stability     excess of mass, sum over its rows of
+                    (lambda_val - lambda_birth) * child_size — the quantity
+                    'eom' cluster selection maximises,
+      size          number of points in it at birth.
+    `label` is the flat cluster label the node was selected as (else None):
+    the lowest cluster node that holds every point of that label, the same
+    rule hdbscan's CondensedTree._select_clusters() uses. Points are not
+    listed, so the payload stays small.
+    """
+    tree = clusterer.condensed_tree_.to_numpy()
+    parent = tree['parent'].astype(np.int64)
+    child = tree['child'].astype(np.int64)
+    lam = tree['lambda_val'].astype(float)
+    csize = tree['child_size'].astype(np.int64)
+    n_points = int(len(labels))
+    root = int(parent.min()) if len(parent) else n_points
+
+    node_ids = sorted(set([root]) | set(child[csize > 1].tolist()))
+    birth = {root: 0.0}
+    node_parent = {root: None}
+    size = {root: n_points}
+    for p_, c_, l_, s_ in zip(parent, child, lam, csize):
+        if s_ > 1:
+            birth[int(c_)] = float(l_)
+            node_parent[int(c_)] = int(p_)
+            size[int(c_)] = int(s_)
+
+    death, stability = {}, {}
+    for nid in node_ids:
+        rows = parent == nid
+        death[nid] = float(lam[rows].max()) if rows.any() else None
+        stability[nid] = float(((lam[rows] - birth[nid]) * csize[rows]).sum()) if rows.any() else 0.0
+
+    # Selected node of each flat label: lowest cluster id among the parents of
+    # that label's point rows.
+    selected = {}
+    point_rows = csize == 1
+    pt_parent = parent[point_rows]
+    pt_label = np.asarray(labels)[child[point_rows]]
+    for lbl in sorted(set(int(x) for x in pt_label if x >= 0)):
+        selected[int(pt_parent[pt_label == lbl].min())] = lbl
+
+    persistence = list(getattr(clusterer, 'cluster_persistence_', []))
+    rows_out = []
+    for nid in node_ids:
+        lbl = selected.get(nid)
+        rows_out.append({
+            'node': nid,
+            'parent': node_parent.get(nid),
+            'label': lbl,
+            'selected': lbl is not None,
+            'size': size.get(nid),
+            'lambda_birth': safe_float(birth.get(nid)),
+            'lambda_death': safe_float(death.get(nid)),
+            'stability': safe_float(stability.get(nid)),
+            'persistence': safe_float(persistence[lbl]) if lbl is not None and lbl < len(persistence) else None,
+        })
+
+    n_nodes = len(rows_out)
+    truncated = n_nodes > CONDENSED_TREE_MAX_NODES
+    if truncated:
+        keep = {r['node'] for r in rows_out if r['selected']} | {root}
+        rest = sorted((r for r in rows_out if r['node'] not in keep),
+                      key=lambda r: -(r['stability'] or 0.0))
+        for r in rest[:max(0, CONDENSED_TREE_MAX_NODES - len(keep))]:
+            keep.add(r['node'])
+        rows_out = [r for r in rows_out if r['node'] in keep]
+
+    return {
+        'n_points': n_points,
+        'root': root,
+        'n_cluster_nodes': n_nodes,
+        'n_listed': len(rows_out),
+        'truncated': truncated,
+        'cluster_selection_method': getattr(clusterer, 'cluster_selection_method', None),
+        'clusters': rows_out,
+        'note': (
+            'Cluster nodes of the HDBSCAN condensed tree (lambda = 1 / distance). Birth is the lambda at '
+            'which a node splits off its parent, death the largest lambda among its rows; stability is the '
+            'excess of mass, sum of (lambda - lambda_birth) * size, which the excess-of-mass selection '
+            'maximises. label is the flat cluster the node was selected as; persistence is '
+            'cluster_persistence_ for that label. Individual points are not listed.'
+            + (f' Only the selected clusters, the root and the most stable other nodes are listed '
+               f'({CONDENSED_TREE_MAX_NODES} at most).' if truncated else '')
+        ),
+    }
+
+
 def _param_advice(n_samples, min_cluster_size, min_samples_used, n_clusters, n_noise,
                    high_outlier_count, persistence_clusters):
     noise_pct = (n_noise / n_samples * 100) if n_samples > 0 else 0.0
@@ -465,12 +568,14 @@ def main():
             # real (non-noise) cluster labels HDBSCAN assigns.
             persistence = {int(i): float(v) for i, v in enumerate(clusterer.cluster_persistence_)}
             outlier_score_method = 'GLOSH (Campello et al. 2015)'
+            condensed_tree = _condensed_tree_summary(clusterer, labels)
         else:
             # Fall back to DBSCAN with pseudo-probabilities
             labels, probabilities, outlier_scores, persistence = dbscan_with_probabilities(
                 X_for_fit, min_cluster_size, min_samples
             )
             outlier_score_method = 'Pseudo-GLOSH approximation (hdbscan package unavailable — DBSCAN fallback)'
+            condensed_tree = None  # DBSCAN builds no condensed tree
 
         # np.nan can appear in outlier_scores_ for degenerate fits; treat as 0
         outlier_scores = np.nan_to_num(outlier_scores, nan=0.0)
@@ -562,6 +667,7 @@ def main():
             'param_advice': param_advice,
             'probability_summary': probability_summary,
             'cluster_persistence': cluster_persistence,
+            'condensed_tree': condensed_tree,
             'feature_drivers': feature_drivers,
             'final_metrics': final_metrics,
             'interpretations': interpretations,

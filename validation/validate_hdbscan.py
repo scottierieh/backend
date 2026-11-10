@@ -21,10 +21,12 @@ chk("hdbscan.labels_exact", int((labels==ref).all()), 1)
 
 n_clusters=len(set(ref))-(1 if -1 in ref else 0)
 n_noise=int((ref==-1).sum())
-chk("hdbscan.n_clusters", res['n_clusters'], n_clusters)
-chk("hdbscan.n_noise", res['n_noise'], n_noise)
-chk("hdbscan.n_samples", res['n_samples'], 150)
-chk("hdbscan.min_cluster_size", res['min_cluster_size'], 10)
+# the handler reports these counts under results['clustering_summary']
+cs=res['clustering_summary']
+chk("hdbscan.n_clusters", cs['n_clusters'], n_clusters)
+chk("hdbscan.n_noise", cs['n_noise'], n_noise)
+chk("hdbscan.n_samples", cs['n_samples'], 150)
+chk("hdbscan.min_cluster_size", cs['min_cluster_size'], 10)
 
 # probabilities value-by-value
 prob=np.array(res['probabilities'])

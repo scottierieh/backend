@@ -51,6 +51,9 @@ class TsneAnalysis:
         scaler = StandardScaler()
         self.scaled_data = scaler.fit_transform(self.clean_data[self.variables])
 
+    # Fixed seed (the payload has no seed field); reported as random_state.
+    RANDOM_STATE = 42
+
     def run_analysis(self):
         n_samples = self.scaled_data.shape[0]
         effective_perplexity = min(self.perplexity, max(5.0, (n_samples - 1) / 3))
@@ -60,7 +63,7 @@ class TsneAnalysis:
             perplexity=effective_perplexity,
             learning_rate=self.learning_rate,
             max_iter=self.n_iter,
-            random_state=42,
+            random_state=self.RANDOM_STATE,
             init='pca'
         )
         self.embedding = tsne.fit_transform(self.scaled_data)
@@ -68,6 +71,23 @@ class TsneAnalysis:
         self.results['embedding'] = self.embedding
         self.results['kl_divergence'] = tsne.kl_divergence_
         self.results['n_iterations_run'] = tsne.n_iter_
+        # Reproducibility, read back from the fitted estimator.
+        _p = tsne.get_params()
+        self.results['random_state'] = _p['random_state']
+        self.results['init'] = _p['init']
+        self.results['method'] = _p['method']
+        self.results['angle'] = _p['angle'] if _p['method'] == 'barnes_hut' else None
+        self.results['early_exaggeration'] = _p['early_exaggeration']
+        self.results['max_iter'] = _p['max_iter']
+        # learning_rate='auto' is resolved at fit time; learning_rate_ is the value used.
+        self.results['learning_rate_used'] = float(tsne.learning_rate_)
+        # sklearn's TSNE keeps only the final objective (kl_divergence_); it
+        # does not store the loss per iteration, so none is returned.
+        self.results['kl_divergence_history'] = None
+        self.results['kl_divergence_note'] = (
+            'scikit-learn TSNE exposes only the final KL divergence (kl_divergence_); '
+            'the per-iteration loss is not stored by the library, so no loss history is returned.'
+        )
         self.results['perplexity_requested'] = self.perplexity
         self.results['perplexity_used'] = effective_perplexity
         self.results['n_components'] = self.n_components

@@ -1,10 +1,66 @@
 [
   {
+    "name": "km.labels(ARI=1)",
+    "reference": "1.0"
+  },
+  {
+    "name": "km.labels_exact",
+    "reference": "1"
+  },
+  {
+    "name": "km.n_clusters",
+    "reference": "3"
+  },
+  {
     "name": "km.inertia",
     "reference": "km.inertia_"
   },
   {
-    "name": "km.labels(ARI=1)",
-    "reference": "1.0"
+    "name": "f\"km.centroid[{i}][{j}]\"",
+    "reference": "km.cluster_centers_[i][j]"
+  },
+  {
+    "name": "km.silhouette",
+    "reference": "silhouette_score(Xs, lab)"
+  },
+  {
+    "name": "km.davies_bouldin",
+    "reference": "davies_bouldin_score(Xs, lab)"
+  },
+  {
+    "name": "km.calinski_harabasz",
+    "reference": "calinski_harabasz_score(Xs, lab)"
+  },
+  {
+    "name": "f\"km.size[{label}]\"",
+    "reference": "int(sizes[label])"
+  },
+  {
+    "name": "f\"km.pct[{label}]\"",
+    "reference": "float(sizes[label]/150*100)"
+  },
+  {
+    "name": "f\"km.rawcentroid[{label}][{col}]\"",
+    "reference": "ref_centroid[col]"
+  },
+  {
+    "name": "km.optk.k_range_len",
+    "reference": "len(k_range)"
+  },
+  {
+    "name": "f\"km.optk.k[{idx}]\"",
+    "reference": "k"
+  },
+  {
+    "name": "f\"km.optk.inertia[{idx}]\"",
+    "reference": "ref_inertias[idx]"
+  },
+  {
+    "name": "f\"km.optk.sil[{idx}]\"",
+    "reference": "ref_sils[idx]"
+  },
+  {
+    "name": "km.optk.recommended_k",
+    "reference": "k_range[int(np.argmax(ref_sils))]"
   }
 ]

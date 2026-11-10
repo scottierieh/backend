@@ -1,0 +1,1131 @@
+{
+  "title": "KMEDOIDS (Python, numpy<2)",
+  "total_checks": 138,
+  "numeric_checks": 138,
+  "exact_checks": 0,
+  "pass": 138,
+  "fail": 0,
+  "pass_rate": 100.0,
+  "tolerance_min": 1e-12,
+  "tolerance_max": 1e-06,
+  "max_abs_difference": 7.014136826910544e-08,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.17",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "packages": {
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "sklearn": "1.5.2",
+    "sklearn_extra": "0.3.0"
+  },
+  "git_commit": "9f1ced4",
+  "validation_date": "2026-11-10",
+  "checks": [
+    {
+      "name": "kmedoids.labels(ARI=1)",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.labels_exact.vs_KMedoids",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_index[0].vs_KMedoids",
+      "got": "112",
+      "expected": "112",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_index[1].vs_KMedoids",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_index[2].vs_KMedoids",
+      "got": "55",
+      "expected": "55",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.cost.vs_KMedoids_inertia",
+      "got": "131.796",
+      "expected": "131.796",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.n_iter.vs_KMedoids",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.converged(n_iter<max_iter)",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.n_clusters",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[0][sepal_length]",
+      "got": "6.8",
+      "expected": "6.8",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[0][sepal_width]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[0][petal_length]",
+      "got": "5.5",
+      "expected": "5.5",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[0][petal_width]",
+      "got": "2.1",
+      "expected": "2.1",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[1][sepal_length]",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[1][sepal_width]",
+      "got": "3.4",
+      "expected": "3.4",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[1][petal_length]",
+      "got": "1.5",
+      "expected": "1.5",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[1][petal_width]",
+      "got": "0.2",
+      "expected": "0.2",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[2][sepal_length]",
+      "got": "5.7",
+      "expected": "5.7",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[2][sepal_width]",
+      "got": "2.8",
+      "expected": "2.8",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[2][petal_length]",
+      "got": "4.5",
+      "expected": "4.5",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid[2][petal_width]",
+      "got": "1.3",
+      "expected": "1.3",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.labels_exact.nearest_medoid",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.cost.sum_of_distances",
+      "got": "131.796",
+      "expected": "131.796",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.swap_optimal(best_swap>=cost)",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.cost>=exhaustive_global_min",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.silhouette",
+      "got": "0.456643",
+      "expected": "0.456643",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.calinski_harabasz",
+      "got": "238.763",
+      "expected": "238.763",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.davies_bouldin",
+      "got": "0.84192",
+      "expected": "0.84192",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[1].n",
+      "got": "45",
+      "expected": "45",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[1].avg",
+      "got": "0.349633",
+      "expected": "0.349633",
+      "tolerance": 1e-09,
+      "abs_difference": 5.551115123125783e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[1].min",
+      "got": "-0.0803127",
+      "expected": "-0.0803127",
+      "tolerance": 1e-09,
+      "abs_difference": 7.355227538141662e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[1].max",
+      "got": "0.549475",
+      "expected": "0.549475",
+      "tolerance": 1e-09,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[1].negative",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[2].n",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[2].avg",
+      "got": "0.63464",
+      "expected": "0.63464",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[2].min",
+      "got": "0.0871051",
+      "expected": "0.0871051",
+      "tolerance": 1e-09,
+      "abs_difference": 1.3877787807814457e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[2].max",
+      "got": "0.732332",
+      "expected": "0.732332",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[2].negative",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[3].n",
+      "got": "55",
+      "expected": "55",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[3].avg",
+      "got": "0.382382",
+      "expected": "0.382382",
+      "tolerance": 1e-09,
+      "abs_difference": 5.551115123125783e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[3].min",
+      "got": "-0.0678548",
+      "expected": "-0.0678548",
+      "tolerance": 1e-09,
+      "abs_difference": 3.608224830031759e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[3].max",
+      "got": "0.582655",
+      "expected": "0.582655",
+      "tolerance": 1e-09,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.sil[3].negative",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.size[1]",
+      "got": "45",
+      "expected": "45",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.pct[1]",
+      "got": "30",
+      "expected": "30",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.profile_medoid_index[1]",
+      "got": "112",
+      "expected": "112",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[1][sepal_length]",
+      "got": "1.15917",
+      "expected": "1.15917",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[1][sepal_length]",
+      "got": "6.81111",
+      "expected": "6.81111",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[1][sepal_width]",
+      "got": "-0.131979",
+      "expected": "-0.131979",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[1][sepal_width]",
+      "got": "3.08222",
+      "expected": "3.08222",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[1][petal_length]",
+      "got": "0.990108",
+      "expected": "0.990108",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[1][petal_length]",
+      "got": "5.55333",
+      "expected": "5.55333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[1][petal_width]",
+      "got": "1.18557",
+      "expected": "1.18557",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[1][petal_width]",
+      "got": "1.99778",
+      "expected": "1.99778",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.size[2]",
+      "got": "50",
+      "expected": "50",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.pct[2]",
+      "got": "33.3333",
+      "expected": "33.3333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.profile_medoid_index[2]",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[2][sepal_length]",
+      "got": "-1.02185",
+      "expected": "-1.02185",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[2][sepal_length]",
+      "got": "5.006",
+      "expected": "5.006",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[2][sepal_width]",
+      "got": "0.788808",
+      "expected": "0.788808",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[2][sepal_width]",
+      "got": "3.428",
+      "expected": "3.428",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[2][petal_length]",
+      "got": "-1.28339",
+      "expected": "-1.28339",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[2][petal_length]",
+      "got": "1.462",
+      "expected": "1.462",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[2][petal_width]",
+      "got": "-1.31544",
+      "expected": "-1.31544",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[2][petal_width]",
+      "got": "0.246",
+      "expected": "0.246",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.size[3]",
+      "got": "55",
+      "expected": "55",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.pct[3]",
+      "got": "36.6667",
+      "expected": "36.6667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.profile_medoid_index[3]",
+      "got": "55",
+      "expected": "55",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[3][sepal_length]",
+      "got": "-0.173674",
+      "expected": "-0.173674",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[3][sepal_length]",
+      "got": "5.81273",
+      "expected": "5.81273",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[3][sepal_width]",
+      "got": "-0.592373",
+      "expected": "-0.592373",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[3][sepal_width]",
+      "got": "2.7",
+      "expected": "2.7",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[3][petal_length]",
+      "got": "0.421734",
+      "expected": "0.421734",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[3][petal_length]",
+      "got": "4.37636",
+      "expected": "4.37636",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.medoid_scaled[3][petal_width]",
+      "got": "0.13251",
+      "expected": "0.13251",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.rawmean[3][petal_width]",
+      "got": "1.41273",
+      "expected": "1.41273",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[sepal_length].F",
+      "got": "227.915",
+      "expected": "227.915",
+      "tolerance": 1e-06,
+      "abs_difference": 7.787548383930698e-12,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[sepal_length].p",
+      "got": "8.98476e-46",
+      "expected": "8.98476e-46",
+      "tolerance": 1e-12,
+      "abs_difference": 1.6987275954741452e-57,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[sepal_length].eta2",
+      "got": "0.75615",
+      "expected": "0.75615",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[sepal_width].F",
+      "got": "71.1181",
+      "expected": "71.1181",
+      "tolerance": 1e-06,
+      "abs_difference": 4.263256414560601e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[sepal_width].p",
+      "got": "2.48745e-22",
+      "expected": "2.48745e-22",
+      "tolerance": 1e-12,
+      "abs_difference": 5.590651132510799e-35,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[sepal_width].eta2",
+      "got": "0.491765",
+      "expected": "0.491765",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[petal_length].F",
+      "got": "910.891",
+      "expected": "910.891",
+      "tolerance": 1e-06,
+      "abs_difference": 7.048583938740194e-12,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[petal_length].p",
+      "got": "1.49384e-83",
+      "expected": "1.49384e-83",
+      "tolerance": 1e-12,
+      "abs_difference": 7.754026462458953e-96,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[petal_length].eta2",
+      "got": "0.925335",
+      "expected": "0.925335",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[petal_width].F",
+      "got": "566.948",
+      "expected": "566.948",
+      "tolerance": 1e-06,
+      "abs_difference": 2.2737367544323206e-12,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[petal_width].p",
+      "got": "7.86283e-70",
+      "expected": "7.86283e-70",
+      "tolerance": 1e-12,
+      "abs_difference": 2.0963428283108548e-82,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.anova[petal_width].eta2",
+      "got": "0.885236",
+      "expected": "0.885236",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k_range_len",
+      "got": "9",
+      "expected": "9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[0]",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[0].vs_KMedoids",
+      "got": "162.066",
+      "expected": "162.066",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[0].sum_of_distances",
+      "got": "162.066",
+      "expected": "162.066",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[0]",
+      "got": "0.58175",
+      "expected": "0.58175",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[0]",
+      "got": "251.349",
+      "expected": "251.349",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[1]",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[1].vs_KMedoids",
+      "got": "131.796",
+      "expected": "131.796",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[1].sum_of_distances",
+      "got": "131.796",
+      "expected": "131.796",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[1]",
+      "got": "0.456643",
+      "expected": "0.456643",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[1]",
+      "got": "238.763",
+      "expected": "238.763",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[2]",
+      "got": "4",
+      "expected": "4",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[2].vs_KMedoids",
+      "got": "116.866",
+      "expected": "116.866",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[2].sum_of_distances",
+      "got": "116.866",
+      "expected": "116.866",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[2]",
+      "got": "0.409112",
+      "expected": "0.409112",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[2]",
+      "got": "204.765",
+      "expected": "204.765",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[3]",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[3].vs_KMedoids",
+      "got": "105.029",
+      "expected": "105.029",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[3].sum_of_distances",
+      "got": "105.029",
+      "expected": "105.029",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[3]",
+      "got": "0.347269",
+      "expected": "0.347269",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[3]",
+      "got": "199.274",
+      "expected": "199.274",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[4]",
+      "got": "6",
+      "expected": "6",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[4].vs_KMedoids",
+      "got": "99.0078",
+      "expected": "99.0078",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[4].sum_of_distances",
+      "got": "99.0078",
+      "expected": "99.0078",
+      "tolerance": 1e-06,
+      "abs_difference": 1.0536737704569532e-08,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[4]",
+      "got": "0.333596",
+      "expected": "0.333596",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[4]",
+      "got": "181.373",
+      "expected": "181.373",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[5]",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[5].vs_KMedoids",
+      "got": "93.7796",
+      "expected": "93.7796",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[5].sum_of_distances",
+      "got": "93.7796",
+      "expected": "93.7796",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[5]",
+      "got": "0.317652",
+      "expected": "0.317652",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[5]",
+      "got": "166.046",
+      "expected": "166.046",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[6]",
+      "got": "8",
+      "expected": "8",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[6].vs_KMedoids",
+      "got": "87.8255",
+      "expected": "87.8255",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[6].sum_of_distances",
+      "got": "87.8255",
+      "expected": "87.8255",
+      "tolerance": 1e-06,
+      "abs_difference": 7.014136826910544e-08,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[6]",
+      "got": "0.332116",
+      "expected": "0.332116",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[6]",
+      "got": "173.11",
+      "expected": "173.11",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[7]",
+      "got": "9",
+      "expected": "9",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[7].vs_KMedoids",
+      "got": "82.5422",
+      "expected": "82.5422",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[7].sum_of_distances",
+      "got": "82.5422",
+      "expected": "82.5422",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[7]",
+      "got": "0.331006",
+      "expected": "0.331006",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[7]",
+      "got": "170.451",
+      "expected": "170.451",
+      "tolerance": 1e-06,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.k[8]",
+      "got": "10",
+      "expected": "10",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[8].vs_KMedoids",
+      "got": "78.6825",
+      "expected": "78.6825",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.cost[8].sum_of_distances",
+      "got": "78.6825",
+      "expected": "78.6825",
+      "tolerance": 1e-06,
+      "abs_difference": 4.214686555314984e-08,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.sil[8]",
+      "got": "0.350814",
+      "expected": "0.350814",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch[8]",
+      "got": "178.809",
+      "expected": "178.809",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.silhouette_k",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.ch_k",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.elbow_k",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "kmedoids.optk.recommended_k",
+      "got": "2",
+      "expected": "2",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    }
+  ]
+}

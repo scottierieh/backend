@@ -1,0 +1,78 @@
+[
+  {
+    "name": "lstm.reproducible.test_pred_maxdiff.run1_vs_run2",
+    "reference": "0.0"
+  },
+  {
+    "name": "lstm.reproducible.forecast_maxdiff.run1_vs_run2",
+    "reference": "0.0"
+  },
+  {
+    "name": "lstm.reproducible.test_rmse.run1_vs_run2",
+    "reference": "r2['metrics']['test']['rmse']"
+  },
+  {
+    "name": "lstm.window_size",
+    "reference": "W"
+  },
+  {
+    "name": "lstm.n_train_samples",
+    "reference": "split"
+  },
+  {
+    "name": "lstm.n_test_samples",
+    "reference": "n_win - split"
+  },
+  {
+    "name": "lstm.test_actual_len",
+    "reference": "len(y_test_ref)"
+  },
+  {
+    "name": "f\"lstm.test_actual[{i}]\"",
+    "reference": "float(y_test_ref[i])"
+  },
+  {
+    "name": "lstm.test_rmse",
+    "reference": "rmse"
+  },
+  {
+    "name": "lstm.test_mae",
+    "reference": "mae"
+  },
+  {
+    "name": "lstm.test_r2",
+    "reference": "r2s"
+  },
+  {
+    "name": "lstm.test_pred_len",
+    "reference": "n_win - split"
+  },
+  {
+    "name": "lstm.test_pred_finite",
+    "reference": "1"
+  },
+  {
+    "name": "f\"lstm.train_{k}_finite\"",
+    "reference": "1"
+  },
+  {
+    "name": "lstm.forecast_length",
+    "reference": "H"
+  },
+  {
+    "name": "lstm.forecast_finite",
+    "reference": "1"
+  },
+  {
+    "name": "f\"lstm.forecast_date[{i}]\"",
+    "reference": "str(d.date())"
+  },
+  {
+    "name": "lstm.epochs_run_in_range",
+    "reference": "1"
+  },
+  {
+    "name": "lstm.final_loss_finite_nonneg",
+    "reference": "1"
+  }
+]

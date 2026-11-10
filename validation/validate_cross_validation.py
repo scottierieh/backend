@@ -55,6 +55,14 @@ chk("cv.add.recall",    am["recall_macro"], recall_score(y,y_pred,average='macro
 chk("cv.add.f1",        am["f1_macro"], f1_score(y,y_pred,average='macro',zero_division=0), tol=1e-9)
 
 # --- plots present ---
-for k in ['scores_plot','stability_plot']:
-    chk(f"has.{k}", isinstance(r.get(k),str) and len(r[k])>0, True)
+# The handler returns its figures as one list r['plots'] of {label, image}
+# (PNG data URLs), not as separate top-level 'scores_plot'/'stability_plot'
+# strings. Check that the fold-score and stability figures are in that list
+# with a non-empty PNG.
+plot_img={p.get('label'): p.get('image') for p in (r.get('plots') or []) if isinstance(p, dict)}
+def _has_png(lbl):
+    v=plot_img.get(lbl)
+    return isinstance(v,str) and v.startswith('data:image/png;base64,') and len(v)>len('data:image/png;base64,')
+chk("has.scores_plot", _has_png('Scores by Fold') and _has_png('Score Distribution'), True)
+chk("has.stability_plot", _has_png('Learning Stability'), True)
 report("CROSS VALIDATION (Python)")

@@ -4,8 +4,24 @@
     "reference": "eff_perp"
   },
   {
+    "name": "n_components",
+    "reference": "2"
+  },
+  {
     "name": "n_samples",
     "reference": "n"
+  },
+  {
+    "name": "n_iterations_run",
+    "reference": "int(ref.n_iter_)"
+  },
+  {
+    "name": "variables.len",
+    "reference": "len(cols)"
+  },
+  {
+    "name": "f\"variables[{i}]\"",
+    "reference": "c"
   },
   {
     "name": "embedding.shape.rows",
@@ -20,7 +36,23 @@
     "reference": "float(ref.kl_divergence_)"
   },
   {
+    "name": "f\"embedding[{i}].x\"",
+    "reference": "float(ref_emb[i, 0])"
+  },
+  {
+    "name": "f\"embedding[{i}].y\"",
+    "reference": "float(ref_emb[i, 1])"
+  },
+  {
     "name": "embedding.maxdiff",
     "reference": "0.0"
+  },
+  {
+    "name": "trustworthiness(own emb, k=5) in [0,1]",
+    "reference": "1.0"
+  },
+  {
+    "name": "trustworthiness(own emb, k=5) high",
+    "reference": "1.0"
   }
 ]

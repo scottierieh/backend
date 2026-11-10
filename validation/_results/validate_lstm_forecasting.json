@@ -1,0 +1,404 @@
+{
+  "title": "LSTM forecasting (Python)",
+  "total_checks": 47,
+  "numeric_checks": 41,
+  "exact_checks": 6,
+  "pass": 47,
+  "fail": 0,
+  "pass_rate": 100.0,
+  "tolerance_min": 0.0,
+  "tolerance_max": 1e-06,
+  "max_abs_difference": 0.0,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.17",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "packages": {
+    "keras": "3.15.1",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "sklearn": "1.5.2",
+    "tensorflow": "2.17.0"
+  },
+  "git_commit": "9f1ced4",
+  "validation_date": "2026-11-10",
+  "checks": [
+    {
+      "name": "lstm.reproducible.test_pred_maxdiff.run1_vs_run2",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0.0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.reproducible.forecast_maxdiff.run1_vs_run2",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0.0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.reproducible.test_rmse.run1_vs_run2",
+      "got": "3.05212",
+      "expected": "3.05212",
+      "tolerance": 0.0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.window_size",
+      "got": "12",
+      "expected": "12",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.n_train_samples",
+      "got": "86",
+      "expected": "86",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.n_test_samples",
+      "got": "22",
+      "expected": "22",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual_len",
+      "got": "22",
+      "expected": "22",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[0]",
+      "got": "22.3981",
+      "expected": "22.3981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[1]",
+      "got": "22.9",
+      "expected": "22.9",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[2]",
+      "got": "22.5981",
+      "expected": "22.5981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[3]",
+      "got": "21.6",
+      "expected": "21.6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[4]",
+      "got": "20.2",
+      "expected": "20.2",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[5]",
+      "got": "18.8",
+      "expected": "18.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[6]",
+      "got": "17.8019",
+      "expected": "17.8019",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[7]",
+      "got": "17.5",
+      "expected": "17.5",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[8]",
+      "got": "18.0019",
+      "expected": "18.0019",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[9]",
+      "got": "19.2",
+      "expected": "19.2",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[10]",
+      "got": "20.8",
+      "expected": "20.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[11]",
+      "got": "22.4",
+      "expected": "22.4",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[12]",
+      "got": "23.5981",
+      "expected": "23.5981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[13]",
+      "got": "24.1",
+      "expected": "24.1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[14]",
+      "got": "23.7981",
+      "expected": "23.7981",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[15]",
+      "got": "22.8",
+      "expected": "22.8",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[16]",
+      "got": "21.4",
+      "expected": "21.4",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[17]",
+      "got": "20",
+      "expected": "20",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[18]",
+      "got": "19.0019",
+      "expected": "19.0019",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[19]",
+      "got": "18.7",
+      "expected": "18.7",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[20]",
+      "got": "19.2019",
+      "expected": "19.2019",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_actual[21]",
+      "got": "20.4",
+      "expected": "20.4",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_rmse",
+      "got": "3.05212",
+      "expected": "3.05212",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_mae",
+      "got": "2.42206",
+      "expected": "2.42206",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_r2",
+      "got": "-1.25005",
+      "expected": "-1.25005",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_pred_len",
+      "got": "22",
+      "expected": "22",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.test_pred_finite",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.train_rmse_finite",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.train_mae_finite",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.train_r2_score_finite",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_length",
+      "got": "6",
+      "expected": "6",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_finite",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_date[0]",
+      "got": "2025-01-01",
+      "expected": "2025-01-01",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_date[1]",
+      "got": "2025-02-01",
+      "expected": "2025-02-01",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_date[2]",
+      "got": "2025-03-01",
+      "expected": "2025-03-01",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_date[3]",
+      "got": "2025-04-01",
+      "expected": "2025-04-01",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_date[4]",
+      "got": "2025-05-01",
+      "expected": "2025-05-01",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.forecast_date[5]",
+      "got": "2025-06-01",
+      "expected": "2025-06-01",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.epochs_run_in_range",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "lstm.final_loss_finite_nonneg",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    }
+  ]
+}

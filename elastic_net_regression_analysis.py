@@ -230,6 +230,86 @@ def generate_l1_ratio_path_plot(X_train_scaled, X_test_scaled, y_train, y_test, 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     return fig_to_base64(fig)
 
+
+EN_L1_RATIO_GRID = [.1, .3, .5, .7, .9, .95, .99, 1]
+EN_ALPHA_GRID = np.logspace(-3, 2, 50)
+BOOTSTRAP_SEED = 42
+BOOTSTRAP_REFITS = 50
+
+
+def _elastic_net_search(cv_model, chosen_alpha, chosen_l1, used_for_selection, cv_folds):
+    """The ElasticNetCV grid as numbers: for every l1_ratio, every candidate
+    alpha with the mean and SD over folds of its validation MSE (mse_path_,
+    shape l1_ratios x alphas x folds; SD with ddof=0). Rows are l1_ratios,
+    columns ascending alphas. ElasticNetCV(cv=k) splits with an unshuffled
+    KFold, so no seed decides the folds (cv_random_state None)."""
+    l1s = [np.float64(v) for v in np.atleast_1d(cv_model.l1_ratio)]
+    alphas_all = np.atleast_2d(np.asarray(cv_model.alphas_, dtype=float))
+    path = np.asarray(cv_model.mse_path_, dtype=float)
+    if path.ndim == 2:
+        path = path[None, :, :]
+    order = np.argsort(alphas_all[0])
+    alphas = alphas_all[0][order]
+    mean = path.mean(axis=2)[:, order]
+    sd = path.std(axis=2)[:, order]
+    bi, bj = np.unravel_index(int(np.argmin(mean)), mean.shape)
+    ci = int(np.argmin(np.abs(np.array(l1s) - np.float64(chosen_l1))))
+    cj = int(np.argmin(np.abs(alphas - np.float64(chosen_alpha))))
+    return {
+        'estimator': 'ElasticNetCV',
+        'used_for_selection': bool(used_for_selection),
+        'l1_ratios': [_to_native_type(v) for v in l1s],
+        'alphas': [_to_native_type(np.float64(a)) for a in alphas],
+        'cv_mse_mean': [[_to_native_type(np.float64(v)) for v in row] for row in mean],
+        'cv_mse_sd': [[_to_native_type(np.float64(v)) for v in row] for row in sd],
+        'sd_ddof': 0,
+        'best_alpha': _to_native_type(np.float64(cv_model.alpha_)),
+        'best_l1_ratio': _to_native_type(np.float64(cv_model.l1_ratio_)),
+        'best_cv_mse_mean': _to_native_type(np.float64(mean[bi, bj])),
+        'chosen_alpha': _to_native_type(np.float64(chosen_alpha)),
+        'chosen_l1_ratio': _to_native_type(np.float64(chosen_l1)),
+        'chosen_cv_mse_mean': _to_native_type(np.float64(mean[ci, cj])),
+        'cv_folds': int(cv_folds),
+        'cv_splitter': 'KFold',
+        'cv_shuffle': False,
+        'cv_random_state': None,
+        'data': 'training split, standardized with the training-split scaler',
+    }
+
+
+def _bootstrap_selection_frequency(X_train_scaled, y_train, features, alpha, l1_ratio,
+                                   n_boot=BOOTSTRAP_REFITS, seed=BOOTSTRAP_SEED):
+    """How often each feature keeps a non-zero coefficient when the model is
+    refitted, at the chosen alpha and l1_ratio, on n_boot bootstrap resamples
+    of the training rows (numpy RandomState(seed), rows drawn with
+    replacement). Cheap: one coordinate-descent fit per resample."""
+    import time as _time
+    t0 = _time.perf_counter()
+    X = np.asarray(X_train_scaled, dtype=float)
+    y = np.asarray(y_train, dtype=float)
+    n = len(y)
+    rng = np.random.RandomState(seed)
+    hits = np.zeros(X.shape[1], dtype=int)
+    done = 0
+    for _ in range(n_boot):
+        idx = rng.randint(0, n, n)
+        m = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=10000)
+        m.fit(X[idx], y[idx])
+        hits += (m.coef_ != 0).astype(int)
+        done += 1
+    freq = hits / max(done, 1)
+    return {
+        'n_resamples': int(done),
+        'random_state': int(seed),
+        'resampled': 'training rows, with replacement',
+        'alpha': _to_native_type(np.float64(alpha)),
+        'l1_ratio': _to_native_type(np.float64(l1_ratio)),
+        'frequency': {f: _to_native_type(np.float64(v)) for f, v in zip(features, freq)},
+        'n_selected': {f: int(h) for f, h in zip(features, hits)},
+        'seconds': _to_native_type(np.float64(_time.perf_counter() - t0)),
+    }
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -270,6 +350,7 @@ def main():
         X_test_scaled = scaler.transform(X_test)
 
         alpha_source = 'user_specified'
+        cv_model = None
         if auto_tune:
             l1_ratio_grid = [.1, .3, .5, .7, .9, .95, .99, 1]
             cv_model = ElasticNetCV(l1_ratio=l1_ratio_grid, alphas=np.logspace(-3, 2, 50), cv=cv_folds, random_state=42, max_iter=10000)
@@ -277,6 +358,21 @@ def main():
             alpha = float(cv_model.alpha_)
             l1_ratio = float(cv_model.l1_ratio_)
             alpha_source = 'cross_validation'
+        # The same ElasticNetCV grid when alpha / l1_ratio were given by the
+        # user, fitted only to show where they sit on the CV surface.
+        try:
+            if cv_model is None:
+                # The user's alpha and l1_ratio are added to the grid so their own
+                # CV MSE is reported, not that of the nearest grid point.
+                _diag = ElasticNetCV(l1_ratio=sorted(set(EN_L1_RATIO_GRID) | {float(l1_ratio)}),
+                                     alphas=np.unique(np.concatenate([EN_ALPHA_GRID, [alpha]])),
+                                     cv=cv_folds, random_state=42, max_iter=10000)
+                _diag.fit(X_train_scaled, y_train)
+                alpha_search = _elastic_net_search(_diag, alpha, l1_ratio, False, cv_folds)
+            else:
+                alpha_search = _elastic_net_search(cv_model, alpha, l1_ratio, True, cv_folds)
+        except Exception as _e:
+            alpha_search = {'error': str(_e)}
 
         model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=10000)
         model.fit(X_train_scaled, y_train)
@@ -355,6 +451,11 @@ def main():
         }
 
         residual_diagnostics = compute_residual_diagnostics(y_test, y_pred_test)
+        try:
+            selection_frequency = _bootstrap_selection_frequency(
+                X_train_scaled, y_train, final_features, alpha, l1_ratio)
+        except Exception as _e:
+            selection_frequency = {'error': str(_e)}
 
         try:
             n_iter_val = int(np.max(model.n_iter_)) if getattr(model, 'n_iter_', None) is not None else None
@@ -395,6 +496,20 @@ def main():
             'n_iter': n_iter_val,
             'max_iter': max_iter_val,
             'converged': converged_val,
+            # alpha x l1_ratio grid with cross-validated MSE (mean, SD over
+            # folds); used_for_selection says whether it picked the values.
+            'alpha_search': alpha_search,
+            # Share of 50 bootstrap refits (fixed seed) in which each feature
+            # kept a non-zero coefficient, at the chosen alpha and l1_ratio.
+            'selection_frequency': selection_frequency,
+            # Seeds of every random step, so the run can be repeated.
+            'random_seeds': {
+                'train_test_split': 42,
+                'cv_results_kfold': 42,
+                'cv_results_shuffle': True,
+                'alpha_search_kfold': None,
+                'bootstrap': BOOTSTRAP_SEED,
+            },
         }
 
         fig_main, axes = plt.subplots(2, 1, figsize=(8, 12))

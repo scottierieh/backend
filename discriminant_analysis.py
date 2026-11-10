@@ -287,6 +287,126 @@ def compute_lda_statistics(X_train: np.ndarray, y_train_encoded: np.ndarray,
 # Model training
 # ──────────────────────────────────────────────
 
+
+# ──────────────────────────────────────────────
+# Multivariate normality (Mardia) and LD score distribution
+# ──────────────────────────────────────────────
+
+def mardia_test(X: np.ndarray) -> Dict[str, Any]:
+    """Mardia's multivariate skewness and kurtosis for one sample.
+
+    With the sample centred and S the maximum-likelihood covariance (divide
+    by n), D = Xc S^-1 Xc' and
+        b1p = sum_ij D_ij^3 / n^2,   b2p = sum_i D_ii^2 / n.
+    Skewness: A = n b1p / 6 ~ chi^2 with p(p+1)(p+2)/6 df; the small-sample
+    version multiplies by k = (p+1)(n+1)(n+3) / (n((n+1)(p+1) - 6)) and is the
+    one to read when n < 20. Kurtosis: Z = (b2p - p(p+2)) / sqrt(8p(p+2)/n)
+    ~ N(0, 1), two-sided. Both are affine invariant, so the standardized
+    training data give the same values as the raw ones.
+    Mardia, K. V. (1970), Biometrika 57(3), 519-530. Checked against R
+    psych::mardia, which divides S by n - 1 instead: its b1p and b2p are
+    ((n-1)/n)^3 and ((n-1)/n)^2 times these."""
+    X = np.asarray(X, dtype=float)
+    n, p = X.shape
+    out: Dict[str, Any] = {'n': int(n), 'p': int(p), 'covariance': 'ml_divide_by_n'}
+    if n <= p + 1:
+        out['error'] = f'needs more rows than predictors + 1 (n = {n}, p = {p})'
+        return out
+    Xc = X - X.mean(axis=0)
+    S = (Xc.T @ Xc) / n
+    if np.linalg.matrix_rank(S) < p:
+        out['error'] = 'the within-class covariance matrix is singular'
+        return out
+    D = Xc @ np.linalg.solve(S, Xc.T)
+    b1p = float(np.sum(D ** 3) / n ** 2)
+    b2p = float(np.sum(np.diag(D) ** 2) / n)
+    df = p * (p + 1) * (p + 2) / 6.0
+    skew_stat = n * b1p / 6.0
+    k = (p + 1) * (n + 1) * (n + 3) / (n * ((n + 1) * (p + 1) - 6.0))
+    skew_stat_small = skew_stat * k
+    kurt_z = (b2p - p * (p + 2)) / np.sqrt(8.0 * p * (p + 2) / n)
+    out.update({
+        'b1p': _to_native_type(b1p),
+        'b2p': _to_native_type(b2p),
+        'skewness_statistic': _to_native_type(skew_stat),
+        'skewness_df': _to_native_type(df),
+        'skewness_p_value': _to_native_type(float(stats.chi2.sf(skew_stat, df))),
+        'skewness_statistic_small_sample': _to_native_type(skew_stat_small),
+        'skewness_p_value_small_sample': _to_native_type(float(stats.chi2.sf(skew_stat_small, df))),
+        'kurtosis_expected': _to_native_type(float(p * (p + 2))),
+        'kurtosis_z': _to_native_type(float(kurt_z)),
+        'kurtosis_p_value': _to_native_type(float(2 * stats.norm.sf(abs(kurt_z)))),
+    })
+    return out
+
+
+def compute_multivariate_normality(X_train: np.ndarray, y_train_encoded: np.ndarray,
+                                    class_labels: List[str], alpha: float = 0.05) -> Dict[str, Any]:
+    """Mardia's test per class on the (standardized) training rows -- LDA and
+    QDA both assume each class is multivariate normal."""
+    X_train = np.asarray(X_train, dtype=float)
+    y_train_encoded = np.asarray(y_train_encoded)
+    per_class = []
+    for i, label in enumerate(class_labels):
+        res = mardia_test(X_train[y_train_encoded == i])
+        res['class'] = label
+        if 'error' not in res:
+            p_skew = (res['skewness_p_value_small_sample'] if res['n'] < 20
+                      else res['skewness_p_value'])
+            res['rejected'] = bool((p_skew is not None and p_skew < alpha) or
+                                   (res['kurtosis_p_value'] is not None and res['kurtosis_p_value'] < alpha))
+        per_class.append(res)
+    return {
+        'test': 'mardia',
+        'data': 'training rows, standardized (Mardia is affine invariant)',
+        'alpha': alpha,
+        'per_class': per_class,
+    }
+
+
+def compute_ld_score_distribution(model, X_test: np.ndarray, y_test_encoded: np.ndarray,
+                                   class_labels: List[str], max_components: int = 2,
+                                   raw_scores_max_n: int = 200) -> Optional[Dict[str, Any]]:
+    """Discriminant scores (model.transform) of the TEST rows, grouped by
+    their true class: a histogram per class on bin edges shared by all
+    classes (Sturges' rule on the pooled scores), the class means, and the
+    scores themselves when there are at most raw_scores_max_n test rows."""
+    if not hasattr(model, 'transform'):
+        return None
+    try:
+        Z = np.asarray(model.transform(np.asarray(X_test)), dtype=float)
+    except Exception:
+        return None
+    if Z.ndim != 2 or Z.shape[1] < 1:
+        return None
+    y = np.asarray(y_test_encoded)
+    n = int(Z.shape[0])
+    n_bins = int(np.clip(np.ceil(np.log2(max(n, 1)) + 1), 5, 20))
+    components = []
+    for j in range(min(max_components, Z.shape[1])):
+        z = Z[:, j]
+        edges = np.histogram_bin_edges(z, bins=n_bins)
+        comp = {
+            'name': f'LD{j + 1}',
+            'bin_edges': [_to_native_type(float(e)) for e in edges],
+            'counts_by_class': {},
+            'mean_by_class': {},
+            'n_by_class': {},
+        }
+        for i, label in enumerate(class_labels):
+            zi = z[y == i]
+            comp['counts_by_class'][label] = [int(c) for c in np.histogram(zi, bins=edges)[0]]
+            comp['mean_by_class'][label] = _to_native_type(float(zi.mean())) if len(zi) else None
+            comp['n_by_class'][label] = int(len(zi))
+        if n <= raw_scores_max_n:
+            comp['scores_by_class'] = {
+                label: [_to_native_type(float(v)) for v in z[y == i]]
+                for i, label in enumerate(class_labels)
+            }
+        components.append(comp)
+    return {'rows': 'test', 'n': n, 'n_bins': n_bins, 'binning': 'sturges', 'components': components}
+
+
 def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: List[str]) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
@@ -475,6 +595,10 @@ def train_lda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'lda_info': lda_info,
         'lda_statistics': lda_statistics,
         'lda_transform': lda_transform,
+        'ld_score_distribution': compute_ld_score_distribution(
+            model, X_test, y_test_encoded, [str(c) for c in le.classes_]),
+        'multivariate_normality': compute_multivariate_normality(
+            X_train_arr, y_train_encoded, [str(c) for c in le.classes_]),
         'y_test_encoded': y_test_encoded,
         'y_pred': y_pred,
         'y_pred_proba': y_pred_proba,
@@ -648,6 +772,8 @@ def train_qda(X_train, X_test, y_train, y_test, params: dict, feature_names: Lis
         'label_encoder': le,
         'feature_importance': feature_importance,
         'qda_info': qda_info,
+        'multivariate_normality': compute_multivariate_normality(
+            np.array(X_train), y_train_encoded, [str(c) for c in le.classes_]),
         'y_test_encoded': y_test_encoded,
         'y_pred': y_pred,
         'y_pred_proba': y_pred_proba,
@@ -1364,6 +1490,14 @@ def main():
             response['lda_statistics'] = result['lda_statistics']
         elif method == 'qda' and 'qda_info' in result:
             response['qda_info'] = result['qda_info']
+
+        # Mardia's multivariate skewness / kurtosis per class (training rows),
+        # for LDA and QDA alike; and, for LDA only, the discriminant scores of
+        # the test rows by true class (histogram on shared bins + the scores
+        # themselves for small test sets).
+        response['multivariate_normality'] = result.get('multivariate_normality')
+        if method == 'lda':
+            response['ld_score_distribution'] = result.get('ld_score_distribution')
 
         response['data_warnings'] = {
             'categorical_features': categorical_features,

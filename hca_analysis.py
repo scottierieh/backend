@@ -38,6 +38,20 @@ SUBSAMPLE_RANDOM_STATE = 42
 BOOTSTRAP_RANDOM_STATE = 123
 
 
+def _profile_extremes(deviations):
+    """Top-2 above-average and bottom-2 below-average variables of a standardized deviation Series,
+    as the 'characterized by ...' phrase. A variable is only called high (low) when it is above (below)
+    the overall mean."""
+    top = [f for f in deviations.nlargest(2).index if deviations[f] > 0]
+    bottom = [f for f in deviations.nsmallest(2).index if deviations[f] < 0]
+    parts = []
+    if top:
+        parts.append(f"high values in <strong>{', '.join(top)}</strong>")
+    if bottom:
+        parts.append(f"low values in <strong>{', '.join(bottom)}</strong>")
+    return ' and '.join(parts) if parts else 'values close to the overall average'
+
+
 def _to_native_type(obj):
     if isinstance(obj, np.integer):
         return int(obj)
@@ -49,6 +63,24 @@ def _to_native_type(obj):
         return obj.tolist()
     elif isinstance(obj, np.bool_):
         return bool(obj)
+    return obj
+
+
+def _finite_json(obj):
+    """Replace NaN / ±inf anywhere in the response with None.
+
+    json.dumps(default=...) is only consulted for objects it cannot serialise, so a plain
+    Python float NaN (e.g. the std of a one-observation cluster from DataFrame.std().to_dict())
+    is written as the bare token NaN — not valid JSON, and the API's JSONResponse then fails."""
+    if isinstance(obj, dict):
+        return {k: _finite_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_finite_json(v) for v in obj]
+    if isinstance(obj, np.ndarray):
+        return _finite_json(obj.tolist())
+    if isinstance(obj, (float, np.floating)):
+        f = float(obj)
+        return None if (math.isnan(f) or math.isinf(f)) else f
     return obj
 
 
@@ -411,12 +443,11 @@ class HierarchicalClusterAnalysis:
         
         for name, profile in self.results['profiles'].items():
             centroid = pd.Series(profile['centroid'])
-            deviations = (centroid - overall_means) / overall_means.std()
+            deviations = (centroid - overall_means) / self.cluster_data.std().replace(0, 1)  # per-variable SD
             
-            top_features = deviations.nlargest(2).index.tolist()
-            bottom_features = deviations.nsmallest(2).index.tolist()
+            profile_extremes = _profile_extremes(deviations)
             
-            profile_desc = f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> This cluster is characterized by high values in <strong>{', '.join(top_features)}</strong> and low values in <strong>{', '.join(bottom_features)}</strong>."
+            profile_desc = f"<strong>{name} ({profile['percentage']:.1f}% of data):</strong> This cluster is characterized by {profile_extremes}."
             interpretations['cluster_profiles'].append(profile_desc)
 
         # 3. Cluster Distribution Interpretation
@@ -617,7 +648,7 @@ def main():
             'plots': plots
         }
         
-        print(json.dumps(response, default=_to_native_type))
+        print(json.dumps(_finite_json(response), default=_to_native_type, allow_nan=False))
 
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

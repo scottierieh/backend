@@ -19,7 +19,7 @@
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "4794d67",
+  "git_commit": "8f60167",
   "validation_date": "2026-11-10",
   "checks": [
     {

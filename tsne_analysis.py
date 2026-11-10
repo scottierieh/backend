@@ -98,6 +98,9 @@ class TsneAnalysis:
         # Silhouette score w.r.t. the optional label column — only meaningful (and only
         # computed) when there are at least 2 distinct non-null classes among the rows
         # that actually made it into the embedding.
+        # Echo the label column actually used (None when absent or not in the data),
+        # so the report only says "coloured by <label>" when the plot really is.
+        self.results['label_col'] = self.label_col if self.labels is not None else None
         self.results['silhouette_score'] = None
         if self.labels is not None:
             n_classes = self.labels.dropna().nunique()
@@ -229,7 +232,9 @@ def main():
         n_components = int(payload.get('nComponents', 2))
         perplexity = float(payload.get('perplexity', 30.0))
         n_iter = int(payload.get('nIter', 1000))
-        label_col = payload.get('labelCol')
+        # The t-SNE/UMAP pages send the label column as `label_col`; older callers
+        # used `labelCol`. Accept both so the label is not silently dropped.
+        label_col = payload.get('labelCol') or payload.get('label_col')
 
         if not data or not variables:
             raise ValueError("Missing 'data' or 'variables'")

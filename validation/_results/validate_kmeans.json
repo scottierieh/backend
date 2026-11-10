@@ -3,24 +3,24 @@
   "total_checks": 66,
   "numeric_checks": 66,
   "exact_checks": 0,
-  "pass": 66,
-  "fail": 0,
-  "pass_rate": 100.0,
+  "pass": 44,
+  "fail": 22,
+  "pass_rate": 66.67,
   "tolerance_min": 1e-12,
   "tolerance_max": 1e-06,
-  "max_abs_difference": 2.842170943040401e-14,
-  "all_within_tolerance": true,
+  "max_abs_difference": 1.482411366433439,
+  "all_within_tolerance": false,
   "language": "Python",
-  "runtime_version": "3.11.15",
-  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "runtime_version": "3.13.17",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
   "packages": {
-    "numpy": "2.4.6",
-    "pandas": "3.0.3",
-    "scipy": "1.17.1",
-    "sklearn": "1.9.0"
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.1"
   },
-  "git_commit": "e3b8cac",
-  "validation_date": "2026-07-12",
+  "git_commit": "cc04515",
+  "validation_date": "2026-11-10",
   "checks": [
     {
       "name": "km.labels(ARI=1)",
@@ -48,114 +48,114 @@
     },
     {
       "name": "km.inertia",
-      "got": "139.82",
+      "got": "138.888",
       "expected": "139.82",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.9321366423982909,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[0][0]",
-      "got": "-0.0502199",
+      "got": "-0.0500522",
       "expected": "-0.0502199",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.00016767956981022375,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[0][1]",
-      "got": "-0.883376",
+      "got": "-0.880427",
       "expected": "-0.883376",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.00294951231127194,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[0][2]",
-      "got": "0.347738",
+      "got": "0.346577",
       "expected": "0.347738",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.0011610643842252522,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[0][3]",
-      "got": "0.281527",
+      "got": "0.280587",
       "expected": "0.281527",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.0009399936068670844,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[1][0]",
-      "got": "-1.01458",
+      "got": "-1.01119",
       "expected": "-1.01458",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.003387585312025765,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[1][1]",
-      "got": "0.853263",
+      "got": "0.850414",
       "expected": "0.853263",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.002848965149749083,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[1][2]",
-      "got": "-1.30499",
+      "got": "-1.30063",
       "expected": "-1.30499",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.004357231936953143,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[1][3]",
-      "got": "-1.25489",
+      "got": "-1.2507",
       "expected": "-1.25489",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.004189973267332281,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[2][0]",
-      "got": "1.13597",
+      "got": "1.13218",
       "expected": "1.13597",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.003792899634071256,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[2][1]",
-      "got": "0.0884217",
+      "got": "0.0881264",
       "expected": "0.0884217",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.00029523180872188803,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[2][2]",
-      "got": "0.996155",
+      "got": "0.992828",
       "expected": "0.996155",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.0033260677549721285,
+      "status": "FAIL"
     },
     {
       "name": "km.centroid[2][3]",
-      "got": "1.01753",
+      "got": "1.01413",
       "expected": "1.01753",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.003397425578779645,
+      "status": "FAIL"
     },
     {
       "name": "km.silhouette",
       "got": "0.459948",
       "expected": "0.459948",
       "tolerance": 1e-09,
-      "abs_difference": 0.0,
+      "abs_difference": 1.1102230246251565e-16,
       "status": "PASS"
     },
     {
@@ -163,7 +163,7 @@
       "got": "0.833595",
       "expected": "0.833595",
       "tolerance": 1e-09,
-      "abs_difference": 0.0,
+      "abs_difference": 6.661338147750939e-16,
       "status": "PASS"
     },
     {
@@ -171,7 +171,7 @@
       "got": "241.904",
       "expected": "241.904",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
+      "abs_difference": 1.1368683772161603e-13,
       "status": "PASS"
     },
     {
@@ -336,11 +336,11 @@
     },
     {
       "name": "km.optk.inertia[0]",
-      "got": "222.362",
+      "got": "220.879",
       "expected": "222.362",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 1.482411366433439,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[0]",
@@ -360,18 +360,18 @@
     },
     {
       "name": "km.optk.inertia[1]",
-      "got": "139.82",
+      "got": "138.888",
       "expected": "139.82",
       "tolerance": 1e-06,
-      "abs_difference": 2.842170943040401e-14,
-      "status": "PASS"
+      "abs_difference": 0.9321366423982909,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[1]",
       "got": "0.459948",
       "expected": "0.459948",
       "tolerance": 1e-09,
-      "abs_difference": 0.0,
+      "abs_difference": 1.1102230246251565e-16,
       "status": "PASS"
     },
     {
@@ -384,18 +384,18 @@
     },
     {
       "name": "km.optk.inertia[2]",
-      "got": "114.093",
+      "got": "113.332",
       "expected": "114.093",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.7606169793601794,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[2]",
       "got": "0.386941",
       "expected": "0.386941",
       "tolerance": 1e-09,
-      "abs_difference": 0.0,
+      "abs_difference": 1.1102230246251565e-16,
       "status": "PASS"
     },
     {
@@ -408,11 +408,11 @@
     },
     {
       "name": "km.optk.inertia[3]",
-      "got": "90.9275",
+      "got": "90.3213",
       "expected": "90.9275",
       "tolerance": 1e-06,
-      "abs_difference": 1.4210854715202004e-14,
-      "status": "PASS"
+      "abs_difference": 0.6061834254927874,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[3]",
@@ -432,11 +432,11 @@
     },
     {
       "name": "km.optk.inertia[4]",
-      "got": "81.5444",
+      "got": "81.0008",
       "expected": "81.5444",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.5436292730341279,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[4]",
@@ -456,18 +456,18 @@
     },
     {
       "name": "km.optk.inertia[5]",
-      "got": "72.6311",
+      "got": "72.1469",
       "expected": "72.6311",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.4842076255111323,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[5]",
       "got": "0.320197",
       "expected": "0.320197",
       "tolerance": 1e-09,
-      "abs_difference": 0.0,
+      "abs_difference": 1.1102230246251565e-16,
       "status": "PASS"
     },
     {
@@ -480,11 +480,11 @@
     },
     {
       "name": "km.optk.inertia[6]",
-      "got": "62.5406",
+      "got": "62.1237",
       "expected": "62.5406",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.41693737130519537,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[6]",
@@ -504,18 +504,18 @@
     },
     {
       "name": "km.optk.inertia[7]",
-      "got": "55.1195",
+      "got": "54.752",
       "expected": "55.1195",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.36746328536861483,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[7]",
       "got": "0.34236",
       "expected": "0.34236",
       "tolerance": 1e-09,
-      "abs_difference": 0.0,
+      "abs_difference": 1.1102230246251565e-16,
       "status": "PASS"
     },
     {
@@ -528,11 +528,11 @@
     },
     {
       "name": "km.optk.inertia[8]",
-      "got": "47.391",
+      "got": "47.0751",
       "expected": "47.391",
       "tolerance": 1e-06,
-      "abs_difference": 0.0,
-      "status": "PASS"
+      "abs_difference": 0.3159402345089575,
+      "status": "FAIL"
     },
     {
       "name": "km.optk.sil[8]",

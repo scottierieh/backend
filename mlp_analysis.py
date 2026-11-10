@@ -58,6 +58,60 @@ def _common_params(params: dict) -> dict:
     )
 
 
+
+def compute_parameter_count(model) -> Dict[str, Any]:
+    """Exact number of trainable parameters of the fitted network, counted
+    from the arrays themselves: every weight matrix in coefs_ and every bias
+    vector in intercepts_. layer_sizes is [inputs, hidden..., outputs] as the
+    fitted coefs_ shapes give it."""
+    coefs = list(getattr(model, 'coefs_', []) or [])
+    biases = list(getattr(model, 'intercepts_', []) or [])
+    layers = []
+    for i, (W, b) in enumerate(zip(coefs, biases)):
+        W = np.asarray(W); b = np.asarray(b)
+        layers.append({
+            'from_units': int(W.shape[0]), 'to_units': int(W.shape[1]),
+            'weights': int(W.size), 'biases': int(b.size),
+            'total': int(W.size + b.size),
+        })
+    n_weights = int(sum(np.asarray(W).size for W in coefs))
+    n_biases = int(sum(np.asarray(b).size for b in biases))
+    sizes = ([int(np.asarray(coefs[0]).shape[0])] + [int(np.asarray(W).shape[1]) for W in coefs]) if coefs else []
+    return {
+        'n_parameters': n_weights + n_biases,
+        'n_weights': n_weights,
+        'n_biases': n_biases,
+        'layer_sizes': sizes,
+        'layers': layers,
+    }
+
+
+def _mlp_class_weight_values(fit_kwargs: dict, y_train_encoded, class_labels: List[str]) -> List[Dict[str, Any]]:
+    """Per-class weight the fit used, from the sample weights actually passed
+    to fit (grouped by class). Empty when no weighting reached the fit --
+    class_weighting then carries the reason."""
+    sw = fit_kwargs.get('sample_weight')
+    if sw is None:
+        return []
+    y = np.asarray(y_train_encoded)
+    sw = np.asarray(sw, dtype=float)
+    return [{'class': label, 'weight': _to_native_type(float(sw[y == i].mean())) if np.any(y == i) else None,
+             'n_train': int(np.sum(y == i)), 'source': 'fit(sample_weight)'}
+            for i, label in enumerate(class_labels)]
+
+
+def _mlp_probability_calibration(model) -> Dict[str, Any]:
+    """How the class probabilities were produced: the network's own output
+    activation (out_activation_ of the fitted model: 'logistic' for two
+    classes, 'softmax' for more), with no CalibratedClassifierCV around it."""
+    return {
+        'probability_outputs': True,
+        'method': 'network_output_uncalibrated',
+        'out_activation': getattr(model, 'out_activation_', None),
+        'calibrated_classifier_cv': False,
+    }
+
+
 def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
@@ -132,6 +186,9 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
 
     return {
         'model': model, 'class_weighting': class_weighting,
+        'class_weight_values': _mlp_class_weight_values(
+            _fit_kwargs, y_train_encoded, [str(c) for c in le.classes_]),
+        'probability_calibration': _mlp_probability_calibration(model),
         'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
         'roc_data': roc_data, 'label_encoder': le,
@@ -767,6 +824,9 @@ def main():
 
             'parameters': params,
             'n_iterations': int(model.n_iter_),
+            # Exact trainable-parameter count from the fitted coefs_ and
+            # intercepts_, with the per-layer breakdown.
+            'parameter_count': compute_parameter_count(model),
             'final_loss': _to_native_type(model.loss_),
             'metrics': result['metrics'],
             'perm_importance': perm_importance,
@@ -790,6 +850,10 @@ def main():
             response['per_class_metrics'] = result['per_class_metrics']
             response['confusion_matrix'] = result['confusion_matrix']
             response['class_labels'] = result['class_labels']
+            # Per-class weight the fit used (empty when none reached it) and
+            # how the class probabilities were produced.
+            response['class_weight_values'] = result.get('class_weight_values')
+            response['probability_calibration'] = result.get('probability_calibration')
 
         print(json.dumps(response, default=_to_native_type))
 

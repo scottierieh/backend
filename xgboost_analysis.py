@@ -55,6 +55,49 @@ def detect_task_type(y: pd.Series) -> str:
         return 'regression'
 
 
+
+def build_learning_curve(train_history: Dict, metric: str, best_iteration, early_stopping_rounds) -> Dict[str, Any]:
+    """Per-round training and validation metric as numbers, from the
+    booster's evals_result() (validation_0 = training rows, validation_1 =
+    the held-out test rows that early stopping also watches). best_round is
+    1-based (XGBoost's best_iteration is 0-based)."""
+    train = [_to_native_type(float(v)) for v in (train_history.get('train') or [])]
+    valid = [_to_native_type(float(v)) for v in (train_history.get('test') or [])]
+    return {
+        'metric': metric,
+        'train': train,
+        'validation': valid,
+        'validation_data': 'test_split',
+        'n_rounds': len(train),
+        'best_round': (int(best_iteration) + 1) if best_iteration is not None else None,
+        'early_stopping_rounds': int(early_stopping_rounds) if early_stopping_rounds else None,
+        'source': 'XGBModel.evals_result()',
+    }
+
+
+def read_booster_config(model) -> Dict[str, Any]:
+    """tree_method, booster and objective as the trained booster records them
+    (Booster.save_config()), next to what was requested of the wrapper
+    (None = left to the library default)."""
+    out: Dict[str, Any] = {'xgboost_version': getattr(xgb, '__version__', None)}
+    try:
+        out['tree_method_requested'] = model.get_params().get('tree_method')
+    except Exception:
+        out['tree_method_requested'] = None
+    try:
+        cfg = json.loads(model.get_booster().save_config())
+        learner = cfg.get('learner', {})
+        gb = learner.get('gradient_booster', {})
+        out['booster'] = gb.get('name')
+        out['tree_method'] = (gb.get('gbtree_train_param') or {}).get('tree_method')
+        out['objective'] = (learner.get('objective') or {}).get('name')
+        out['source'] = 'Booster.save_config()'
+    except Exception as e:
+        out['tree_method'] = None
+        out['error'] = str(e)
+    return out
+
+
 def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
@@ -209,6 +252,8 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         'pr_data': pr_data,
         'train_history': train_history,
         'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
+        'learning_curve': build_learning_curve(train_history, eval_metric, best_iteration, early_stopping_rounds),
+        'booster_config': read_booster_config(model),
         'label_encoder': le,
         'error_examples': error_examples,
     }
@@ -272,6 +317,8 @@ def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> D
         'y_pred': y_pred,
         'train_history': train_history,
         'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
+        'learning_curve': build_learning_curve(train_history, 'rmse', best_iteration, early_stopping_rounds),
+        'booster_config': read_booster_config(model),
     }
 
 
@@ -1014,6 +1061,10 @@ def main():
             'interpretation': interpretation,
             'best_iteration': result.get('best_iteration'),
             'n_estimators_requested': params['n_estimators'],
+            # Per-round train / validation metric as numbers (the arrays
+            # behind learning_plot), and the booster's recorded tree_method.
+            'learning_curve': result.get('learning_curve'),
+            'booster_config': result.get('booster_config'),
         }
 
         if task_type == 'classification':

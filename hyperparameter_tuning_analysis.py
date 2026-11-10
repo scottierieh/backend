@@ -34,6 +34,7 @@ import seaborn as sns
 sns.set_theme(style="darkgrid")
 import io
 import base64
+import time
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -334,7 +335,9 @@ def main():
                 cv=cv_folds, scoring=scoring, n_jobs=-1, refit=True
             )
 
+        _search_t0 = time.perf_counter()
         search.fit(X_train, y_train)
+        search_time_seconds = time.perf_counter() - _search_t0
 
         best_model = search.best_estimator_
         y_pred = best_model.predict(X_test)
@@ -368,6 +371,17 @@ def main():
             'cv_results_top20': cv_results_summary,
             'n_candidates_evaluated': len(cv_results_df),
             'parameter_sensitivity': parameter_sensitivity,
+            # Wall-clock seconds of search.fit(): every candidate x fold plus
+            # the final refit of the best candidate on the training rows.
+            'search_time_seconds': _to_native_type(np.float64(search_time_seconds)),
+            # Of that, the refit alone (sklearn's refit_time_), and the sum of
+            # the per-fold fit times sklearn recorded for the candidates.
+            'refit_time_seconds': _to_native_type(np.float64(getattr(search, 'refit_time_', np.nan))),
+            'candidate_fit_time_total_seconds': _to_native_type(np.float64(
+                (cv_results_df['mean_fit_time'] * cv_folds).sum())) if 'mean_fit_time' in cv_results_df else None,
+            # The search ran with n_jobs=-1, so the wall-clock time can be
+            # shorter than the summed per-fold fit times.
+            'search_n_jobs': -1,
         }
 
         if task_type == 'classification':

@@ -138,6 +138,39 @@ def get_scoring_metric(scoring: str, task_type: str) -> str:
     return scoring_map.get(scoring, "accuracy" if task_type == "classification" else "r2")
 
 
+
+def mean_ci95_t(scores) -> Dict[str, Any]:
+    """95% confidence interval for the mean of the fold scores, t-based:
+    mean +/- t(0.975, k-1) * SD(ddof=1) / sqrt(k), over the k scores in
+    cv_results['scores'] (every fold of every repeat). The folds share
+    training rows, so they are not independent and this interval is too
+    narrow (Bengio & Grandvalet 2004); it is a description of the fold
+    scores, not a guarantee about new data."""
+    from scipy import stats as _st
+    x = np.asarray(scores, dtype=float)
+    x = x[np.isfinite(x)]
+    k = int(x.size)
+    out: Dict[str, Any] = {'level': 0.95, 'method': 't_over_folds', 'n_scores': k,
+                           'folds_independent': False}
+    if k < 2:
+        out.update({'lower': None, 'upper': None, 'error': 'needs at least two fold scores'})
+        return out
+    mean = float(x.mean())
+    sd = float(x.std(ddof=1))
+    se = sd / np.sqrt(k)
+    t = float(_st.t.ppf(0.975, k - 1))
+    out.update({
+        'mean': _to_native_type(mean),
+        'sd_ddof1': _to_native_type(sd),
+        'se': _to_native_type(float(se)),
+        'df': k - 1,
+        't_critical': _to_native_type(t),
+        'lower': _to_native_type(mean - t * se),
+        'upper': _to_native_type(mean + t * se),
+    })
+    return out
+
+
 def perform_cross_validation(X, y, model, cv_splitter, scoring: str, task_type: str, cv_method: str, n_folds: int) -> Dict[str, Any]:
     """Perform cross-validation and return detailed results"""
     # Get scores
@@ -185,6 +218,9 @@ def perform_cross_validation(X, y, model, cv_splitter, scoring: str, task_type: 
         'max': _to_native_type(np.max(scores)),
         'median': _to_native_type(np.median(scores)),
         'n_folds': len(scores),
+        # t-based 95% CI of the mean over the fold scores above (SD ddof=1);
+        # folds are not independent, so read it as optimistic.
+        'mean_ci95_t': mean_ci95_t(scores),
         'fold_details': fold_details,
         'y_pred': y_pred.tolist() if y_pred is not None else None
     }

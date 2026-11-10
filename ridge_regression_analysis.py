@@ -3,7 +3,7 @@ import sys
 import json
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
+from sklearn.model_selection import train_test_split, KFold, cross_val_score, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import Ridge, LinearRegression
@@ -148,6 +148,47 @@ def _compute_residual_diagnostics(residuals, fitted):
     }
 
 
+
+ALPHA_SEARCH_SEED = 42
+
+
+def _compute_alpha_search(X_train_scaled, y_train, chosen_alpha, cv_folds):
+    """Cross-validated MSE for each candidate alpha on the training split, as
+    numbers. The fitted model's alpha is the user's (there is no search in
+    this analysis), so this grid is a diagnostic of where that alpha sits:
+    GridSearchCV over Ridge with the same shuffled KFold seed the CV summary
+    uses, on the training rows standardized by the training-split scaler.
+    The grid is 33 log-spaced values from 1e-4 to 1e4 plus the chosen alpha;
+    mean and SD are over folds (SD with ddof=0, as GridSearchCV reports it)."""
+    grid = np.unique(np.concatenate([np.logspace(-4, 4, 33), [np.float64(chosen_alpha)]]))
+    kf = KFold(n_splits=cv_folds, shuffle=True, random_state=ALPHA_SEARCH_SEED)
+    gs = GridSearchCV(Ridge(random_state=42), {'alpha': grid}, cv=kf,
+                      scoring='neg_mean_squared_error', refit=False)
+    gs.fit(X_train_scaled, y_train)
+    alphas = [np.float64(a) for a in gs.cv_results_['param_alpha']]
+    mean_mse = [-np.float64(v) for v in gs.cv_results_['mean_test_score']]
+    sd_mse = [np.float64(v) for v in gs.cv_results_['std_test_score']]
+    best = int(np.argmin(mean_mse))
+    return {
+        'estimator': 'GridSearchCV(Ridge)',
+        'used_for_selection': False,
+        'parameter': 'alpha',
+        'alphas': [_to_native_type(a) for a in alphas],
+        'cv_mse_mean': [_to_native_type(v) for v in mean_mse],
+        'cv_mse_sd': [_to_native_type(v) for v in sd_mse],
+        'sd_ddof': 0,
+        'best_alpha': _to_native_type(alphas[best]),
+        'best_cv_mse_mean': _to_native_type(mean_mse[best]),
+        'chosen_alpha': _to_native_type(np.float64(chosen_alpha)),
+        'chosen_cv_mse_mean': _to_native_type(mean_mse[int(np.argmin(np.abs(np.array(alphas) - np.float64(chosen_alpha))))]),
+        'cv_folds': int(cv_folds),
+        'cv_splitter': 'KFold',
+        'cv_shuffle': True,
+        'cv_random_state': ALPHA_SEARCH_SEED,
+        'data': 'training split, standardized with the training-split scaler',
+    }
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -241,6 +282,16 @@ def main():
             'ols_comparison': ols_comparison,
             'cv_results': cv_results,
             'residual_diagnostics': residual_diagnostics,
+            # Candidate alphas with their cross-validated MSE (mean, SD over
+            # folds) -- a diagnostic grid, since this alpha was not searched.
+            'alpha_search': _compute_alpha_search(X_train_scaled, y_train, alpha, cv_results['n_folds']),
+            # Seeds of every random step, so the run can be repeated.
+            'random_seeds': {
+                'train_test_split': 42,
+                'cv_results_kfold': 42,
+                'cv_results_shuffle': True,
+                'alpha_search_kfold': ALPHA_SEARCH_SEED,
+            },
         }
 
         fig_main, axes = plt.subplots(2, 1, figsize=(8, 12))

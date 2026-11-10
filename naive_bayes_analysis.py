@@ -26,8 +26,9 @@ from sklearn.inspection import permutation_importance, partial_dependence
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_curve, auc, roc_auc_score,
-    precision_recall_curve, average_precision_score
+    precision_recall_curve, average_precision_score, log_loss, brier_score_loss
 )
+from sklearn.calibration import calibration_curve
 import warnings
 from analysis_common import cv_scoring_of, _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
 
@@ -62,6 +63,98 @@ def _fig_to_base64(fig) -> str:
     image_base64 = base64.b64encode(buffer.read()).decode()
     plt.close(fig)
     return image_base64
+
+
+
+CALIBRATION_N_BINS = 10
+
+
+def _calibration_bins(y_binary: np.ndarray, prob: np.ndarray, n_bins: int = CALIBRATION_N_BINS) -> Dict[str, Any]:
+    """One reliability curve, from sklearn.calibration.calibration_curve
+    (strategy='uniform'), plus the row count behind each point. sklearn drops
+    empty bins and does not return the counts; they are recomputed here with
+    the same bin assignment it uses (np.searchsorted on the inner edges), so
+    the counts line up point for point and sum to the number of test rows."""
+    prob_true, prob_pred = calibration_curve(y_binary, prob, n_bins=n_bins, strategy='uniform')
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    binids = np.searchsorted(edges[1:-1], prob)
+    totals = np.bincount(binids, minlength=n_bins)
+    nonzero = totals != 0
+    counts = totals[nonzero]
+    lower = edges[:-1][nonzero]
+    upper = edges[1:][nonzero]
+    return {
+        'prob_pred': [_to_native_type(float(v)) for v in prob_pred],
+        'prob_true': [_to_native_type(float(v)) for v in prob_true],
+        'bin_count': [int(c) for c in counts],
+        'bin_lower': [_to_native_type(float(v)) for v in lower],
+        'bin_upper': [_to_native_type(float(v)) for v in upper],
+        'n': int(len(prob)),
+    }
+
+
+def compute_probability_quality(y_true_enc: np.ndarray, proba: np.ndarray, class_labels: List[str]) -> Dict[str, Any]:
+    """Log loss, Brier score and calibration curves of the test-set predicted
+    probabilities -- the check the report needs because the independence
+    assumption tends to push naive Bayes probabilities toward 0 and 1.
+
+    Binary: Brier is sklearn's brier_score_loss on the second class (range
+    0-1) and there is one curve, for that class. Multiclass: Brier is the
+    original multi-category definition, mean over rows of sum over classes of
+    (p_k - y_k)^2 (range 0-2), and there is one one-vs-rest curve per class."""
+    y_true_enc = np.asarray(y_true_enc)
+    proba = np.asarray(proba, dtype=float)
+    n_classes = proba.shape[1]
+    out: Dict[str, Any] = {'n_test': int(len(y_true_enc)), 'n_bins': CALIBRATION_N_BINS, 'strategy': 'uniform'}
+    try:
+        out['log_loss'] = _to_native_type(float(log_loss(y_true_enc, proba, labels=list(range(n_classes)))))
+    except Exception:
+        out['log_loss'] = None
+    if n_classes == 2:
+        out['brier_score'] = _to_native_type(float(brier_score_loss(y_true_enc, proba[:, 1])))
+        out['brier_definition'] = 'binary'
+        out['positive_class'] = class_labels[1]
+        targets = [(1, class_labels[1])]
+    else:
+        onehot = np.eye(n_classes)[y_true_enc]
+        out['brier_score'] = _to_native_type(float(np.mean(np.sum((proba - onehot) ** 2, axis=1))))
+        out['brier_definition'] = 'multiclass_sum_over_classes'
+        targets = list(enumerate(class_labels))
+    curves = []
+    for k, label in targets:
+        y_bin = (y_true_enc == k).astype(int)
+        try:
+            c = _calibration_bins(y_bin, proba[:, k])
+        except Exception:
+            continue
+        c['class'] = label
+        c['one_vs_rest'] = n_classes > 2
+        c['brier_score'] = _to_native_type(float(brier_score_loss(y_bin, proba[:, k])))
+        curves.append(c)
+    out['curves'] = curves
+    return out
+
+
+def compute_class_conditional_params(model, nb_type: str, feature_names: List[str], class_labels: List[str]) -> Dict[str, Any]:
+    """The per-class distribution parameters of the fitted variant, read off
+    the model: GaussianNB's theta_ (mean) and var_ (variance, already
+    including the var_smoothing epsilon_) per class and feature; Multinomial
+    and Bernoulli NB's feature_log_prob_ per class and feature, with exp() of
+    it (Multinomial: the share of the class's total count that falls on the
+    feature; Bernoulli: P(feature = 1 | class) after binarizing)."""
+    out: Dict[str, Any] = {'variant': nb_type, 'classes': list(class_labels), 'features': list(feature_names)}
+    if nb_type == 'gaussian' and hasattr(model, 'theta_'):
+        out['mean'] = [[_to_native_type(float(v)) for v in row] for row in np.asarray(model.theta_)]
+        out['variance'] = [[_to_native_type(float(v)) for v in row] for row in np.asarray(model.var_)]
+        out['var_smoothing_epsilon'] = _to_native_type(float(getattr(model, 'epsilon_', np.nan)))
+    elif hasattr(model, 'feature_log_prob_'):
+        lp = np.asarray(model.feature_log_prob_, dtype=float)
+        out['feature_log_prob'] = [[_to_native_type(float(v)) for v in row] for row in lp]
+        out['feature_prob'] = [[_to_native_type(float(v)) for v in row] for row in np.exp(lp)]
+        # Spread of each feature's log-probability across classes (max - min):
+        # 0 means the feature does not move the class posterior at all.
+        out['log_prob_range_by_feature'] = [_to_native_type(float(v)) for v in (lp.max(axis=0) - lp.min(axis=0))]
+    return out
 
 
 def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_names: List[str]) -> Dict[str, Any]:
@@ -221,9 +314,13 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
         for i, cls in enumerate(le.classes_)
     }
 
+    probability_quality = compute_probability_quality(
+        y_test_encoded, y_pred_proba, [str(c) for c in le.classes_])
+
     return {
         'model':             model,
         'class_weighting':   class_weighting,
+        'probability_quality': probability_quality,
         'metrics':           metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix':  cm.tolist(),
@@ -979,7 +1076,14 @@ def main():
             'prior_plot':          prior_plot,
             'prob_dist_plots':     prob_dist_plots,
             'interpretation':      interpretation,
-            'prediction_examples': prediction_examples
+            'prediction_examples': prediction_examples,
+            # Test-set log loss / Brier score and reliability curves (binary:
+            # the second class; multiclass: one-vs-rest per class), with the
+            # row count behind every curve point.
+            'probability_quality': result.get('probability_quality'),
+            # Per-class distribution parameters of the fitted variant.
+            'class_conditional_params': compute_class_conditional_params(
+                model, nb_type, feature_cols, result['class_labels']),
         }
 
         print(json.dumps(response, default=_to_native_type))

@@ -105,6 +105,52 @@ def detect_task_type(y: pd.Series) -> str:
         return 'regression'
 
 
+
+def _class_weight_values(model, fit_kwargs: dict, y_train_encoded, class_labels: List[str]) -> List[Dict[str, Any]]:
+    """Per-class weight the fit actually used, read back rather than
+    restated: SVC's own class_weight_ (libsvm's per-class multiplier of C,
+    all 1.0 when no weighting reached it), else the sample weights passed to
+    fit grouped by class."""
+    y = np.asarray(y_train_encoded)
+    counts = np.bincount(y, minlength=len(class_labels))
+    if hasattr(model, 'class_weight_') and model.class_weight_ is not None:
+        w = np.asarray(model.class_weight_, dtype=float)
+        source = 'estimator.class_weight_'
+    elif fit_kwargs.get('sample_weight') is not None:
+        sw = np.asarray(fit_kwargs['sample_weight'], dtype=float)
+        w = np.array([sw[y == i].mean() if np.any(y == i) else np.nan for i in range(len(class_labels))])
+        source = 'fit(sample_weight)'
+    else:
+        return []
+    return [{'class': label, 'weight': _to_native_type(float(w[i])), 'n_train': int(counts[i]), 'source': source}
+            for i, label in enumerate(class_labels)]
+
+
+def _svc_probability_calibration(model, X_test, y_pred, y_pred_proba) -> Dict[str, Any]:
+    """How the class probabilities (ROC, PR, confidence) were produced, read
+    off the fitted SVC. probability=True makes libsvm fit Platt's sigmoid on
+    the decision values with its own internal cross-validation on the
+    training rows; no CalibratedClassifierCV wraps the model here. predict()
+    still uses the decision function, so the label and argmax of the
+    probabilities can disagree -- the count of such test rows is recorded."""
+    on = bool(getattr(model, 'probability', False))
+    out: Dict[str, Any] = {
+        'probability_outputs': on,
+        'method': 'platt_sigmoid' if on else None,
+        'fitted_by': 'SVC(probability=True): libsvm internal cross-validation on the training rows' if on else None,
+        'calibrated_classifier_cv': False,
+    }
+    if on and hasattr(model, 'probA_'):
+        out['platt_a'] = [_to_native_type(float(v)) for v in np.asarray(model.probA_)]
+        out['platt_b'] = [_to_native_type(float(v)) for v in np.asarray(model.probB_)]
+        out['n_sigmoids'] = int(np.asarray(model.probA_).size)
+    if on and y_pred_proba is not None:
+        disagree = int(np.sum(np.asarray(y_pred) != np.argmax(np.asarray(y_pred_proba), axis=1)))
+        out['n_test_label_disagrees_with_argmax_proba'] = disagree
+        out['n_test'] = int(len(y_pred))
+    return out
+
+
 def train_svm_classifier(X_train, X_test, y_train, y_test, params: dict,
                           feature_names: List[str]) -> Dict[str, Any]:
     """Train SVM classifier"""
@@ -143,6 +189,9 @@ def train_svm_classifier(X_train, X_test, y_train, y_test, params: dict,
     # Predictions
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
+    probability_calibration = _svc_probability_calibration(model, X_test, y_pred, y_pred_proba)
+    class_weight_values = _class_weight_values(
+        model, _fit_kwargs, y_train_encoded, [str(c) for c in le.classes_])
     y_train_pred = model.predict(X_train)
 
     # Metrics
@@ -257,6 +306,8 @@ def train_svm_classifier(X_train, X_test, y_train, y_test, params: dict,
     return {
         'model': model,
         'class_weighting': class_weighting,
+        'probability_calibration': probability_calibration,
+        'class_weight_values': class_weight_values,
         'metrics': metrics,
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
@@ -1010,6 +1061,11 @@ def main():
             response['pr_plot'] = pr_plot
             response['sv_plot'] = sv_plot
             response['decision_plot'] = decision_plot
+            # How the class probabilities were produced (Platt sigmoid inside
+            # SVC, no CalibratedClassifierCV) and the per-class weight the fit
+            # actually used.
+            response['probability_calibration'] = result.get('probability_calibration')
+            response['class_weight_values'] = result.get('class_weight_values')
         else:
             response['regression_plots'] = regression_plots
 

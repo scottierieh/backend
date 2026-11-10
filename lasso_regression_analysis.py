@@ -151,6 +151,40 @@ def _compute_residual_diagnostics(residuals, fitted):
         'heteroscedasticity': heteroscedasticity,
     }
 
+
+def _lasso_alpha_search(cv_model, chosen_alpha, used_for_selection, cv_folds):
+    """The LassoCV grid as numbers: every candidate alpha with the mean and
+    SD over folds of its validation MSE (mse_path_, shape alphas x folds;
+    SD with ddof=0). LassoCV(cv=k) splits with an unshuffled KFold, so no
+    seed decides the folds -- cv_random_state is None and that is recorded,
+    not omitted."""
+    alphas = np.asarray(cv_model.alphas_, dtype=float)
+    path = np.asarray(cv_model.mse_path_, dtype=float)
+    mean_mse = path.mean(axis=1)
+    sd_mse = path.std(axis=1)
+    order = np.argsort(alphas)  # ascending alpha for the report
+    alphas, mean_mse, sd_mse = alphas[order], mean_mse[order], sd_mse[order]
+    best = int(np.argmin(mean_mse))
+    return {
+        'estimator': 'LassoCV',
+        'used_for_selection': bool(used_for_selection),
+        'parameter': 'alpha',
+        'alphas': [_to_native_type(a) for a in alphas],
+        'cv_mse_mean': [_to_native_type(v) for v in mean_mse],
+        'cv_mse_sd': [_to_native_type(v) for v in sd_mse],
+        'sd_ddof': 0,
+        'best_alpha': _to_native_type(np.float64(cv_model.alpha_)),
+        'best_cv_mse_mean': _to_native_type(np.float64(mean_mse[best])),
+        'chosen_alpha': _to_native_type(np.float64(chosen_alpha)),
+        'chosen_cv_mse_mean': _to_native_type(np.float64(mean_mse[int(np.argmin(np.abs(alphas - np.float64(chosen_alpha))))])),
+        'cv_folds': int(cv_folds),
+        'cv_splitter': 'KFold',
+        'cv_shuffle': False,
+        'cv_random_state': None,
+        'data': 'training split, standardized with the training-split scaler',
+    }
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -190,11 +224,26 @@ def main():
         X_test_scaled = scaler.transform(X_test)
 
         alpha_source = 'user_specified'
+        cv_model = None
         if auto_tune:
             cv_model = LassoCV(alphas=np.logspace(-3, 2, 100), cv=cv_folds, random_state=42, max_iter=10000)
             cv_model.fit(X_train_scaled, y_train)
             alpha = float(cv_model.alpha_)
             alpha_source = 'cross_validation'
+        # The same LassoCV grid when alpha was given by the user, fitted only
+        # to show where that alpha sits on the CV curve; it changes nothing.
+        try:
+            if cv_model is None:
+                # The user's alpha is added to the grid so its own CV MSE is
+                # reported, not that of the nearest grid point.
+                _diag = LassoCV(alphas=np.unique(np.concatenate([np.logspace(-3, 2, 100), [alpha]])),
+                                cv=cv_folds, random_state=42, max_iter=10000)
+                _diag.fit(X_train_scaled, y_train)
+                alpha_search = _lasso_alpha_search(_diag, alpha, False, cv_folds)
+            else:
+                alpha_search = _lasso_alpha_search(cv_model, alpha, True, cv_folds)
+        except Exception as _e:
+            alpha_search = {'error': str(_e)}
 
         model = Lasso(alpha=alpha, random_state=42)
         model.fit(X_train_scaled, y_train)
@@ -256,6 +305,16 @@ def main():
             'ols_comparison': ols_comparison,
             'cv_results': cv_results,
             'residual_diagnostics': residual_diagnostics,
+            # Candidate alphas with their cross-validated MSE (mean, SD over
+            # folds); used_for_selection says whether it picked the alpha.
+            'alpha_search': alpha_search,
+            # Seeds of every random step, so the run can be repeated.
+            'random_seeds': {
+                'train_test_split': 42,
+                'cv_results_kfold': 42,
+                'cv_results_shuffle': True,
+                'alpha_search_kfold': None,
+            },
         }
 
         fig_main, axes = plt.subplots(2, 1, figsize=(8, 12))

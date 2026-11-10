@@ -2,5 +2,153 @@
   {
     "name": "kmedoids.labels(ARI=1)",
     "reference": "1.0"
+  },
+  {
+    "name": "kmedoids.labels_exact.vs_KMedoids",
+    "reference": "1"
+  },
+  {
+    "name": "f\"kmedoids.medoid_index[{i}].vs_KMedoids\"",
+    "reference": "int(km.medoid_indices_[i])"
+  },
+  {
+    "name": "kmedoids.cost.vs_KMedoids_inertia",
+    "reference": "float(km.inertia_)"
+  },
+  {
+    "name": "kmedoids.n_iter.vs_KMedoids",
+    "reference": "int(km.n_iter_)"
+  },
+  {
+    "name": "kmedoids.converged(n_iter<max_iter)",
+    "reference": "1"
+  },
+  {
+    "name": "kmedoids.n_clusters",
+    "reference": "K"
+  },
+  {
+    "name": "f\"kmedoids.medoid[{i}][{SHORT[col]}]\"",
+    "reference": "Xraw[med[i], j]"
+  },
+  {
+    "name": "kmedoids.labels_exact.nearest_medoid",
+    "reference": "1"
+  },
+  {
+    "name": "kmedoids.cost.sum_of_distances",
+    "reference": "cost"
+  },
+  {
+    "name": "kmedoids.swap_optimal(best_swap>=cost)",
+    "reference": "1.0"
+  },
+  {
+    "name": "kmedoids.cost>=exhaustive_global_min",
+    "reference": "1.0"
+  },
+  {
+    "name": "kmedoids.silhouette",
+    "reference": "float(sil.mean())"
+  },
+  {
+    "name": "kmedoids.calinski_harabasz",
+    "reference": "calinski_harabasz_def(labels)"
+  },
+  {
+    "name": "kmedoids.davies_bouldin",
+    "reference": "float(np.mean(R))"
+  },
+  {
+    "name": "f\"kmedoids.sil[{c + 1}].n\"",
+    "reference": "int(s.size)"
+  },
+  {
+    "name": "f\"kmedoids.sil[{c + 1}].avg\"",
+    "reference": "float(s.mean())"
+  },
+  {
+    "name": "f\"kmedoids.sil[{c + 1}].min\"",
+    "reference": "float(s.min())"
+  },
+  {
+    "name": "f\"kmedoids.sil[{c + 1}].max\"",
+    "reference": "float(s.max())"
+  },
+  {
+    "name": "f\"kmedoids.sil[{c + 1}].negative\"",
+    "reference": "int((s < 0).sum())"
+  },
+  {
+    "name": "f\"kmedoids.size[{c + 1}]\"",
+    "reference": "int(m.sum())"
+  },
+  {
+    "name": "f\"kmedoids.pct[{c + 1}]\"",
+    "reference": "float(m.sum() / n * 100)"
+  },
+  {
+    "name": "f\"kmedoids.profile_medoid_index[{c + 1}]\"",
+    "reference": "int(med[c])"
+  },
+  {
+    "name": "f\"kmedoids.medoid_scaled[{c + 1}][{SHORT[col]}]\"",
+    "reference": "float(Z[med[c], j])"
+  },
+  {
+    "name": "f\"kmedoids.rawmean[{c + 1}][{SHORT[col]}]\"",
+    "reference": "float(Xraw[m, j].mean())"
+  },
+  {
+    "name": "f\"kmedoids.anova[{SHORT[col]}].F\"",
+    "reference": "float(F)"
+  },
+  {
+    "name": "f\"kmedoids.anova[{SHORT[col]}].p\"",
+    "reference": "float(pv)"
+  },
+  {
+    "name": "f\"kmedoids.anova[{SHORT[col]}].eta2\"",
+    "reference": "float(ssb / sst)"
+  },
+  {
+    "name": "kmedoids.optk.k_range_len",
+    "reference": "len(k_range)"
+  },
+  {
+    "name": "f\"kmedoids.optk.k[{ik}]\"",
+    "reference": "k"
+  },
+  {
+    "name": "f\"kmedoids.optk.cost[{ik}].vs_KMedoids\"",
+    "reference": "float(mk.inertia_)"
+  },
+  {
+    "name": "f\"kmedoids.optk.cost[{ik}].sum_of_distances\"",
+    "reference": "float(D[:, mk.medoid_indices_].min(axis=1).sum())"
+  },
+  {
+    "name": "f\"kmedoids.optk.sil[{ik}]\"",
+    "reference": "ref_sil[-1]"
+  },
+  {
+    "name": "f\"kmedoids.optk.ch[{ik}]\"",
+    "reference": "ref_ch[-1]"
+  },
+  {
+    "name": "kmedoids.optk.silhouette_k",
+    "reference": "sil_k"
+  },
+  {
+    "name": "kmedoids.optk.ch_k",
+    "reference": "ch_k"
+  },
+  {
+    "name": "kmedoids.optk.elbow_k",
+    "reference": "elbow_k"
+  },
+  {
+    "name": "kmedoids.optk.recommended_k",
+    "reference": "max(set(votes), key=votes.count)"
   }
 ]

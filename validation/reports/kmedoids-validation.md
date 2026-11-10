@@ -1,7 +1,11 @@
 # k-Medoids clustering (Python) — Validation Report
-- **Target**: `kmedoids_analysis.py` · `/api/analysis/kmedoids` · uses `sklearn_extra.cluster.KMedoids(method='pam', random_state=42)`
-- **Method**: Ran the CLI script on iris; reproduced with `sklearn_extra` KMedoids and compared labels (adjusted Rand index).
-## Summary — 1/1 pass
-Cluster labels match a direct `sklearn_extra.cluster.KMedoids(method='pam', init='k-medoids++')` fit exactly (ARI = 1.0).
+- **Target**: `kmedoids_analysis.py` · `/api/analysis/kmedoids` · uses `sklearn_extra.cluster.KMedoids(method='pam', init='k-medoids++', random_state=42)`
+- **Method**: Ran the CLI script on iris (k = 3). Two independent references: (1) a direct `sklearn_extra` KMedoids refit with the handler's settings; (2) first-principles numpy/scipy computations on an independently standardized matrix — medoid rows, nearest-medoid labels, the PAM cost (sum of unsquared distances), swap-optimality, an exhaustive search over all C(150,3) medoid triples, silhouette / Davies-Bouldin / Calinski-Harabasz from their formulas, cluster profiles, per-feature ANOVA, and the whole k = 2..10 search with its majority-vote recommendation.
+## Summary
+Labels, medoid indices and the PAM cost match a direct `sklearn_extra.cluster.KMedoids` fit exactly. Independently of that library: the returned medoids are data rows; every point is assigned to its nearest returned medoid; the reported cost equals the sum of distances to the nearest medoid; no single medoid ↔ non-medoid swap lowers the cost (PAM's convergence property); the validity indices, per-cluster silhouette summaries, profiles, ANOVA F / p / η² and the k-search curves all match their textbook computations.
+
+**Note on optimality**: PAM guarantees swap-optimality, not the global optimum. On iris (k = 3) every KMedoids start and R's `cluster::pam` (BUILD + SWAP) stop at the same medoids (rows 7, 55, 112; cost 131.7958), while the exhaustive search finds a lower cost at rows 7, 94, 147 (130.7333) that needs two simultaneous swaps. The check therefore requires the reported cost to be not below the exhaustive minimum; the gap is printed in the run log.
+
+**Tolerance note**: costs recomputed here with exact distances (`scipy.spatial.distance.cdist`) are compared at 1e-6. The handler's cost comes from scikit-learn's `euclidean_distances`, whose ‖x‖² + ‖m‖² − 2x·m expansion makes a medoid's distance to itself the square root of a rounding residual (about 1e-8 to 6e-8) instead of 0.
 ## Fix applied
-`scikit-learn-extra` is not importable under **numpy 2.x** (ABI: "numpy.dtype size changed"). Pinned **`numpy<2`** in `requirements.txt` so k-medoids imports and runs. Validated in a numpy 1.26 environment. Repro: `validation/validate_kmedoids.py` (run under numpy<2).
+`scikit-learn-extra` is not importable under **numpy 2.x** (ABI: "numpy.dtype size changed"). Pinned **`numpy<2`** in `requirements.txt` so k-medoids imports and runs. Validated in the pinned environment (numpy 1.26.4, scikit-learn 1.5.2, scikit-learn-extra 0.3.0, Python 3.11). Repro: `validation/validate_kmedoids.py`.

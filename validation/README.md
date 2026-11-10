@@ -49,4 +49,5 @@ Reports: `validation/reports/*.md`.
 | `validate_gmm.py` | `gmm_analysis.py` | ARI=1 |
 | `validate_hca.py` | `hca_analysis.py` | ARI=1 |
 | `validate_hdbscan.py` | `hdbscan_analysis.py` | ARI=1 |
-| `validate_kmedoids.py` | `kmedoids_analysis.py` | ARI=1 (numpy<2) |
+| `validate_kmedoids.py` | `kmedoids_analysis.py` | pass (pinned env, numpy<2) |
+| `validate_lstm_forecasting.py` | `lstm_forecasting_analysis.py` | pass (pinned env, TensorFlow) |

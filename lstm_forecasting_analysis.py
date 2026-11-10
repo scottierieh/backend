@@ -32,7 +32,12 @@ try:
 except Exception:
     pass
 
-tf.random.set_seed(42)
+# Fixed seed for reproducible fits. tf.random.set_seed alone does not reach
+# Keras 3 (installed with tensorflow 2.16+): its weight initializers and Dropout
+# draw from Keras' own seed generator, so two runs on identical input gave
+# different predictions. keras.utils.set_random_seed seeds Python's random,
+# NumPy, TensorFlow and that Keras generator together.
+tf.keras.utils.set_random_seed(42)
 
 def _generate_interpretation(train_metrics, test_metrics, epochs_run, epochs_requested,
                               window_size, forecast_periods, n_obs):

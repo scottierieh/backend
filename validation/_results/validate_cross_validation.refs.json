@@ -1,5 +1,17 @@
 [
   {
+    "name": "cv.task_type",
+    "reference": "\"classification\""
+  },
+  {
+    "name": "cv.n_samples",
+    "reference": "len(y)"
+  },
+  {
+    "name": "cv.n_features",
+    "reference": "len(feat)"
+  },
+  {
     "name": "cv.mean_score",
     "reference": "sc.mean()"
   },
@@ -26,5 +38,41 @@
   {
     "name": "f\"cv.fold{i}_score\"",
     "reference": "float(exp)"
+  },
+  {
+    "name": "f\"cv.fold{i}.fold\"",
+    "reference": "i+1"
+  },
+  {
+    "name": "f\"cv.fold{i}.train_size\"",
+    "reference": "len(tr_idx)"
+  },
+  {
+    "name": "f\"cv.fold{i}.test_size\"",
+    "reference": "len(te_idx)"
+  },
+  {
+    "name": "cv.add.accuracy",
+    "reference": "accuracy_score(y,y_pred)"
+  },
+  {
+    "name": "cv.add.precision",
+    "reference": "precision_score(y,y_pred,average='macro',zero_division=0)"
+  },
+  {
+    "name": "cv.add.recall",
+    "reference": "recall_score(y,y_pred,average='macro',zero_division=0)"
+  },
+  {
+    "name": "cv.add.f1",
+    "reference": "f1_score(y,y_pred,average='macro',zero_division=0)"
+  },
+  {
+    "name": "has.scores_plot",
+    "reference": "True"
+  },
+  {
+    "name": "has.stability_plot",
+    "reference": "True"
   }
 ]

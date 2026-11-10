@@ -1,7 +1,7 @@
 """Validates tsne_analysis.py against sklearn.manifold.TSNE.
 The handler fixes random_state=42, init='pca', learning_rate='auto', so the
 embedding + KL divergence are exactly reproducible from an independent TSNE fit.
-Output embedding lives at results.embedding. Every returned leaf value is
+Output embedding lives at the top-level 'embedding' field. Every returned leaf value is
 checked: echoed params (n_components, perplexity_used, variables, n_samples),
 n_iterations_run, kl_divergence, the full embedding value-by-value (a sample of
 the first 20 points x/y, plus global maxdiff), and trustworthiness recomputed
@@ -21,7 +21,9 @@ payload = {"data": data, "variables": cols, "nComponents": 2,
            "perplexity": 30.0, "nIter": 1000}
 
 out = run_script("tsne_analysis.py", payload)
-res = out["results"]
+# The handler's response is flat (every field at the top level, as the frontend's
+# TSNEResponse expects), not nested under "results".
+res = out
 emb = np.array(res["embedding"])
 
 # reference: same StandardScaler + TSNE params as the handler

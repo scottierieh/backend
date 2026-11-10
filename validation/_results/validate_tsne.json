@@ -11,16 +11,16 @@
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
-  "runtime_version": "3.11.15",
-  "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "runtime_version": "3.11.17",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
   "packages": {
-    "numpy": "2.4.6",
-    "pandas": "3.0.3",
-    "scipy": "1.17.1",
-    "sklearn": "1.9.0"
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "sklearn": "1.5.2"
   },
-  "git_commit": "3aa5188",
-  "validation_date": "2026-07-12",
+  "git_commit": "9f1ced4",
+  "validation_date": "2026-11-10",
   "checks": [
     {
       "name": "perplexity_used",
@@ -120,328 +120,328 @@
     },
     {
       "name": "kl_divergence",
-      "got": "0.0304022",
-      "expected": "0.0304022",
+      "got": "0.0308642",
+      "expected": "0.0308642",
       "tolerance": 0.0001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[0].x",
-      "got": "3.09335",
-      "expected": "3.09335",
+      "got": "2.90337",
+      "expected": "2.90337",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[0].y",
-      "got": "0.69321",
-      "expected": "0.69321",
+      "got": "0.622559",
+      "expected": "0.622559",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[1].x",
-      "got": "3.15121",
-      "expected": "3.15121",
+      "got": "2.36232",
+      "expected": "2.36232",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[1].y",
-      "got": "-0.47212",
-      "expected": "-0.47212",
+      "got": "-0.326001",
+      "expected": "-0.326001",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[2].x",
-      "got": "2.95054",
-      "expected": "2.95054",
+      "got": "2.51722",
+      "expected": "2.51722",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[2].y",
-      "got": "-0.16365",
-      "expected": "-0.16365",
+      "got": "-0.0611081",
+      "expected": "-0.0611081",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[3].x",
-      "got": "2.85258",
-      "expected": "2.85258",
+      "got": "2.86027",
+      "expected": "2.86027",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[3].y",
-      "got": "-0.044941",
-      "expected": "-0.044941",
+      "got": "-0.164305",
+      "expected": "-0.164305",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[4].x",
-      "got": "3.4483",
-      "expected": "3.4483",
+      "got": "1.82119",
+      "expected": "1.82119",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[4].y",
-      "got": "-0.932584",
-      "expected": "-0.932584",
+      "got": "-0.389788",
+      "expected": "-0.389788",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[5].x",
-      "got": "3.54238",
-      "expected": "3.54238",
+      "got": "2.18654",
+      "expected": "2.18654",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[5].y",
-      "got": "-0.312512",
-      "expected": "-0.312512",
+      "got": "0.0323465",
+      "expected": "0.0323465",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[6].x",
-      "got": "2.59372",
-      "expected": "2.59372",
+      "got": "2.57286",
+      "expected": "2.57286",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[6].y",
-      "got": "-0.704263",
-      "expected": "-0.704263",
+      "got": "-0.820731",
+      "expected": "-0.820731",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[7].x",
-      "got": "2.72925",
-      "expected": "2.72925",
+      "got": "2.54328",
+      "expected": "2.54328",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[7].y",
-      "got": "-0.267208",
-      "expected": "-0.267208",
+      "got": "-0.251804",
+      "expected": "-0.251804",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[8].x",
-      "got": "3.63088",
-      "expected": "3.63088",
+      "got": "3.4007",
+      "expected": "3.4007",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[8].y",
-      "got": "0.0103904",
-      "expected": "0.0103904",
+      "got": "-0.424959",
+      "expected": "-0.424959",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[9].x",
-      "got": "2.63411",
-      "expected": "2.63411",
+      "got": "2.57123",
+      "expected": "2.57123",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[9].y",
-      "got": "-0.765263",
-      "expected": "-0.765263",
+      "got": "-0.865105",
+      "expected": "-0.865105",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[10].x",
-      "got": "2.90659",
-      "expected": "2.90659",
+      "got": "2.43245",
+      "expected": "2.43245",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[10].y",
-      "got": "-0.695462",
-      "expected": "-0.695462",
+      "got": "-0.656632",
+      "expected": "-0.656632",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[11].x",
-      "got": "2.72482",
-      "expected": "2.72482",
+      "got": "2.73559",
+      "expected": "2.73559",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[11].y",
-      "got": "-0.321634",
-      "expected": "-0.321634",
+      "got": "-0.447384",
+      "expected": "-0.447384",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[12].x",
-      "got": "2.78265",
-      "expected": "2.78265",
+      "got": "2.46386",
+      "expected": "2.46386",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[12].y",
-      "got": "-0.810231",
-      "expected": "-0.810231",
+      "got": "-0.821705",
+      "expected": "-0.821705",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[13].x",
-      "got": "2.72519",
-      "expected": "2.72519",
+      "got": "2.66816",
+      "expected": "2.66816",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[13].y",
-      "got": "-0.705406",
-      "expected": "-0.705406",
+      "got": "-0.798142",
+      "expected": "-0.798142",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[14].x",
-      "got": "2.57676",
-      "expected": "2.57676",
+      "got": "2.55989",
+      "expected": "2.55989",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[14].y",
-      "got": "-0.40344",
-      "expected": "-0.40344",
+      "got": "-0.489754",
+      "expected": "-0.489754",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[15].x",
-      "got": "3.01719",
-      "expected": "3.01719",
+      "got": "2.69892",
+      "expected": "2.69892",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[15].y",
-      "got": "-0.546875",
-      "expected": "-0.546875",
+      "got": "-0.63308",
+      "expected": "-0.63308",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[16].x",
-      "got": "3.09523",
-      "expected": "3.09523",
+      "got": "2.08663",
+      "expected": "2.08663",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[16].y",
-      "got": "-0.85222",
-      "expected": "-0.85222",
+      "got": "-0.525213",
+      "expected": "-0.525213",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[17].x",
-      "got": "2.42087",
-      "expected": "2.42087",
+      "got": "2.69078",
+      "expected": "2.69078",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[17].y",
-      "got": "-0.0628823",
-      "expected": "-0.0628823",
+      "got": "0.094994",
+      "expected": "0.094994",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[18].x",
-      "got": "3.19935",
-      "expected": "3.19935",
+      "got": "2.5522",
+      "expected": "2.5522",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[18].y",
-      "got": "-0.120984",
-      "expected": "-0.120984",
+      "got": "0.0112853",
+      "expected": "0.0112853",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[19].x",
-      "got": "2.72013",
-      "expected": "2.72013",
+      "got": "2.64196",
+      "expected": "2.64196",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"
     },
     {
       "name": "embedding[19].y",
-      "got": "-0.0859874",
-      "expected": "-0.0859874",
+      "got": "-0.0710535",
+      "expected": "-0.0710535",
       "tolerance": 0.001,
       "abs_difference": 0.0,
       "status": "PASS"

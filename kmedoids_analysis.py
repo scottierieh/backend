@@ -360,7 +360,7 @@ class KMedoidsAnalysis:
             f"The **Silhouette Score of {silhouette:.3f}** indicates the clustering structure is {quality_desc}\n"
             f"The **Calinski-Harabasz Score** ({calinski:.2f}, higher is better) measures the ratio of between-cluster to within-cluster variance.\n"
             f"The **Davies-Bouldin Score** ({davies:.3f}, closer to 0 is better) measures the average similarity between clusters.\n"
-            f"The **Inertia of {inertia:.2f}** represents the sum of squared distances of samples to their closest cluster medoid; lower is better."
+            f"The **Inertia of {inertia:.2f}** is the total cost: the sum of (unsquared) distances of samples to their closest cluster medoid; lower is better."
         )
 
         # 2. Cluster Profile Interpretation

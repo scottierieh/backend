@@ -4,7 +4,43 @@
     "reference": "1.0"
   },
   {
+    "name": "hdbscan.labels_exact",
+    "reference": "1"
+  },
+  {
     "name": "hdbscan.n_clusters",
-    "reference": "len(set(ref))-(1 if -1 in ref else 0)"
+    "reference": "n_clusters"
+  },
+  {
+    "name": "hdbscan.n_noise",
+    "reference": "n_noise"
+  },
+  {
+    "name": "hdbscan.n_samples",
+    "reference": "150"
+  },
+  {
+    "name": "hdbscan.min_cluster_size",
+    "reference": "10"
+  },
+  {
+    "name": "hdbscan.prob_len",
+    "reference": "150"
+  },
+  {
+    "name": "hdbscan.prob_maxdiff",
+    "reference": "0.0"
+  },
+  {
+    "name": "f\"hdbscan.size[{name}]\"",
+    "reference": "int(mask.sum())"
+  },
+  {
+    "name": "f\"hdbscan.pct[{name}]\"",
+    "reference": "float(mask.sum()/150*100)"
+  },
+  {
+    "name": "f\"hdbscan.centroid[{name}][{col}]\"",
+    "reference": "rm[col]"
   }
 ]

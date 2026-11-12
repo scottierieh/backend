@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "name": "gbm.bin.learning_curve_data.last_valid==log_loss(final model)",
+    "reference": "log_loss(yte_b,mb.predict_proba(Xte_b))"
+  },
+  {
+    "name": "gbm.iris.threshold_curve_absent_multiclass",
+    "reference": "False"
+  },
+  {
+    "name": "gbm.reg.learning_curve_data.n_iterations==n_estimators_",
+    "reference": "int(mr.n_estimators_)"
+  },
+  {
+    "name": "gbm.reg.learning_curve_data.last_valid==mse(final model)",
+    "reference": "mean_squared_error(yte_r,mr.predict(Xte_r))"
+  }
+]

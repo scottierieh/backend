@@ -1,26 +1,26 @@
 {
   "title": "CROSS VALIDATION (Python)",
-  "total_checks": 35,
-  "numeric_checks": 32,
-  "exact_checks": 3,
-  "pass": 35,
+  "total_checks": 54,
+  "numeric_checks": 46,
+  "exact_checks": 8,
+  "pass": 54,
   "fail": 0,
   "pass_rate": 100.0,
-  "tolerance_min": 1e-09,
+  "tolerance_min": 1e-12,
   "tolerance_max": 1e-06,
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.17",
-  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
   "packages": {
     "numpy": "1.26.4",
     "pandas": "2.3.3",
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "4794d67",
-  "validation_date": "2026-11-10",
+  "git_commit": "db1aac6",
+  "validation_date": "2026-11-12",
   "checks": [
     {
       "name": "cv.task_type",
@@ -298,6 +298,158 @@
       "name": "has.stability_plot",
       "got": "True",
       "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.primary_metric",
+      "got": "accuracy",
+      "expected": "accuracy",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.primary_first",
+      "got": "accuracy",
+      "expected": "accuracy",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.n_folds",
+      "got": "5",
+      "expected": "5",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.mean==cv_results.mean",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.mean==reference",
+      "got": "0.96",
+      "expected": "0.96",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.f1_macro[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.accuracy_from_oof[0]",
+      "got": "1",
+      "expected": "1",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.f1_macro[1]",
+      "got": "0.958486",
+      "expected": "0.958486",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.accuracy_from_oof[1]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.f1_macro[2]",
+      "got": "0.925926",
+      "expected": "0.925926",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.accuracy_from_oof[2]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.f1_macro[3]",
+      "got": "0.938889",
+      "expected": "0.938889",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.accuracy_from_oof[3]",
+      "got": "0.933333",
+      "expected": "0.933333",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.f1_macro[4]",
+      "got": "0.971014",
+      "expected": "0.971014",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.fold_scores.accuracy_from_oof[4]",
+      "got": "0.966667",
+      "expected": "0.966667",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.reg.primary_metric",
+      "got": "rmse",
+      "expected": "rmse",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.reg.fold_scores.primary_first",
+      "got": "rmse",
+      "expected": "rmse",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.reg.fold_scores.mean==cv_results.mean",
+      "got": "57.4754",
+      "expected": "57.4754",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cv.reg.rmse_lower_is_better",
+      "got": "False",
+      "expected": "False",
       "tolerance": null,
       "abs_difference": null,
       "status": "PASS"

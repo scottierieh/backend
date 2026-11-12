@@ -14,6 +14,7 @@ from scipy import stats
 import io
 import base64
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import (build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
                              shap_matrix, shap_interaction_top, ale_1d, _to_native_type,
                              leak_safe_prepare_onehot, balanced_weighting, cv_scoring_of)
@@ -305,6 +306,41 @@ def main():
         results['feature_importance'] = feature_importance
         results['perm_importance'] = compute_permutation_importance(model, X_test, y_test, feature_names)
         results['prediction_examples'] = prediction_examples
+
+        # --- Exploration-tab payloads (from the fitted model only) ---
+        # threshold_curve: binary classification, the same test rows and
+        # predict_proba[:, 1] the AUC above is computed from (roc_auc_score
+        # takes the larger label, model.classes_[1], as positive).
+        if problem_type != 'regression' and len(model.classes_) == 2:
+            _proba_test = model.predict_proba(X_test)
+            _pos = model.classes_[1]
+            results['threshold_curve'] = build_threshold_curve(
+                (np.asarray(y_test) == _pos).astype(int), _proba_test[:, 1],
+                [str(c) for c in model.classes_], 'test', 'probability')
+        # learning_curve_data: the boosting record stage by stage. Both curves
+        # use one metric, unweighted -- log loss (classification) or MSE
+        # (regression) of staged_predict(_proba) on the training rows and on
+        # the held-out test rows. (train_score_ is the in-bag loss under the
+        # balanced sample weights, and half the squared error for
+        # regression, so it is not on the same scale as the test curve.)
+        # n_estimators_ is the number of stages actually fitted (the
+        # regressor stops early on its internal validation_fraction).
+        try:
+            if problem_type == 'regression':
+                _tr = [mean_squared_error(y_train, p) for p in model.staged_predict(X_train)]
+                _va = [mean_squared_error(y_test, p) for p in model.staged_predict(X_test)]
+                _metric = 'mse'
+            else:
+                from sklearn.metrics import log_loss as _log_loss
+                _tr = [_log_loss(y_train, p, labels=model.classes_) for p in model.staged_predict_proba(X_train)]
+                _va = [_log_loss(y_test, p, labels=model.classes_) for p in model.staged_predict_proba(X_test)]
+                _metric = 'log_loss'
+            results['learning_curve_data'] = build_learning_curve_data(
+                _tr, _va, _metric, True, None,
+                getattr(model, 'n_iter_no_change', None), 'test',
+                source='GradientBoosting staged_predict%s on train / test rows' % ('' if problem_type == 'regression' else '_proba'))
+        except Exception:
+            results['learning_curve_data'] = None
 
         # --- Plotting ---
         def _fig_to_data_url(fig):

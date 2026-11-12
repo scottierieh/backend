@@ -16,4 +16,27 @@ bp=find_key(r,'best_params') or {}
 chk("hp.best_n_estimators", bp.get('n_estimators'), gs.best_params_['n_estimators'])
 chk("hp.best_max_depth", str(bp.get('max_depth')), str(gs.best_params_['max_depth']))
 chk("hp.best_min_samples_split", bp.get('min_samples_split'), gs.best_params_['min_samples_split'])
+# --- candidates (exploration tab): every cv_results_ row ---
+cand=r.get('candidates') or []
+cvres=gs.cv_results_
+chk("hp.n_candidates", len(cand), len(cvres['params']))
+chk("hp.scoring", r.get('scoring'), 'accuracy')
+chk("hp.greater_is_better", r.get('greater_is_better'), True)
+chk("hp.param_names", str(sorted(r.get("param_names") or [])), str(sorted(grid.keys())))
+def _norm(p): return {k:(None if v is None else v) for k,v in p.items()}
+best=[c for c in cand if c['rank']==1]
+chk("hp.best_rank_params==best_params", any(_norm(c['params'])==_norm(bp) for c in best), True)
+chk("hp.best_rank_params==reference_best", any(_norm(c['params'])==_norm(gs.best_params_) for c in best), True)
+mx=0.0; mxf=0.0; mxs=0.0; rank_bad=0
+for i,c in enumerate(cand):
+    mx=max(mx,abs(c['mean_score']-cvres['mean_test_score'][i]))
+    mxs=max(mxs,abs(c['std_score']-cvres['std_test_score'][i]))
+    mxf=max(mxf,max(abs(c['fold_scores'][k]-cvres[f'split{k}_test_score'][i]) for k in range(5)))
+    rank_bad+=int(c['rank']!=int(cvres['rank_test_score'][i]))
+chk("hp.candidates.max|mean_score-ref|", mx, 0.0, tol=1e-9)
+chk("hp.candidates.max|std_score-ref|", mxs, 0.0, tol=1e-9)
+chk("hp.candidates.max|fold_score-ref|", mxf, 0.0, tol=1e-9)
+chk("hp.candidates.rank_mismatches", rank_bad, 0)
+chk("hp.candidates.fold_mean==mean_score", max(abs(np.mean(c['fold_scores'])-c['mean_score']) for c in cand), 0.0, tol=1e-12)
+chk("hp.best_cv_score==max mean_score", max(c['mean_score'] for c in cand), find_key(r,'best_cv_score'), tol=1e-12)
 report("HYPERPARAMETER TUNING (Python)")

@@ -6,5 +6,9 @@
   {
     "name": "rf.class_weighting.method",
     "reference": "\"class_weight='balanced'\""
+  },
+  {
+    "name": "rf.iris.threshold_curve_absent_multiclass",
+    "reference": "False"
   }
 ]

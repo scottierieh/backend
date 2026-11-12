@@ -1,26 +1,26 @@
 {
   "title": "HYPERPARAMETER TUNING (Python)",
-  "total_checks": 4,
-  "numeric_checks": 3,
-  "exact_checks": 1,
-  "pass": 4,
+  "total_checks": 16,
+  "numeric_checks": 10,
+  "exact_checks": 6,
+  "pass": 16,
   "fail": 0,
   "pass_rate": 100.0,
-  "tolerance_min": 1e-09,
+  "tolerance_min": 1e-12,
   "tolerance_max": 1e-06,
   "max_abs_difference": 0.0,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.17",
-  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
   "packages": {
     "numpy": "1.26.4",
     "pandas": "2.3.3",
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "4794d67",
-  "validation_date": "2026-11-10",
+  "git_commit": "db1aac6",
+  "validation_date": "2026-11-12",
   "checks": [
     {
       "name": "hp.best_cv_score",
@@ -51,6 +51,102 @@
       "got": "2",
       "expected": "2",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.n_candidates",
+      "got": "27",
+      "expected": "27",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.scoring",
+      "got": "accuracy",
+      "expected": "accuracy",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.greater_is_better",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.param_names",
+      "got": "['max_depth', 'min_samples_split', 'n_estimators']",
+      "expected": "['max_depth', 'min_samples_split', 'n_estimators']",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.best_rank_params==best_params",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.best_rank_params==reference_best",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.candidates.max|mean_score-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.candidates.max|std_score-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.candidates.max|fold_score-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.candidates.rank_mismatches",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.candidates.fold_mean==mean_score",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "hp.best_cv_score==max mean_score",
+      "got": "0.952381",
+      "expected": "0.952381",
+      "tolerance": 1e-12,
       "abs_difference": 0.0,
       "status": "PASS"
     }

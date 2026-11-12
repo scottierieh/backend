@@ -197,7 +197,7 @@ def main():
         features = payload.get('features')
         alpha = float(payload.get('alpha', 1.0))
         test_size = float(payload.get('test_size', 0.2))
-        cv_folds = int(payload.get('cv_folds', 5) or 5)
+        cv_folds = min(int(payload.get('cv_folds', 5) or 5), 20)
         cv_folds = max(2, cv_folds)
         # Ridge alpha is currently always a fixed user-provided value (no CV
         # auto-selection UI exists for Ridge in the frontend).

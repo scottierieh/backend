@@ -641,8 +641,8 @@ def main():
         task_type = payload.get('task_type', 'auto')
 
         cv_method = payload.get('cv_method', 'kfold')
-        n_folds = int(payload.get('n_folds', 5))
-        n_repeats = int(payload.get('n_repeats', 3))
+        n_folds = min(int(payload.get('n_folds', 5)), 20)
+        n_repeats = max(1, min(int(payload.get('n_repeats', 3)), 20))
         shuffle = bool(payload.get('shuffle', True))
 
         model_type = payload.get('model_type', 'auto')

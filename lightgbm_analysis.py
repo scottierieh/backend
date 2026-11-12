@@ -667,7 +667,7 @@ def main():
 
         test_size = payload.get('test_size', 0.2)
         random_state = payload.get('random_state', 42)
-        cv_folds = payload.get('cv_folds', 5)
+        cv_folds = min(int(payload.get('cv_folds', 5) or 5), 20)
 
         if task_type == 'auto':
             task_type = detect_task_type(df[target_col])
@@ -684,7 +684,7 @@ def main():
             raise ValueError("At least 50 valid samples required.")
 
         params = {
-            'n_estimators': payload.get('n_estimators', 200),
+            'n_estimators': max(1, min(int(payload.get('n_estimators', 200)), 5000)),
             'max_depth': payload.get('max_depth', -1),
             'num_leaves': payload.get('num_leaves', 31),
             'learning_rate': payload.get('learning_rate', 0.1),

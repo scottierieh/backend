@@ -393,7 +393,7 @@ def main():
         # values, not the string "".
         df = df.replace('', np.nan)
 
-        bins = int(payload.get('histogram_bins') or 24)
+        bins = max(1, min(int(payload.get('histogram_bins') or 24), 200))
         rows = len(df)
 
         columns = _profile_columns(df, bins)

@@ -988,7 +988,7 @@ def main():
         # sends the real budget; see the design doc's staging of this (a longer
         # limit needs the request timeout raised, and a much longer one needs a
         # job queue, neither of which this script decides).
-        time_limit = int(payload.get('time_limit') or 300)
+        time_limit = max(1, min(int(payload.get('time_limit') or 300), 600))  # frontend max preset; see main.py script timeout
         # 'best_quality', not AutoGluon's gentler default, because the budget
         # has to be real. Measured on the app's own example (971 training rows,
         # PR-AUC, this script, this machine):

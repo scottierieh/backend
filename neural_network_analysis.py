@@ -94,7 +94,7 @@ def main():
         solver = payload.get('solver', 'adam')
         alpha = float(payload.get('alpha', 0.0001))
         learning_rate_init = float(payload.get('learningRateInit', 0.001))
-        max_iter = int(payload.get('maxIter', 500))
+        max_iter = max(1, min(int(payload.get('maxIter', 500)), 5000))
 
         if not all([data, features, target]):
             raise ValueError("Missing data, features, or target")

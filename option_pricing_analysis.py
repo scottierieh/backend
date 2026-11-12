@@ -93,8 +93,8 @@ def main():
         S = float(p.get("spot")); K = float(p.get("strike"))
         T = float(p.get("expiry_years")); sigma = float(p.get("volatility"))
         r = float(p.get("risk_free_rate") or 0.0); q = float(p.get("dividend_yield") or 0.0)
-        steps = int(p.get("steps") or 200)
-        mc_paths = int(p.get("mc_paths") or 50000)
+        steps = max(1, min(int(p.get("steps") or 200), 5000))
+        mc_paths = max(1, min(int(p.get("mc_paths") or 50000), 500000))
         market_price_raw = p.get("market_price")
         market_price = float(market_price_raw) if market_price_raw not in (None, "") else None
         if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:

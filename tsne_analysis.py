@@ -231,7 +231,7 @@ def main():
         variables = payload.get('variables')
         n_components = int(payload.get('nComponents', 2))
         perplexity = float(payload.get('perplexity', 30.0))
-        n_iter = int(payload.get('nIter', 1000))
+        n_iter = max(250, min(int(payload.get('nIter', 1000)), 5000))
         # The t-SNE/UMAP pages send the label column as `label_col`; older callers
         # used `labelCol`. Accept both so the label is not silently dropped.
         label_col = payload.get('labelCol') or payload.get('label_col')

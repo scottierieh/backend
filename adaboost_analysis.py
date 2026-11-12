@@ -642,11 +642,11 @@ def main():
         task_type = payload.get('task_type', 'auto')
         test_size = float(payload.get('test_size', 0.2))
 
-        n_estimators = int(payload.get('n_estimators', 100))
+        n_estimators = max(1, min(int(payload.get('n_estimators', 100)), 2000))
         learning_rate = float(payload.get('learning_rate', 1.0))
         base_max_depth = int(payload.get('base_max_depth', payload.get('max_depth', 1)))
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
 
         if not data:
             raise ValueError("Data not provided.")

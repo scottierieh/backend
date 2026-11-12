@@ -933,7 +933,7 @@ def main():
         fit_prior = bool(payload.get('fit_prior', True))
         binarize_threshold = payload.get('binarize_threshold', None)
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
 
         if not data:
             raise ValueError("Data not provided.")

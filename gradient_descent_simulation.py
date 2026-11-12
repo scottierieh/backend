@@ -56,7 +56,7 @@ def main():
         learning_rate = float(payload.get('learning_rate', 0.1))
         start_x = float(payload.get('start_x', 4.0))
         start_y = float(payload.get('start_y', 4.0))
-        num_steps = int(payload.get('num_steps', 50))
+        num_steps = max(1, min(int(payload.get('num_steps', 50)), 10000))
         
         simulation_data = run_gradient_descent_simulation(learning_rate, start_x, start_y, num_steps)
         

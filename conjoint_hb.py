@@ -71,9 +71,9 @@ async def analyze_conjoint_hb(payload: ConjointHBPayload):
             resp_col=payload.respCol,
             task_col=payload.taskCol,
             choice_col=payload.responseCol,
-            draws=payload.draws,
-            tune=payload.tune,
-            chains=payload.chains,
+            draws=max(50, min(payload.draws, 5000)),
+            tune=max(0, min(payload.tune, 5000)),
+            chains=max(1, min(payload.chains, 4)),
         )
         res["price_col"] = None
         if payload.priceCol:

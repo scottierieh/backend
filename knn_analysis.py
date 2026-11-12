@@ -1059,7 +1059,7 @@ def main():
         p = int(payload.get('p', 2))
         algorithm = payload.get('algorithm', 'auto')
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
         scale_features = bool(payload.get('scale_features', True))
         find_optimal_k_flag = bool(payload.get('find_optimal_k', True))
         k_range = payload.get('k_range', [1, 3, 5, 7, 9, 11, 13, 15])

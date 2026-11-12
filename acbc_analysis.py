@@ -175,7 +175,7 @@ async def analyze_acbc(payload: ACBCPayload):
         hb = run_hb_mnl(
             data=rows, attribute_cols=attr_cols,
             resp_col="respondent_id", task_col="task_id", choice_col="choice",
-            draws=payload.draws, tune=payload.tune, chains=payload.chains,
+            draws=max(50, min(payload.draws, 5000)), tune=max(0, min(payload.tune, 5000)), chains=max(1, min(payload.chains, 4)),
         )
 
         # Price WTP (reuse the part-worth list)

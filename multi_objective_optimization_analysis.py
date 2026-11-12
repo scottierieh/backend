@@ -73,7 +73,7 @@ def main():
         A = [[float(v) for v in row] for row in (p.get("con_matrix") or [])]
         ops = [str(o) for o in (p.get("con_ops") or [])]
         rhs = [float(r) for r in (p.get("con_rhs") or [])]
-        npar = int(p.get("n_pareto_points") or 12)
+        npar = max(1, min(int(p.get("n_pareto_points") or 12), 200))
 
         coefs = []; consts = []
         for e in exprs:

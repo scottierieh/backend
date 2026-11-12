@@ -79,7 +79,7 @@ def main():
             DecisionTreeClassifier(max_depth=int(params.get('Decision Tree', {}).get('max_depth', 5)), random_state=42),
             RandomForestClassifier(
                 max_depth=int(params.get('Random Forest', {}).get('max_depth', 5)),
-                n_estimators=int(params.get('Random Forest', {}).get('n_estimators', 10)),
+                n_estimators=max(1, min(int(params.get('Random Forest', {}).get('n_estimators', 10)), 1000)),
                 max_features=int(params.get('Random Forest', {}).get('max_features', 1)),
                 random_state=42
             ),

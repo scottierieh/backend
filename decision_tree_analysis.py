@@ -916,7 +916,7 @@ def main():
         if max_leaf_nodes is not None:
             max_leaf_nodes = int(max_leaf_nodes)
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
 
         if not data:
             raise ValueError("Data not provided.")

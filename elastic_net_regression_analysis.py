@@ -326,7 +326,7 @@ def main():
         l1_ratio = float(payload.get('l1_ratio', 0.5))
         test_size = float(payload.get('test_size', 0.2))
         auto_tune = bool(payload.get('use_cv', payload.get('auto_tune', False)))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
 
         if not all([data, target, features]):
             raise ValueError("Missing data, target, or features")

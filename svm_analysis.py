@@ -947,7 +947,7 @@ def main():
             'class_weight': payload.get('class_weight', 'balanced'),
             'cv_scoring': cv_scoring_of(payload, task_type),
         }
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
         scale_features = bool(payload.get('scale_features', True))
 
         # Split BEFORE any imputation/one-hot/scaling statistic is computed,

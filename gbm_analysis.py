@@ -134,7 +134,7 @@ def main():
         problem_type = payload.get('problemType') # 'regression' or 'classification'
         
         # Hyperparameters
-        n_estimators = int(payload.get('nEstimators', 100))
+        n_estimators = max(1, min(int(payload.get('nEstimators', 100)), 2000))
         learning_rate = float(payload.get('learningRate', 0.1))
         max_depth = int(payload.get('maxDepth', 3))
         test_size = float(payload.get('test_size', 0.2))

@@ -698,7 +698,7 @@ def main():
         voting_type = payload.get('voting_type', 'soft')
         base_estimators = payload.get('base_estimators')
         final_estimator = payload.get('final_estimator', 'logistic_regression')
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
         random_state = int(payload.get('random_state', 42))
         scale_features = bool(payload.get('scale_features', True))
 

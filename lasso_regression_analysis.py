@@ -194,7 +194,7 @@ def main():
         alpha = float(payload.get('alpha', 1.0))
         test_size = float(payload.get('test_size', 0.2))
         auto_tune = bool(payload.get('use_cv', False))
-        cv_folds = int(payload.get('cv_folds', 5) or 5)
+        cv_folds = min(int(payload.get('cv_folds', 5) or 5), 20)
         cv_folds = max(2, cv_folds)
 
         if not all([data, target, features]):

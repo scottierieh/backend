@@ -1303,7 +1303,7 @@ def main():
         reg_param = float(payload.get('reg_param', 0.0))
         priors = payload.get('priors')
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
         language = payload.get('language', 'en')
 
         if method not in ('lda', 'qda'):

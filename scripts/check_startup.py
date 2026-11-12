@@ -100,7 +100,7 @@ _HELPER_MODULES = {
     'main.py', 'models_api.py', 'model_store.py', 'analysis_common.py',
     'cv_strategy.py', 'feature_pipeline.py', 'blend_registry.py',
     'algorithm_registry.py', 'guardrails.py', 'hb_mnl.py', '_optexpr.py',
-    'price_levels.py',
+    'price_levels.py', 'auth.py',
 }
 
 # requirements.txt pins distributions; scripts import modules. Where the two
@@ -109,6 +109,7 @@ _DIST_TO_IMPORT = {
     'scikit-learn': 'sklearn',
     'scikit-learn-extra': 'sklearn_extra',
     'google-cloud-storage': 'google',
+    'google-auth': 'google',
     'autogluon.tabular': 'autogluon',
     'tensorflow-cpu': 'tensorflow',
     'umap-learn': 'umap',

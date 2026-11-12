@@ -734,14 +734,14 @@ def main():
         task_type = payload.get('task_type', 'auto')
         test_size = float(payload.get('test_size', 0.2))
 
-        iterations = int(payload.get('iterations', 300))
+        iterations = max(1, min(int(payload.get('iterations', 300)), 5000))
         depth = int(payload.get('depth', 6))
         learning_rate = float(payload.get('learning_rate', 0.1))
         l2_leaf_reg = float(payload.get('l2_leaf_reg', 3.0))
         random_state = int(payload.get('random_state', 42))
         early_stopping_rounds = payload.get('early_stopping_rounds', 20)
         early_stopping_rounds = int(early_stopping_rounds) if early_stopping_rounds not in (None, '', 0, False) else None
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
 
         if not data:
             raise ValueError("Data not provided.")

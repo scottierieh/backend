@@ -684,10 +684,10 @@ def main():
         solver = payload.get('solver', 'adam')
         alpha = float(payload.get('alpha', 0.0001))
         learning_rate_init = float(payload.get('learning_rate_init', 0.001))
-        max_iter = int(payload.get('max_iter', 500))
+        max_iter = max(1, min(int(payload.get('max_iter', 500)), 5000))
         early_stopping = bool(payload.get('early_stopping', True))
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
 
         if not data:
             raise ValueError("Data not provided.")

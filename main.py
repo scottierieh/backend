@@ -20,6 +20,22 @@ from collections import defaultdict
 
 app = FastAPI()
 
+import logging
+import signal
+
+from auth import AuthMiddleware
+
+_skari_log = logging.getLogger("skari")
+if not _skari_log.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    _skari_log.addHandler(_h)
+    _skari_log.setLevel(logging.INFO)
+    _skari_log.propagate = False
+
+# Origins are unchanged ("*"): authentication is by bearer token / service-key
+# header, never by cookie, so allow_credentials stays off — with origin "*"
+# that combination would make Starlette reflect any Origin back verbatim.
 origins = [
     "http://localhost:9002",
     "http://127.0.0.1:9002",
@@ -28,56 +44,131 @@ origins = [
     "*",
 ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    # No allow_credentials: this service has no cookie/session auth (see
-    # audit finding H1 — there is no application-level auth at all yet), so
-    # there's nothing that needs credentialed cross-origin requests. Origin
-    # "*" + allow_credentials=True together let Starlette reflect the
-    # request's Origin back verbatim in Access-Control-Allow-Origin the
-    # moment any cookie-based auth is added later — dropping credentials
-    # now closes that off pre-emptively rather than after the fact.
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Request body cap. Training uploads (Model Lab /api/models/{id}/train) are the
+# largest legitimate bodies; Cloud Run itself refuses HTTP/1 bodies over 32 MiB.
+_MAX_BODY_BYTES = int(float(os.environ.get("SKARI_MAX_BODY_MB", "25")) * 1024 * 1024)
 
-# Per-IP rate limit. This service is called directly from the browser
-# (NEXT_PUBLIC_API_URL is baked into the frontend's client JS bundle), not
-# proxied through a server, so there is no secret we could add here that
-# wouldn't be visible in devtools — app-level auth isn't a meaningful option
-# for this deployment. The actual risk (per the 2026-08-12 audit, H1) is
-# resource-abuse/cost, not data exposure (this is a stateless calculator
-# with no per-user data), so a per-IP request cap is the fix that matches
-# the threat: fixed 60s window, 60 requests/window. That comfortably covers
-# legitimate bursty use (e.g. the frontend's Model Lab "Auto Compare" firing
-# several analyses back to back) while capping a scripted flood.
-# Caveat: this dict is per-instance, not shared across Cloud Run instances,
-# so the effective ceiling rises if the service scales out under sustained
-# load from one source. Cloud Armor (edge-level, shared across all
-# instances) is the next step up if that turns out to matter in practice.
+# Per-caller rate limit: fixed 60s window, 60 requests/window per key (see
+# _rl_key). Covers the Model Lab "Auto Compare" bursts while capping a scripted
+# flood. Service-key callers (the Next.js server, which fans in many users)
+# share ONE bucket with a larger cap. Caveat: per-instance, not shared across
+# Cloud Run instances — bound the total with --max-instances.
 _RL_WINDOW_SECS = 60
 _RL_MAX_REQUESTS = 60
+_RL_SERVICE_MAX_REQUESTS = int(os.environ.get("SKARI_RL_SERVICE_MAX", "600"))
 _rl_store = defaultdict(list)
 
 def _rl_client_ip(request: Request) -> str:
+    # Cloud Run's front end APPENDS the real client address to
+    # X-Forwarded-For, so only the LAST entry is trustworthy; earlier entries
+    # are whatever the caller sent and would let one client rotate buckets.
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
-        return fwd.split(",")[0].strip()
+        last = fwd.split(",")[-1].strip()
+        if last:
+            return last
     return request.client.host if request.client else "unknown"
 
+def _rl_key(request: Request):
+    state = request.scope.get("state") or {}
+    kind = state.get("auth_kind")
+    if kind == "user" and state.get("uid"):
+        return "uid:" + state["uid"], _RL_MAX_REQUESTS
+    if kind == "service":
+        return "service", _RL_SERVICE_MAX_REQUESTS
+    return _rl_client_ip(request), _RL_MAX_REQUESTS
+
+# Middleware order (Starlette: the LAST one added is the OUTERMOST):
+#   CORS -> body-size limit -> auth -> rate limit -> routes
+# CORS outermost so 401/413/429 responses still carry CORS headers and
+# preflights are answered before auth; auth before the limiter so the limiter
+# can key on the authenticated uid.
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     if request.url.path in ("/health", "/") or request.method == "OPTIONS":
         return await call_next(request)
-    ip = _rl_client_ip(request)
+    key, cap = _rl_key(request)
     now = time.time()
-    hits = [t for t in _rl_store[ip] if t > now - _RL_WINDOW_SECS]
-    if len(hits) >= _RL_MAX_REQUESTS:
+    hits = [t for t in _rl_store[key] if t > now - _RL_WINDOW_SECS]
+    if len(hits) >= cap:
         return JSONResponse(status_code=429, content={"error": "Too many requests, slow down."})
     hits.append(now)
-    _rl_store[ip] = hits
+    _rl_store[key] = hits
     return await call_next(request)
+
+app.add_middleware(AuthMiddleware)
+
+
+class BodySizeLimitMiddleware:
+    """413 for bodies over _MAX_BODY_BYTES — by Content-Length up front, and by
+    counting streamed chunks for chunked uploads that declare no length."""
+
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        for k, v in scope.get("headers") or []:
+            if k == b"content-length":
+                try:
+                    too_big = int(v) > self.max_bytes
+                except ValueError:
+                    too_big = True
+                if too_big:
+                    return await self._reject(send)
+        received = 0
+        started = False
+
+        async def limited_receive():
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    raise _BodyTooLarge()
+            return message
+
+        async def tracking_send(message):
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, limited_receive, tracking_send)
+        except _BodyTooLarge:
+            if not started:
+                await self._reject(send)
+
+    async def _reject(self, send):
+        body = json.dumps({"detail": "Request body too large."}).encode()
+        await send({"type": "http.response.start", "status": 413,
+                    "headers": [(b"content-type", b"application/json"),
+                                (b"content-length", str(len(body)).encode())]})
+        await send({"type": "http.response.body", "body": body})
+
+
+class _BodyTooLarge(HTTPException):
+    # An HTTPException so FastAPI's body parsing re-raises it as-is (it turns
+    # any other exception into a generic 400) and ExceptionMiddleware answers 413.
+    def __init__(self):
+        super().__init__(status_code=413, detail="Request body too large.")
+
+
+app.add_middleware(BodySizeLimitMiddleware, max_bytes=_MAX_BODY_BYTES)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    # No allow_credentials: auth is a bearer token / service-key header, not a
+    # cookie, so credentialed CORS is never needed — and "*" + credentials
+    # would make Starlette reflect the caller's Origin verbatim.
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Skari-Service-Key"],
+)
 
 @app.get("/")
 def read_root():
@@ -123,14 +214,36 @@ app.include_router(models_router, prefix="/api")
 # ---------------------------------------------------------------------------
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Wall-clock cap per analysis subprocess. 900s covers the longest legitimate
+# run (AutoGluon "Thorough" = 600s budget + refit/evaluation); Cloud Run's
+# --timeout must be at least this. Override with SKARI_SCRIPT_TIMEOUT_SECS.
+_SCRIPT_TIMEOUT_SECS = float(os.environ.get("SKARI_SCRIPT_TIMEOUT_SECS", "900"))
+
 def run_script(script_file: str, payload: dict) -> dict:
     script_path = os.path.join(_BACKEND_DIR, script_file)
-    proc = subprocess.run(
+    # Own process group, so a timeout also kills the workers a script forks
+    # (joblib/loky, n_jobs=-1) rather than orphaning them.
+    child = subprocess.Popen(
         [sys.executable, script_path],
-        input=json.dumps(payload),
-        capture_output=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
+        start_new_session=True,
     )
+    try:
+        out, err = child.communicate(json.dumps(payload), timeout=_SCRIPT_TIMEOUT_SECS)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            child.kill()
+        child.communicate()
+        raise HTTPException(
+            status_code=504,
+            detail=f"Analysis exceeded the {int(_SCRIPT_TIMEOUT_SECS)}s time limit.",
+        )
+    proc = subprocess.CompletedProcess(child.args, child.returncode, out, err)
     if proc.returncode != 0:
         detail = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
         try:

@@ -18,6 +18,10 @@ joblib==1.4.2
 # bucket) so predict/explain can reload a model trained in an earlier,
 # possibly different, Cloud Run instance.
 google-cloud-storage==2.18.2
+# google-auth: verifies Firebase ID tokens in auth.py (google.auth.jwt +
+# Google's securetoken x509 certs). Already a transitive dependency of
+# google-cloud-storage (>=2.26.1,<3); pinned so the verifier cannot drift.
+google-auth==2.40.3
 scikit-learn-extra==0.3.0
 # hdbscan · minisom: hdbscan_analysis.py · som_analysis.py import these and, when
 # they are missing, silently fall back to a DBSCAN approximation ("Pseudo-GLOSH")
@@ -69,3 +73,6 @@ pytz==2024.2
 arch==7.2.0
 lifetimes==0.11.3
 pulp==2.9.0
+# squarify: rfm_analysis.py's segment treemap. Previously pip-installed at
+# request time, which ran network-fetched code inside the server.
+squarify==0.4.4

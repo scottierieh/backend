@@ -489,13 +489,7 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        import squarify  # noqa: F401
-    except ImportError:
-        import subprocess
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "squarify", "--break-system-packages"])
-        except Exception:
-            pass
-
+    # squarify is pinned in requirements.txt; if it is ever missing the treemap
+    # panel degrades to a "squarify not installed" note (see above). Never
+    # pip-install at request time: that runs network code inside the server.
     main()

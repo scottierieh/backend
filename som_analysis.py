@@ -137,11 +137,11 @@ def main():
         data = payload.get('data')
         features = payload.get('items') or payload.get('features')
 
-        grid_x = int(payload.get('gridX', 6))
-        grid_y = int(payload.get('gridY', 6))
+        grid_x = max(1, min(int(payload.get('gridX', 6)), 50))
+        grid_y = max(1, min(int(payload.get('gridY', 6)), 50))
         sigma = float(payload.get('sigma', 1.0))
         learning_rate = float(payload.get('learningRate', 0.5))
-        num_iteration = int(payload.get('numIteration', 2000))
+        num_iteration = max(1, min(int(payload.get('numIteration', 2000)), 100000))
 
         if not data or not features:
             raise ValueError("Missing 'data' or 'features'")

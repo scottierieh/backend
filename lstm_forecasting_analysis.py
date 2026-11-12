@@ -128,7 +128,7 @@ def main():
         window_size = int(_p('windowSize', 'window_size', default=12))
         forecast_periods = int(_p('forecastPeriods', 'forecast_periods', default=12))
         lstm_units = int(_p('lstmUnits', 'lstm_units', default=50))
-        epochs = int(_p('epochs', default=100))
+        epochs = max(1, min(int(_p('epochs', default=100)), 500))
         batch_size = int(_p('batchSize', 'batch_size', default=16))
         test_size = float(_p('testSize', 'test_size', default=0.2))
 

@@ -914,7 +914,7 @@ def main():
         task_type = payload.get('task_type', 'auto')
         test_size = float(payload.get('test_size', 0.2))
         random_state = int(payload.get('random_state', 42))
-        cv_folds = int(payload.get('cv_folds', 5))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
         language = payload.get('language', 'en')
 
         if not data:
@@ -942,7 +942,7 @@ def main():
             raise ValueError("At least 50 valid samples required.")
 
         params = {
-            'n_estimators': int(payload.get('n_estimators', 100)),
+            'n_estimators': max(1, min(int(payload.get('n_estimators', 100)), 5000)),
             'max_depth': int(payload.get('max_depth', 6)),
             'learning_rate': float(payload.get('learning_rate', 0.1)),
             'subsample': float(payload.get('subsample', 0.8)),

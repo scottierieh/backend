@@ -54,7 +54,7 @@ import shutil
 import tarfile
 import tempfile
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Any, Literal, Optional
 
@@ -761,8 +761,27 @@ def _ag_predictor(artifact: dict):
     return loaded
 
 
+# AutoGluon budget ceiling: the frontend's largest preset is 600s ("Thorough").
+MAX_AG_TIME_LIMIT = 600
+
+
+def _caller(request: Request) -> tuple[Optional[str], str]:
+    """(uid, auth_kind) as set by auth.AuthMiddleware."""
+    state = request.scope.get('state') or {}
+    return state.get('uid'), state.get('auth_kind') or 'anonymous'
+
+
+def _check_model_id(model_id: str):
+    try:
+        model_store.validate_model_id(model_id)
+    except ValueError:
+        _fail(400, 'Invalid model id.')
+
+
 @router.post("/models/{model_id}/train")
-def train_model(model_id: str, req: TrainRequest):
+def train_model(model_id: str, req: TrainRequest, request: Request):
+    _check_model_id(model_id)
+    owner_uid, _kind = _caller(request)
     if not req.data:
         _fail(400, "No training data provided")
     if req.target not in (req.data[0].keys() if req.data else []):
@@ -856,7 +875,7 @@ def train_model(model_id: str, req: TrainRequest):
                     verbosity=0,
                 ).fit(
                     ag_frame,
-                    time_limit=int(req.timeLimit or 300),
+                    time_limit=max(1, min(int(req.timeLimit or 300), MAX_AG_TIME_LIMIT)),
                     presets=req.preset or 'best_quality',
                     excluded_model_types=['NN_TORCH', 'FASTAI'],
                 )
@@ -1024,7 +1043,7 @@ def train_model(model_id: str, req: TrainRequest):
                          if interval else None),
         }
         try:
-            artifact_uri = model_store.save_pipeline(model_id, artifact)
+            artifact_uri = model_store.save_pipeline(model_id, artifact, owner_uid)
         except Exception as e:
             _fail(502, f'Could not save model artifact: {e}')
 
@@ -1172,7 +1191,7 @@ def train_model(model_id: str, req: TrainRequest):
         'threshold': threshold,
     }
     try:
-        artifact_uri = model_store.save_pipeline(model_id, artifact)
+        artifact_uri = model_store.save_pipeline(model_id, artifact, owner_uid)
     except Exception as e:
         _fail(502, f"Could not save model artifact: {e}")
 
@@ -1204,8 +1223,13 @@ def train_model(model_id: str, req: TrainRequest):
 def predict_model(model_id: str, req: PredictRequest):
     if not req.rows:
         _fail(400, "No rows to predict")
+    _check_model_id(model_id)
+    # load_pipeline only deserializes models/{model_id}/<ts>/pipeline.joblib
+    # objects carrying this service's HMAC signature -- see model_store.py.
     try:
-        artifact = model_store.load_pipeline(req.artifactUri)
+        artifact = model_store.load_pipeline(req.artifactUri, model_id)
+    except ValueError as e:
+        _fail(403, f"Model artifact rejected: {e}")
     except Exception as e:
         _fail(404, f"Could not load model artifact: {e}")
 
@@ -1437,7 +1461,15 @@ def predict_model(model_id: str, req: PredictRequest):
 
 
 @router.delete("/models/{model_id}")
-def delete_model(model_id: str, artifactUri: Optional[str] = Query(default=None)):
+def delete_model(model_id: str, request: Request, artifactUri: Optional[str] = Query(default=None)):
+    _check_model_id(model_id)
+    uid, kind = _caller(request)
     if artifactUri:
-        model_store.delete_artifact(artifactUri)
+        import auth
+        try:
+            model_store.delete_artifact(
+                artifactUri, model_id, caller_uid=uid, is_service=(kind == 'service'),
+                auth_enforced=bool(auth.firebase_project()))
+        except model_store.NotOwner:
+            _fail(403, 'Only the account that trained this model can delete its artifact.')
     return {'ok': True}

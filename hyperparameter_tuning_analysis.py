@@ -274,8 +274,8 @@ def main():
         model_name = payload.get('model_type', payload.get('model', 'random_forest'))
         search_method = payload.get('search_method', 'grid')  # 'grid' or 'random'
         param_grid_override = payload.get('param_grid')
-        cv_folds = int(payload.get('cv_folds', 5))
-        n_iter = int(payload.get('n_iter', 20))
+        cv_folds = min(int(payload.get('cv_folds', 5)), 20)
+        n_iter = max(1, min(int(payload.get('n_iter', 20)), 200))
         test_size = float(payload.get('test_size', 0.3))
         random_state = int(payload.get('random_state', 42))
 

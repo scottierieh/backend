@@ -421,6 +421,9 @@ def section_model_store(model_store, fake):
 
     # Signature made with a different key.
     os.environ['SKARI_MODEL_SIGNING_KEY'] = 'attacker-guess'
+    # The artifact folder is the save time in ms; on a fast machine this save can land in
+    # the same millisecond as the first one and overwrite it, leaving `forged` empty.
+    time.sleep(0.02)
     model_store.save_pipeline('m1', Boom(), 'user-b')
     forged = [p for p in fake.store if p.startswith('models/m1/') and p not in
               (path, 'models/m1/123/pipeline.joblib', 'models/m1/124/pipeline.joblib')]

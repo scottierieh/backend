@@ -30,6 +30,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import cv_scoring_of, _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
 
 
@@ -85,7 +86,11 @@ def train_adaboost_classifier(X_train, X_test, y_train, y_test, params: dict) ->
     cm = confusion_matrix(y_test_encoded, y_pred)
 
     roc_data = {}
+
+    threshold_curve = None
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {
@@ -144,10 +149,15 @@ def train_adaboost_classifier(X_train, X_test, y_train, y_test, params: dict) ->
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data,
+        'roc_data': roc_data, 'threshold_curve': threshold_curve,
         'pr_data': pr_data,
         'staged_train_scores': staged_train,
         'staged_test_scores': staged_test,
+        # The same staged_score() record in the uniform learning-curve shape.
+        # AdaBoost has no early stopping, so no best iteration is picked.
+        'learning_curve_data': build_learning_curve_data(
+            staged_train, staged_test, 'accuracy', False, None, None, 'test',
+            source='AdaBoostClassifier.staged_score'),
         'estimator_weights': [_to_native_type(w) for w in model.estimator_weights_],
         'estimator_errors': [_to_native_type(e) for e in model.estimator_errors_],
         'label_encoder': le,
@@ -189,6 +199,9 @@ def train_adaboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> 
         'y_pred': y_pred,
         'staged_train_scores': staged_train,
         'staged_test_scores': staged_test,
+        'learning_curve_data': build_learning_curve_data(
+            staged_train, staged_test, 'r2', False, None, None, 'test',
+            source='AdaBoostRegressor.staged_score'),
         'estimator_weights': [_to_native_type(w) for w in model.estimator_weights_],
         'estimator_errors': [_to_native_type(e) for e in model.estimator_errors_],
     }
@@ -763,6 +776,7 @@ def main():
             'cv_results': cv_result,
             'staged_train_scores': result['staged_train_scores'],
             'staged_test_scores': result['staged_test_scores'],
+            'learning_curve_data': result.get('learning_curve_data'),
             'estimator_weights': result['estimator_weights'],
             'estimator_errors': result['estimator_errors'],
             'per_round_estimators': [
@@ -784,6 +798,10 @@ def main():
             response['pr_plot'] = pr_plot
         else:
             response['regression_plots'] = regression_plots
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

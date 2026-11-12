@@ -30,6 +30,7 @@ from sklearn.metrics import (
 )
 from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import (cv_scoring_of, cv_score_value,
                              _compute_multiclass_auc, _to_native_type, _fig_to_base64,
                              build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS,
@@ -89,6 +90,24 @@ def build_learning_curve(train_history: Optional[Dict], metric: Optional[str], m
     }
 
 
+def _catboost_learning_curve_data(train_history, metric, model, early_stopping_rounds):
+    """build_learning_curve_data over get_evals_result() ('learn' rows vs the
+    held-out test Pool given as eval_set). best_iteration is CatBoost's
+    get_best_iteration() + 1 (1-based, like the iterations)."""
+    if not train_history:
+        return None
+    try:
+        best = model.get_best_iteration()
+    except Exception:
+        best = None
+    m = (metric or '').lower()
+    lower_is_better = not any(k in m for k in ('auc', 'accuracy', 'r2', 'precision', 'recall', 'f1'))
+    return build_learning_curve_data(
+        train_history.get('train'), train_history.get('test'), metric, lower_is_better,
+        (int(best) + 1) if best is not None else None,
+        early_stopping_rounds, 'test', source='CatBoost.get_evals_result()')
+
+
 def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, cat_features: List[int]) -> Dict[str, Any]:
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
@@ -138,7 +157,11 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
     cm = confusion_matrix(y_test_encoded, y_pred)
 
     roc_data = {}
+
+    threshold_curve = None
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {'fpr': [_to_native_type(x) for x in fpr], 'tpr': [_to_native_type(x) for x in tpr], 'auc': _to_native_type(roc_auc)}
@@ -198,8 +221,9 @@ def train_catboost_classifier(X_train, X_test, y_train, y_test, params: dict, ca
         'model': model, 'class_weighting': class_weighting,
         'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': metric_name,
+        'roc_data': roc_data, 'threshold_curve': threshold_curve, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': metric_name,
         'learning_curve': build_learning_curve(train_history, metric_name, model, params.get('early_stopping_rounds')),
+        'learning_curve_data': _catboost_learning_curve_data(train_history, metric_name, model, params.get('early_stopping_rounds')),
         'label_encoder': le, 'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations']),
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
@@ -242,6 +266,7 @@ def train_catboost_regressor(X_train, X_test, y_train, y_test, params: dict, cat
         'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred, 'train_history': train_history, 'eval_metric': metric_name,
         'learning_curve': build_learning_curve(train_history, metric_name, model, params.get('early_stopping_rounds')),
+        'learning_curve_data': _catboost_learning_curve_data(train_history, metric_name, model, params.get('early_stopping_rounds')),
         'train_pool': train_pool, 'test_pool': test_pool,
         'best_iteration': int(model.get_best_iteration() or params['iterations'])
     }
@@ -918,6 +943,7 @@ def main():
             # Per-iteration train / validation metric as numbers (the arrays
             # behind learning_plot).
             'learning_curve': result.get('learning_curve'),
+            'learning_curve_data': result.get('learning_curve_data'),
             'importance_plot': importance_plot,
             'learning_plot': learning_plot,
             'interpretation': interpretation,
@@ -936,6 +962,10 @@ def main():
             response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plots'] = regression_plots
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

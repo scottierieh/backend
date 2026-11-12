@@ -253,6 +253,78 @@ def generate_search_convergence_plot(cv_results_df: pd.DataFrame, scoring: str) 
     return [{'label': 'Search Convergence', 'image': fig_to_base64(fig)}]
 
 
+def _json_param(v):
+    """A hyperparameter value as JSON: tuples (hidden_layer_sizes) become
+    lists, numpy scalars plain numbers, anything else unknown its str()."""
+    if isinstance(v, (tuple, list)):
+        return [_json_param(x) for x in v]
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if isinstance(v, (np.floating, float)):
+        f = float(v)
+        return f if np.isfinite(f) else None
+    if isinstance(v, (np.bool_,)):
+        return bool(v)
+    if v is None or isinstance(v, (str, int, bool)):
+        return v
+    return str(v)
+
+
+def build_search_candidates(search, max_candidates: int = 500) -> Dict[str, Any]:
+    """Every candidate the search scored, straight from cv_results_: its
+    params, mean/std of the fold scores, each fold's score
+    (split{i}_test_score) and sklearn's rank_test_score. Scores are on the
+    scorer's own scale -- sklearn scorers are all greater-is-better, so an
+    error metric appears negated (neg_root_mean_squared_error).
+    Kept in cv_results_ order; past `max_candidates` the best-ranked are kept."""
+    from sklearn.metrics import get_scorer
+    cv = search.cv_results_
+    n = len(cv['params'])
+    n_splits = int(getattr(search, 'n_splits_', 0) or 0)
+    split_keys = [f'split{i}_test_score' for i in range(n_splits) if f'split{i}_test_score' in cv]
+    order = list(range(n))
+    truncated = False
+    if n > max_candidates:
+        order = sorted(sorted(range(n), key=lambda i: (int(cv['rank_test_score'][i]), i))[:max_candidates])
+        truncated = True
+
+    def _num(x):
+        f = float(x)
+        return f if np.isfinite(f) else None
+
+    candidates = [{
+        'params': {k: _json_param(v) for k, v in cv['params'][i].items()},
+        'mean_score': _num(cv['mean_test_score'][i]),
+        'std_score': _num(cv['std_test_score'][i]),
+        'fold_scores': [_num(cv[k][i]) for k in split_keys],
+        'rank': int(cv['rank_test_score'][i]),
+    } for i in order]
+    param_names: List[str] = []
+    for p in cv['params']:
+        for k in p:
+            if k not in param_names:
+                param_names.append(k)
+    # The scores in cv_results_ are the scorer's output, which sklearn makes
+    # greater-is-better for every scorer (an error metric is negated --
+    # get_scorer(...)._sign is -1 exactly for those). So the ranking direction
+    # of mean_score is always "higher is better"; `scores_negated` says whether
+    # the underlying metric was flipped to get there.
+    try:
+        negated = bool(get_scorer(search.scoring)._sign < 0) if isinstance(search.scoring, str) else False
+    except Exception:
+        negated = isinstance(search.scoring, str) and search.scoring.startswith('neg_')
+    out = {
+        'candidates': candidates,
+        'param_names': param_names,
+        'greater_is_better': True,
+        'scores_negated': negated,
+        'n_candidates_total': n,
+    }
+    if truncated:
+        out['candidates_truncated'] = True
+    return out
+
+
 def _detect_task_type(y: pd.Series) -> str:
     unique_ratio = len(y.unique()) / len(y)
     if not pd.api.types.is_numeric_dtype(y) or y.dtype.name == 'category':
@@ -370,6 +442,10 @@ def main():
             'improvement': tuned_score - baseline_score,
             'cv_results_top20': cv_results_summary,
             'n_candidates_evaluated': len(cv_results_df),
+            # candidates [{params, mean_score, std_score, fold_scores, rank}],
+            # param_names, greater_is_better -- every candidate of cv_results_.
+            # `scoring` (above) names the scorer they are on.
+            **build_search_candidates(search),
             'parameter_sensitivity': parameter_sensitivity,
             # Wall-clock seconds of search.fit(): every candidate x fold plus
             # the final refit of the best candidate on the training rows.

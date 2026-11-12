@@ -31,6 +31,7 @@ from sklearn.metrics import (
 )
 from sklearn.tree import export_text
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import cv_scoring_of, _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
@@ -138,7 +139,11 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
     cm = confusion_matrix(y_test_encoded, y_pred)
 
     roc_data = {}
+
+    threshold_curve = None
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {
@@ -202,7 +207,7 @@ def train_rf_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict[
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data,
+        'roc_data': roc_data, 'threshold_curve': threshold_curve,
         'pr_data': pr_data,
         'calibration_data': calibration_data,
         'label_encoder': le,
@@ -1078,6 +1083,10 @@ def main():
             # Classification needs nothing new for this: the confusion matrix's
             # row and column sums are the actual and predicted class counts.
             response['prediction_distribution'] = prediction_distribution(result['y_test'], result['y_pred'])
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

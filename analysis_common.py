@@ -935,3 +935,222 @@ def balanced_weighting(estimator, y_train, requested='balanced'):
         'applied': False, 'method': None,
         'reason': f'{name} supports neither class_weight nor sample_weight',
     }
+
+
+# ---------------------------------------------------------------------------
+# Exploration-simulation payloads (frontend 「탐색 시뮬레이션」 tabs).
+# Each one is built from what the fitted model / evaluation actually produced:
+# no value here is invented or smoothed. All are JSON-safe (finite floats).
+# ---------------------------------------------------------------------------
+
+def _finite_or_none(v):
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if np.isfinite(f) else None
+
+
+def build_threshold_curve(y_true_enc, scores, class_labels, set_name='test',
+                          score_kind='probability', max_points=1000):
+    """Every threshold of a BINARY classifier's score on one evaluation set.
+
+    sklearn.metrics.roc_curve(drop_intermediate=False) over the same y (0/1,
+    1 = class_labels[1]) and the same scores the module's ROC/AUC uses, so
+    the slider can stop at every distinct score. thresholds descend; at
+    thresholds[i] a row is called positive when score >= thresholds[i].
+    roc_curve's first threshold is +inf (no row positive); it is replaced by
+    1.0 for probabilities (by max score + 1 for decision scores) so the JSON
+    stays finite -- the response says so in `note`.
+
+    Returns None for anything but two classes present in y.
+    """
+    from sklearn.metrics import roc_curve as _roc_curve
+    try:
+        if class_labels is None or len(class_labels) != 2:
+            return None
+        y = np.asarray(y_true_enc).ravel().astype(int)
+        s = np.asarray(scores, dtype=float).ravel()
+        if y.shape[0] != s.shape[0] or y.shape[0] == 0 or not np.all(np.isfinite(s)):
+            return None
+        n_pos = int((y == 1).sum())
+        n_neg = int((y == 0).sum())
+        if n_pos == 0 or n_neg == 0:
+            return None
+        fpr, tpr, thr = _roc_curve(y, s, pos_label=1, drop_intermediate=False)
+        thr = np.asarray(thr, dtype=float).copy()
+        note = None
+        if thr.size and not np.isfinite(thr[0]):
+            if score_kind == 'probability':
+                thr[0] = 1.0
+                note = ('thresholds[0] is +inf in roc_curve (no row called positive); '
+                        'replaced by 1.0')
+            else:
+                finite = thr[np.isfinite(thr)]
+                thr[0] = (float(finite.max()) + 1.0) if finite.size else 1.0
+                note = ('thresholds[0] is +inf in roc_curve (no row called positive); '
+                        'replaced by the largest decision score + 1')
+        n = int(thr.size)
+        downsampled = False
+        if n > max_points:
+            step = int(np.ceil((n - 1) / float(max_points - 2)))
+            idx = np.unique(np.r_[np.arange(0, n, step), n - 1])
+            fpr, tpr, thr = fpr[idx], tpr[idx], thr[idx]
+            downsampled = True
+        out = {
+            'thresholds': [float(v) for v in thr],
+            'fpr': [float(v) for v in fpr],
+            'tpr': [float(v) for v in tpr],
+            'n_pos': n_pos,
+            'n_neg': n_neg,
+            'positive_label': str(class_labels[1]),
+            'negative_label': str(class_labels[0]),
+            'set': set_name,
+            'score_kind': score_kind,
+            'n_points_full': n,
+            'source': 'sklearn.metrics.roc_curve(drop_intermediate=False)',
+        }
+        if downsampled:
+            out['downsampled'] = True
+        if note:
+            out['note'] = note
+        return out
+    except Exception:
+        return None
+
+
+def build_learning_curve_data(train, valid, metric, lower_is_better,
+                              best_iteration=None, early_stopping_rounds=None,
+                              valid_set=None, source=None, max_points=500):
+    """Per-iteration train / validation metric of a boosting model, from the
+    library's own evaluation record. iterations are 1-based boosting rounds
+    (iteration k = the first k trees); best_iteration is on the same 1-based
+    scale, or None when the library picked none. More than `max_points`
+    rounds are subsampled evenly, always keeping best_iteration and the last
+    round (`downsampled: true`)."""
+    try:
+        tr = [(_finite_or_none(v)) for v in (list(train) if train is not None else [])]
+        n = len(tr)
+        if n == 0:
+            return None
+        va = None
+        if valid is not None:
+            va = [(_finite_or_none(v)) for v in list(valid)]
+            if len(va) != n:
+                # A validation record of another length cannot be paired by round.
+                va = (va + [None] * n)[:n]
+        best = int(best_iteration) if best_iteration is not None else None
+        if best is not None and not (1 <= best <= n):
+            best = None
+        idx = list(range(n))
+        downsampled = False
+        if n > max_points:
+            keep = set(np.unique(np.round(np.linspace(0, n - 1, max_points - 2)).astype(int)).tolist())
+            keep.add(n - 1)
+            if best is not None:
+                keep.add(best - 1)
+            idx = sorted(keep)
+            downsampled = True
+        out = {
+            'iterations': [i + 1 for i in idx],
+            'train': [tr[i] for i in idx],
+            'valid': ([va[i] for i in idx] if va is not None else [None] * len(idx)),
+            'metric': str(metric) if metric is not None else None,
+            'lower_is_better': bool(lower_is_better),
+            'best_iteration': best,
+            'early_stopping_rounds': int(early_stopping_rounds) if early_stopping_rounds else None,
+            'valid_set': valid_set if va is not None else None,
+            'n_iterations': n,
+        }
+        if source:
+            out['source'] = source
+        if downsampled:
+            out['downsampled'] = True
+        return out
+    except Exception:
+        return None
+
+
+def build_tree_structure(model, feature_names, task, class_names=None,
+                         max_nodes=255, value_scale=None):
+    """The fitted sklearn tree (model.tree_) as flat node arrays.
+
+    Arrays are indexed by node position (node_id[k] is the tree_ node id;
+    identical to k unless the tree was truncated). left/right are -1 at
+    leaves; feature/threshold are None at leaves. A row goes left when
+    x[feature] <= threshold, exactly as DecisionTree*.predict does.
+    value: classification -> class proportions per node (tree_.value
+    normalised per node, i.e. what predict_proba returns at a leaf, class-
+    weighted when the fit was); regression -> [mean], mapped back to the
+    target's units through `value_scale=(scale, offset)` if the fit was on a
+    scaled target. Over `max_nodes` nodes, only the shallowest levels that fit
+    are kept (truncated=True; nodes at the cut keep their own value and are
+    shown as leaves, `cut[k]` true)."""
+    try:
+        t = model.tree_
+        n_total = int(t.node_count)
+        cl, cr = t.children_left, t.children_right
+        depth = np.zeros(n_total, dtype=int)
+        stack = [0]
+        while stack:
+            nd = stack.pop()
+            if cl[nd] != -1:
+                depth[cl[nd]] = depth[nd] + 1
+                depth[cr[nd]] = depth[nd] + 1
+                stack.extend([cl[nd], cr[nd]])
+        tree_depth = int(depth.max()) if n_total else 0
+        truncated = n_total > max_nodes
+        shown_depth = tree_depth
+        if truncated:
+            shown_depth = 0
+            for d in range(tree_depth + 1):
+                if int((depth <= d).sum()) <= max_nodes:
+                    shown_depth = d
+                else:
+                    break
+        keep_ids = [i for i in range(n_total) if depth[i] <= shown_depth]
+        new_id = {old: k for k, old in enumerate(keep_ids)}
+        feats, thrs, lefts, rights, ns, vals, cut = [], [], [], [], [], [], []
+        for old in keep_ids:
+            is_split = cl[old] != -1
+            shown_split = is_split and depth[old] < shown_depth
+            if shown_split:
+                fi = int(t.feature[old])
+                feats.append(str(feature_names[fi]) if feature_names is not None and fi < len(feature_names) else f'x{fi}')
+                thrs.append(float(t.threshold[old]))
+                lefts.append(new_id[int(cl[old])])
+                rights.append(new_id[int(cr[old])])
+            else:
+                feats.append(None); thrs.append(None); lefts.append(-1); rights.append(-1)
+            cut.append(bool(is_split and not shown_split))
+            ns.append(int(t.n_node_samples[old]))
+            v = np.asarray(t.value[old][0], dtype=float)
+            if task == 'classification':
+                tot = float(v.sum())
+                vals.append([float(x / tot) if tot > 0 else 0.0 for x in v])
+            else:
+                m = float(v[0])
+                if value_scale is not None:
+                    m = m * float(value_scale[0]) + float(value_scale[1])
+                vals.append([m])
+        return {
+            'feature': feats,
+            'threshold': thrs,
+            'left': lefts,
+            'right': rights,
+            'n_samples': ns,
+            'value': vals,
+            'task': task,
+            'class_names': [str(c) for c in class_names] if (task == 'classification' and class_names is not None) else None,
+            'truncated': bool(truncated),
+            'max_depth_shown': int(shown_depth),
+            'node_id': [int(i) for i in keep_ids],
+            'cut': cut,
+            'n_nodes_total': n_total,
+            'tree_depth': tree_depth,
+            # scikit-learn casts the row to float32 before comparing, so a
+            # value sitting exactly on a threshold follows the float32 cast.
+            'split_rule': 'left if float32(x[feature]) <= threshold',
+        }
+    except Exception:
+        return None

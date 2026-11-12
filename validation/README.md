@@ -26,10 +26,10 @@ python3 validate_elastic_net_regression.py  # -> "ELASTIC NET REGRESSION (Python
 | `validate_ridge_regression.py` | `ridge_regression_analysis.py` | `sklearn.linear_model.Ridge` | 13/13 |
 | `validate_lasso_regression.py` | `lasso_regression_analysis.py` | `sklearn.linear_model.Lasso` | 13/13 |
 | `validate_elastic_net_regression.py` | `elastic_net_regression_analysis.py` | `sklearn.linear_model.ElasticNet` | 15/15 |
-| `validate_svm.py` | `svm_analysis.py` | `sklearn.svm.SVC` | 16/16 |
-| `validate_knn.py` | `knn_analysis.py` | `sklearn.neighbors.KNeighborsClassifier` | 16/16 |
-| `validate_naive_bayes.py` | `naive_bayes_analysis.py` | `sklearn.naive_bayes.GaussianNB` | 16/16 |
-| `validate_discriminant.py` | `discriminant_analysis.py` | `sklearn.discriminant_analysis.LinearDiscriminantAnalysis` | 16/16 |
+| `validate_svm.py` | `svm_analysis.py` | `sklearn.svm.SVC` | 30/30 |
+| `validate_knn.py` | `knn_analysis.py` | `sklearn.neighbors.KNeighborsClassifier` | 30/30 |
+| `validate_naive_bayes.py` | `naive_bayes_analysis.py` | `sklearn.naive_bayes.GaussianNB` | 30/30 |
+| `validate_discriminant.py` | `discriminant_analysis.py` | `sklearn.discriminant_analysis.LinearDiscriminantAnalysis` | 44/44 |
 
 Reports: `validation/reports/*.md`.
 | `validate_decision_tree.py` | `decision_tree_analysis.py` | pass |

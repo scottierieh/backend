@@ -15,4 +15,17 @@ sc=StandardScaler(); Xtr=sc.fit_transform(Xtr_raw); Xte=sc.transform(Xte_raw)
 le=LabelEncoder(); ytr_e=le.fit_transform(ytr); yte_e=le.transform(yte)
 mdl=LinearDiscriminantAnalysis(solver='svd').fit(Xtr,ytr_e)
 classifier_checks("lda", r, mdl, Xtr, ytr_e, Xte, yte_e)
+
+# --- Exploration-tab payloads on a binary target (breast cancer, 10 features) ---
+from sklearn.datasets import load_breast_cancer
+from _pyharness import binary_split, threshold_curve_checks, learning_curve_checks, tree_structure_checks
+_bc=load_breast_cancer(as_frame=True); bdf=_bc.frame.copy(); bfeat=list(_bc.feature_names)[:10]
+bdf['diagnosis']=np.where(_bc.target==1,'benign','malignant')
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+Xtr_b,Xte_b,ytr_b,yte_b,lab_b=binary_split(bdf,bfeat,'diagnosis',scale=True)
+for meth,ref in (('lda',LinearDiscriminantAnalysis(solver='svd',priors=[0.5,0.5])),('qda',QuadraticDiscriminantAnalysis(reg_param=0.0,priors=[0.5,0.5]))):
+    PB={'data':bdf.to_dict('records'),'target_col':'diagnosis','feature_cols':bfeat,'method':meth,'test_size':0.2,'solver':'svd','random_state':42}
+    rb=run_script('discriminant_analysis.py',PB); rb=rb.get('results',rb)
+    ref.fit(Xtr_b,ytr_b)
+    threshold_curve_checks(f"{meth}.bin", rb.get('threshold_curve'), yte_b, ref.predict_proba(Xte_b)[:,1], lab_b, rb['metrics'].get('auc'))
 report("DISCRIMINANT ANALYSIS (Python)")

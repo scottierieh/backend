@@ -30,6 +30,7 @@ from sklearn.metrics import (
 )
 from sklearn.calibration import calibration_curve
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import cv_scoring_of, _compute_multiclass_auc, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, leak_safe_prepare_onehot, balanced_weighting
 
 
@@ -247,8 +248,11 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
 
     # ── ROC curves + macro AUC ──────────────────────────────────────
     roc_data = {}
+    threshold_curve = None
     pr_data = {}
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {
@@ -325,7 +329,7 @@ def train_naive_bayes(X_train, X_test, y_train, y_test, params: dict, feature_na
         'per_class_metrics': per_class_metrics,
         'confusion_matrix':  cm.tolist(),
         'class_labels':      [str(c) for c in le.classes_],
-        'roc_data':          roc_data,
+        'roc_data':          roc_data, 'threshold_curve': threshold_curve,
         'pr_data':           pr_data,
         'label_encoder':     le,
         'class_priors':      class_priors,
@@ -1085,6 +1089,10 @@ def main():
             'class_conditional_params': compute_class_conditional_params(
                 model, nb_type, feature_cols, result['class_labels']),
         }
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

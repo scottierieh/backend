@@ -1,18 +1,18 @@
 {
   "title": "CATBOOST (Python)",
-  "total_checks": 10,
-  "numeric_checks": 10,
-  "exact_checks": 0,
-  "pass": 10,
+  "total_checks": 34,
+  "numeric_checks": 25,
+  "exact_checks": 9,
+  "pass": 34,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
   "tolerance_max": 1e-06,
-  "max_abs_difference": 0.0,
+  "max_abs_difference": 3.552713678800501e-15,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.17",
-  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
   "packages": {
     "catboost": "1.2.7",
     "numpy": "1.26.4",
@@ -20,8 +20,8 @@
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "4794d67",
-  "validation_date": "2026-11-10",
+  "git_commit": "db1aac6",
+  "validation_date": "2026-11-12",
   "checks": [
     {
       "name": "cat.accuracy",
@@ -100,6 +100,198 @@
       "got": "30",
       "expected": "30",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.n_pos",
+      "got": "42",
+      "expected": "42",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.n_neg",
+      "got": "72",
+      "expected": "72",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.set",
+      "got": "test",
+      "expected": "test",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.score_kind",
+      "got": "probability",
+      "expected": "probability",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.positive_label",
+      "got": "malignant",
+      "expected": "malignant",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.negative_label",
+      "got": "benign",
+      "expected": "benign",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.n_points",
+      "got": "115",
+      "expected": "115",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.max|thresholds-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.max|fpr-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.max|tpr-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.thresholds_descending",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.tpr*n_pos_integer",
+      "got": "3.55271e-15",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 3.552713678800501e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.fpr*n_neg_integer",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.threshold_curve.auc==reported_auc",
+      "got": "0.989087",
+      "expected": "0.989087",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.n_iterations",
+      "got": "85",
+      "expected": "85",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.last_iteration",
+      "got": "85",
+      "expected": "85",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.last_train",
+      "got": "0.0206995",
+      "expected": "0.0206995",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.last_valid",
+      "got": "0.14372",
+      "expected": "0.14372",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.best_iteration",
+      "got": "65",
+      "expected": "65",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.metric",
+      "got": "Logloss",
+      "expected": "Logloss",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.lower_is_better",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.valid_set",
+      "got": "test",
+      "expected": "test",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.max|train-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cat.bin.learning_curve_data.max|valid-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

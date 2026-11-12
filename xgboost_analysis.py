@@ -29,6 +29,7 @@ from sklearn.metrics import (
 )
 import xgboost as xgb
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import cv_scoring_of, _compute_multiclass_auc, _to_native_type, _fig_to_base64, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
@@ -181,7 +182,11 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
     cm = confusion_matrix(y_test_encoded, y_pred)
 
     roc_data = {}
+
+    threshold_curve = None
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {
@@ -248,11 +253,15 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, params: dict) -> 
         'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(),
         'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data,
+        'roc_data': roc_data, 'threshold_curve': threshold_curve,
         'pr_data': pr_data,
         'train_history': train_history,
         'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
         'learning_curve': build_learning_curve(train_history, eval_metric, best_iteration, early_stopping_rounds),
+        'learning_curve_data': build_learning_curve_data(
+            train_history['train'], train_history['test'], eval_metric, True,
+            (int(best_iteration) + 1) if best_iteration is not None else None,
+            early_stopping_rounds, 'test', source='XGBModel.evals_result()'),
         'booster_config': read_booster_config(model),
         'label_encoder': le,
         'error_examples': error_examples,
@@ -318,6 +327,10 @@ def train_xgboost_regressor(X_train, X_test, y_train, y_test, params: dict) -> D
         'train_history': train_history,
         'best_iteration': _to_native_type(best_iteration) if best_iteration is not None else None,
         'learning_curve': build_learning_curve(train_history, 'rmse', best_iteration, early_stopping_rounds),
+        'learning_curve_data': build_learning_curve_data(
+            train_history['train'], train_history['test'], 'rmse', True,
+            (int(best_iteration) + 1) if best_iteration is not None else None,
+            early_stopping_rounds, 'test', source='XGBModel.evals_result()'),
         'booster_config': read_booster_config(model),
     }
 
@@ -1064,6 +1077,7 @@ def main():
             # Per-round train / validation metric as numbers (the arrays
             # behind learning_plot), and the booster's recorded tree_method.
             'learning_curve': result.get('learning_curve'),
+            'learning_curve_data': result.get('learning_curve_data'),
             'booster_config': result.get('booster_config'),
         }
 
@@ -1077,6 +1091,10 @@ def main():
             response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plot'] = regression_plot
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

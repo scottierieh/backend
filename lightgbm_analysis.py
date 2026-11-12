@@ -30,6 +30,7 @@ from sklearn.metrics import (
 )
 import lightgbm as lgb
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import cv_scoring_of, _compute_multiclass_auc, _to_native_type, _fig_to_base64, detect_task_type, build_error_examples, shap_contract, SHAP_SPACE_LOG_ODDS, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
 
 
@@ -131,7 +132,11 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
     cm = confusion_matrix(y_test_encoded, y_pred)
 
     roc_data = {}
+
+    threshold_curve = None
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {'fpr': [_to_native_type(x) for x in fpr], 'tpr': [_to_native_type(x) for x in tpr], 'auc': _to_native_type(roc_auc)}
@@ -184,8 +189,12 @@ def train_lightgbm_classifier(X_train, X_test, y_train, y_test, params: dict) ->
         'model': model, 'class_weighting': class_weighting,
         'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': eval_metric,
+        'roc_data': roc_data, 'threshold_curve': threshold_curve, 'pr_data': pr_data, 'train_history': train_history, 'eval_metric': eval_metric,
         'learning_curve': build_learning_curve(train_history, eval_metric, model, params.get('early_stopping_rounds')),
+        'learning_curve_data': build_learning_curve_data(
+            train_history['train'], train_history['test'], eval_metric, True,
+            (int(model.best_iteration_) if getattr(model, 'best_iteration_', None) else None),
+            params.get('early_stopping_rounds'), 'test', source='lightgbm.record_evaluation'),
         'label_encoder': le, 'best_iteration': int(model.best_iteration_ or params['n_estimators']),
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba,
         'error_examples': error_examples,
@@ -226,6 +235,10 @@ def train_lightgbm_regressor(X_train, X_test, y_train, y_test, params: dict) -> 
         'model': model, 'metrics': metrics, 'y_test': y_test.values if hasattr(y_test, 'values') else y_test,
         'y_pred': y_pred, 'train_history': train_history, 'eval_metric': 'rmse',
         'learning_curve': build_learning_curve(train_history, 'rmse', model, params.get('early_stopping_rounds')),
+        'learning_curve_data': build_learning_curve_data(
+            train_history['train'], train_history['test'], 'rmse', True,
+            (int(model.best_iteration_) if getattr(model, 'best_iteration_', None) else None),
+            params.get('early_stopping_rounds'), 'test', source='lightgbm.record_evaluation'),
         'best_iteration': int(model.best_iteration_ or params['n_estimators'])
     }
 
@@ -768,6 +781,7 @@ def main():
             # Per-iteration train / validation metric as numbers (the arrays
             # behind learning_plot).
             'learning_curve': result.get('learning_curve'),
+            'learning_curve_data': result.get('learning_curve_data'),
             'importance_plot': importance_plot,
             'learning_plot': learning_plot,
             'shap_plot': shap_result.get('shap_plot'),
@@ -795,6 +809,10 @@ def main():
             response['error_examples'] = result.get('error_examples')
         else:
             response['regression_plots'] = regression_plots
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

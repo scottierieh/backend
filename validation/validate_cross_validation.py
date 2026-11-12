@@ -65,4 +65,25 @@ def _has_png(lbl):
     return isinstance(v,str) and v.startswith('data:image/png;base64,') and len(v)>len('data:image/png;base64,')
 chk("has.scores_plot", _has_png('Scores by Fold') and _has_png('Score Distribution'), True)
 chk("has.stability_plot", _has_png('Learning Stability'), True)
+# --- fold_scores / primary_metric (exploration tab) ---
+fs=r.get('fold_scores') or {}
+chk("cv.primary_metric", r.get('primary_metric'), 'accuracy')
+chk("cv.fold_scores.primary_first", (list(fs.keys()) or [None])[0], 'accuracy')
+chk("cv.fold_scores.n_folds", len(fs.get('accuracy',[])), 5)
+chk("cv.fold_scores.mean==cv_results.mean", float(np.mean(fs['accuracy'])), cvr['mean'], tol=1e-12)
+chk("cv.fold_scores.mean==reference", float(np.mean(fs['accuracy'])), sc.mean(), tol=1e-9)
+for i,(tr_idx,te_idx) in enumerate(splits):
+    chk(f"cv.fold_scores.f1_macro[{i}]", fs['f1_macro'][i], f1_score(y[te_idx],y_pred[te_idx],average='macro',zero_division=0), tol=1e-9)
+    chk(f"cv.fold_scores.accuracy_from_oof[{i}]", fs['accuracy'][i], accuracy_score(y[te_idx],y_pred[te_idx]), tol=1e-9)
+# regression with RMSE scoring: primary metric is reported positive
+from sklearn.datasets import load_diabetes
+from sklearn.linear_model import LinearRegression
+_db=load_diabetes(as_frame=True); ddf=_db.frame.copy(); dfeat=list(_db.feature_names)
+PR=dict(data=ddf.to_dict('records'),target_col='target',feature_cols=dfeat,task_type='regression',
+        cv_method='kfold',n_folds=5,shuffle=True,model_type='random_forest',scoring='rmse',random_state=42)
+rr=run_script('cross_validation_analysis.py',PR); fsr=rr.get('fold_scores') or {}
+chk("cv.reg.primary_metric", rr.get('primary_metric'), 'rmse')
+chk("cv.reg.fold_scores.primary_first", (list(fsr.keys()) or [None])[0], 'rmse')
+chk("cv.reg.fold_scores.mean==cv_results.mean", float(np.mean(fsr['rmse'])), rr['cv_results']['mean'], tol=1e-12)
+chk("cv.reg.rmse_lower_is_better", (rr.get('fold_scores_greater_is_better') or {}).get('rmse'), False)
 report("CROSS VALIDATION (Python)")

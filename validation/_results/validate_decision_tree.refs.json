@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "name": "dt.iris.threshold_curve_absent_multiclass",
+    "reference": "False"
+  },
+  {
+    "name": "dt.reg.threshold_curve_absent",
+    "reference": "False"
+  },
+  {
+    "name": "dt.reg_full.truncated",
+    "reference": "mr2.tree_.node_count>255"
+  },
+  {
+    "name": "dt.reg_full.n_nodes_total",
+    "reference": "int(mr2.tree_.node_count)"
+  },
+  {
+    "name": "dt.reg_full.shown_nodes<=255",
+    "reference": "True"
+  },
+  {
+    "name": "dt.reg_full.shown_values==tree_.value",
+    "reference": "0.0"
+  }
+]

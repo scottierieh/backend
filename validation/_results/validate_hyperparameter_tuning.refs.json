@@ -14,5 +14,53 @@
   {
     "name": "hp.best_min_samples_split",
     "reference": "gs.best_params_['min_samples_split']"
+  },
+  {
+    "name": "hp.n_candidates",
+    "reference": "len(cvres['params'])"
+  },
+  {
+    "name": "hp.scoring",
+    "reference": "'accuracy'"
+  },
+  {
+    "name": "hp.greater_is_better",
+    "reference": "True"
+  },
+  {
+    "name": "hp.param_names",
+    "reference": "str(sorted(grid.keys()))"
+  },
+  {
+    "name": "hp.best_rank_params==best_params",
+    "reference": "True"
+  },
+  {
+    "name": "hp.best_rank_params==reference_best",
+    "reference": "True"
+  },
+  {
+    "name": "hp.candidates.max|mean_score-ref|",
+    "reference": "0.0"
+  },
+  {
+    "name": "hp.candidates.max|std_score-ref|",
+    "reference": "0.0"
+  },
+  {
+    "name": "hp.candidates.max|fold_score-ref|",
+    "reference": "0.0"
+  },
+  {
+    "name": "hp.candidates.rank_mismatches",
+    "reference": "0"
+  },
+  {
+    "name": "hp.candidates.fold_mean==mean_score",
+    "reference": "0.0"
+  },
+  {
+    "name": "hp.best_cv_score==max mean_score",
+    "reference": "find_key(r,'best_cv_score')"
   }
 ]

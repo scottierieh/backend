@@ -1,26 +1,26 @@
 {
   "title": "GBM (Python)",
-  "total_checks": 15,
-  "numeric_checks": 15,
-  "exact_checks": 0,
-  "pass": 15,
+  "total_checks": 53,
+  "numeric_checks": 39,
+  "exact_checks": 14,
+  "pass": 53,
   "fail": 0,
   "pass_rate": 100.0,
   "tolerance_min": 1e-09,
   "tolerance_max": 1e-06,
-  "max_abs_difference": 0.0,
+  "max_abs_difference": 3.552713678800501e-15,
   "all_within_tolerance": true,
   "language": "Python",
   "runtime_version": "3.11.17",
-  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
   "packages": {
     "numpy": "1.26.4",
     "pandas": "2.3.3",
     "scipy": "1.14.1",
     "sklearn": "1.5.2"
   },
-  "git_commit": "4794d67",
-  "validation_date": "2026-11-10",
+  "git_commit": "db1aac6",
+  "validation_date": "2026-11-12",
   "checks": [
     {
       "name": "gbm.accuracy",
@@ -139,6 +139,310 @@
       "got": "120",
       "expected": "120",
       "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.n_pos",
+      "got": "42",
+      "expected": "42",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.n_neg",
+      "got": "72",
+      "expected": "72",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.set",
+      "got": "test",
+      "expected": "test",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.score_kind",
+      "got": "probability",
+      "expected": "probability",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.positive_label",
+      "got": "malignant",
+      "expected": "malignant",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.negative_label",
+      "got": "benign",
+      "expected": "benign",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.n_points",
+      "got": "99",
+      "expected": "99",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.max|thresholds-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.max|fpr-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.max|tpr-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.thresholds_descending",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.tpr*n_pos_integer",
+      "got": "3.55271e-15",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 3.552713678800501e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.fpr*n_neg_integer",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.threshold_curve.auc==reported_auc",
+      "got": "0.979828",
+      "expected": "0.979828",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.n_iterations",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.last_iteration",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.last_train",
+      "got": "0.0116542",
+      "expected": "0.0116542",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.last_valid",
+      "got": "0.179581",
+      "expected": "0.179581",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.best_iteration",
+      "got": "None",
+      "expected": "None",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.metric",
+      "got": "log_loss",
+      "expected": "log_loss",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.lower_is_better",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.valid_set",
+      "got": "test",
+      "expected": "test",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.max|train-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.max|valid-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.bin.learning_curve_data.last_valid==log_loss(final model)",
+      "got": "0.179581",
+      "expected": "0.179581",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.iris.threshold_curve_absent_multiclass",
+      "got": "False",
+      "expected": "False",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.n_iterations",
+      "got": "18",
+      "expected": "18",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.last_iteration",
+      "got": "18",
+      "expected": "18",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.last_train",
+      "got": "2359.08",
+      "expected": "2359.08",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.last_valid",
+      "got": "2870.94",
+      "expected": "2870.94",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.best_iteration",
+      "got": "None",
+      "expected": "None",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.metric",
+      "got": "mse",
+      "expected": "mse",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.lower_is_better",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.valid_set",
+      "got": "test",
+      "expected": "test",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.max|train-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.max|valid-ref|",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.n_iterations==n_estimators_",
+      "got": "18",
+      "expected": "18",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "gbm.reg.learning_curve_data.last_valid==mse(final model)",
+      "got": "2870.94",
+      "expected": "2870.94",
+      "tolerance": 1e-09,
       "abs_difference": 0.0,
       "status": "PASS"
     }

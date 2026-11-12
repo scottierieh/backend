@@ -1,1 +1,6 @@
-[]
+[
+  {
+    "name": "xgb.bin.learning_curve_data.early_stopping_rounds",
+    "reference": "10"
+  }
+]

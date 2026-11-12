@@ -74,5 +74,49 @@
   {
     "name": "has.stability_plot",
     "reference": "True"
+  },
+  {
+    "name": "cv.primary_metric",
+    "reference": "'accuracy'"
+  },
+  {
+    "name": "cv.fold_scores.primary_first",
+    "reference": "'accuracy'"
+  },
+  {
+    "name": "cv.fold_scores.n_folds",
+    "reference": "5"
+  },
+  {
+    "name": "cv.fold_scores.mean==cv_results.mean",
+    "reference": "cvr['mean']"
+  },
+  {
+    "name": "cv.fold_scores.mean==reference",
+    "reference": "sc.mean()"
+  },
+  {
+    "name": "f\"cv.fold_scores.f1_macro[{i}]\"",
+    "reference": "f1_score(y[te_idx],y_pred[te_idx],average='macro',zero_division=0)"
+  },
+  {
+    "name": "f\"cv.fold_scores.accuracy_from_oof[{i}]\"",
+    "reference": "accuracy_score(y[te_idx],y_pred[te_idx])"
+  },
+  {
+    "name": "cv.reg.primary_metric",
+    "reference": "'rmse'"
+  },
+  {
+    "name": "cv.reg.fold_scores.primary_first",
+    "reference": "'rmse'"
+  },
+  {
+    "name": "cv.reg.fold_scores.mean==cv_results.mean",
+    "reference": "rr['cv_results']['mean']"
+  },
+  {
+    "name": "cv.reg.rmse_lower_is_better",
+    "reference": "False"
   }
 ]

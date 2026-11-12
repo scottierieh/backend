@@ -35,7 +35,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import shap
-from analysis_common import cv_scoring_of, _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting
+from analysis_common import cv_scoring_of, _compute_multiclass_auc, build_error_examples, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, shap_interaction_top, ale_1d, leak_safe_prepare, balanced_weighting, build_threshold_curve, build_tree_structure
 
 
 warnings.filterwarnings('ignore')
@@ -706,6 +706,10 @@ def train_classifier(X_train, X_test, y_train, y_test,
             'n_leaves':         int(model.get_n_leaves())
         },
         'error_examples': error_examples,
+        # Every threshold on the same test rows / predict_proba[:, 1] the ROC
+        # above uses (binary only; None for 3+ classes).
+        'threshold_curve': (build_threshold_curve(y_test_enc, y_pred_proba[:, 1], names, 'test', 'probability')
+                            if n_classes == 2 else None),
     }
 
 
@@ -1107,7 +1111,13 @@ def main():
             'ale':                ale_data,
             'tree_rules':         tree_rules,
             'interpretation':     interpretation,
+            # The fitted tree (the one predict() uses) as flat node arrays, for
+            # the exploration tab's walk-through. Regression values are in the
+            # target's own units (this script fits the tree on the raw target).
+            'tree_structure':     build_tree_structure(model, feature_cols, task_type, class_names),
         }
+        if task_type == 'classification' and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         if categorical_features:
             response['data_warnings'] = {

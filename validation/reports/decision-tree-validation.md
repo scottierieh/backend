@@ -6,3 +6,7 @@
 
 ## Defect found & fixed
 `decision_tree_analysis.py:425` referenced an undefined `y_test_encoded` (the variable is `y_test_enc`), which crashed the **multiclass** classification path (macro-AUC). Fixed to `y_test_enc`.
+
+## Exploration-tab payloads (55 checks in total)
+- `threshold_curve` (binary breast-cancer run, 10 features): equals `sklearn.metrics.roc_curve(drop_intermediate=False)` on the test rows and positive-class probabilities of an independently reproduced model (same split, scaling and class weighting) — every threshold/FPR/TPR, `n_pos`/`n_neg`, labels, `tpr·n_pos` and `fpr·n_neg` integer-valued, and the curve's AUC equals the reported `metrics.auc`.
+- `tree_structure`: every row (iris, breast cancer, diabetes depth 6) is walked down the returned node arrays and the leaf matches the reproduced tree — argmax = `predict`, leaf proportions = `predict_proba`, leaf mean = `predict`; an unlimited-depth regression tree is truncated to ≤ 255 shown nodes whose values equal `tree_.value`.

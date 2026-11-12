@@ -29,6 +29,7 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import warnings
+from analysis_common import build_threshold_curve, build_learning_curve_data
 from analysis_common import cv_scoring_of, leak_safe_prepare_onehot, _compute_multiclass_auc, _to_native_type, detect_task_type, shap_contract, SHAP_SPACE_PROBABILITY, shap_matrix, ale_1d, balanced_weighting
 
 
@@ -156,7 +157,11 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
     cm = confusion_matrix(y_test_encoded, y_pred)
 
     roc_data = {}
+
+    threshold_curve = None
     if n_classes == 2:
+        # Every threshold on these same test rows and scores (exploration tab).
+        threshold_curve = build_threshold_curve(y_test_encoded, y_pred_proba[:, 1], [str(c) for c in le.classes_], 'test', 'probability')
         fpr, tpr, _ = roc_curve(y_test_encoded, y_pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         roc_data['binary'] = {'fpr': [_to_native_type(x) for x in fpr], 'tpr': [_to_native_type(x) for x in tpr], 'auc': _to_native_type(roc_auc)}
@@ -191,7 +196,7 @@ def train_mlp_classifier(X_train, X_test, y_train, y_test, params: dict) -> Dict
         'probability_calibration': _mlp_probability_calibration(model),
         'metrics': metrics, 'per_class_metrics': per_class_metrics,
         'confusion_matrix': cm.tolist(), 'class_labels': [str(c) for c in le.classes_],
-        'roc_data': roc_data, 'label_encoder': le,
+        'roc_data': roc_data, 'threshold_curve': threshold_curve, 'label_encoder': le,
         'y_test_encoded': y_test_encoded, 'y_pred': y_pred, 'y_pred_proba': y_pred_proba
     }
 
@@ -854,6 +859,10 @@ def main():
             # how the class probabilities were produced.
             response['class_weight_values'] = result.get('class_weight_values')
             response['probability_calibration'] = result.get('probability_calibration')
+
+        # Binary classification only: every ROC threshold on the test rows.
+        if isinstance(result, dict) and result.get('threshold_curve') is not None:
+            response['threshold_curve'] = result['threshold_curve']
 
         print(json.dumps(response, default=_to_native_type))
 

@@ -226,6 +226,59 @@ def perform_cross_validation(X, y, model, cv_splitter, scoring: str, task_type: 
     }
 
 
+_FOLD_METRIC_NAME = {
+    'accuracy': 'accuracy', 'f1_macro': 'f1_macro', 'precision_macro': 'precision_macro',
+    'recall_macro': 'recall_macro', 'r2': 'r2',
+    'neg_root_mean_squared_error': 'rmse', 'neg_mean_absolute_error': 'mae',
+}
+_FOLD_LOWER_IS_BETTER = {'rmse', 'mae'}
+
+
+def build_fold_scores(cv_results: Dict, scoring: str, task_type: str, X, y_true, cv_splitter) -> Dict[str, Any]:
+    """Per-fold scores keyed by metric, the primary (scored) metric first.
+
+    The primary list is cv_results['scores'] itself (cross_val_score, sign
+    flipped back to positive for RMSE/MAE). The other metrics are computed
+    per fold from the out-of-fold predictions cross_val_predict made with the
+    same splitter -- each fold's rows scored by that fold's own model. They are
+    only added when every row is predicted exactly once (k-fold / stratified;
+    not repeated CV, where cross_val_predict does not apply, and not
+    leave-one-out, where a one-row fold has no macro-F1/R2)."""
+    primary = _FOLD_METRIC_NAME.get(scoring, scoring)
+    fold_scores: Dict[str, List] = {primary: list(cv_results['scores'])}
+    y_pred = cv_results.get('y_pred')
+    if y_pred is not None:
+        try:
+            y_pred = np.asarray(y_pred)
+            y_arr = np.asarray(y_true)
+            folds = [te for _, te in cv_splitter.split(X, y_true)]
+            if len(folds) == len(cv_results['scores']) and min(len(te) for te in folds) >= 2:
+                if task_type == 'classification':
+                    fns = {
+                        'accuracy': lambda a, b: accuracy_score(a, b),
+                        'f1_macro': lambda a, b: f1_score(a, b, average='macro', zero_division=0),
+                        'precision_macro': lambda a, b: precision_score(a, b, average='macro', zero_division=0),
+                        'recall_macro': lambda a, b: recall_score(a, b, average='macro', zero_division=0),
+                    }
+                else:
+                    fns = {
+                        'r2': lambda a, b: r2_score(a, b),
+                        'rmse': lambda a, b: float(np.sqrt(mean_squared_error(a, b))),
+                        'mae': lambda a, b: mean_absolute_error(a, b),
+                    }
+                for name, fn in fns.items():
+                    if name == primary:
+                        continue
+                    fold_scores[name] = [_to_native_type(float(fn(y_arr[te], y_pred[te]))) for te in folds]
+        except Exception:
+            pass
+    return {
+        'fold_scores': fold_scores,
+        'primary_metric': primary,
+        'fold_scores_greater_is_better': {k: (k not in _FOLD_LOWER_IS_BETTER) for k in fold_scores},
+    }
+
+
 def calculate_additional_metrics(y_true, y_pred, task_type: str) -> Dict[str, Any]:
     """Calculate additional metrics from cross-validated predictions"""
     if y_pred is None:
@@ -722,6 +775,9 @@ def main():
             'cv_results': cv_results,
             'additional_metrics': additional_metrics,
             'learning_curve': learning_curve_results,
+            # fold_scores {metric: [score per fold]} (primary metric first),
+            # primary_metric, fold_scores_greater_is_better.
+            **build_fold_scores(cv_results, scoring, task_type, X_scaled, y_encoded, cv_splitter),
             'plots': plots,
             'interpretation': interpretation
         }

@@ -1,0 +1,1323 @@
+{
+  "title": "CHOICE-BASED CONJOINT, AGGREGATE MNL (Python)",
+  "total_checks": 162,
+  "numeric_checks": 158,
+  "exact_checks": 4,
+  "pass": 162,
+  "fail": 0,
+  "pass_rate": 100.0,
+  "tolerance_min": 0,
+  "tolerance_max": 186.66666666666666,
+  "max_abs_difference": 45.41222768160196,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.18",
+  "platform": "Linux-5.10.0-32-cloud-amd64-x86_64-with-glibc2.41",
+  "packages": {
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "sklearn": "1.5.2",
+    "statsmodels": "0.14.4"
+  },
+  "git_commit": "bcea042",
+  "validation_date": "2026-11-13",
+  "checks": [
+    {
+      "name": "cbc_none.ref_levels",
+      "got": "{\"Brand\": \"Apple\", \"Price\": \"\\u20a91,000\", \"Storage\": \"128GB\"}",
+      "expected": "{\"Brand\": \"Apple\", \"Price\": \"\\u20a91,000\", \"Storage\": \"128GB\"}",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.converged",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.coef.Brand.Banana",
+      "got": "-0.566062",
+      "expected": "-0.566236",
+      "tolerance": 0.001,
+      "abs_difference": 0.00017462055083372618,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.se.Brand.Banana",
+      "got": "0.073935",
+      "expected": "0.0739363",
+      "tolerance": 0.0005,
+      "abs_difference": 1.2979001264845635e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.z.Brand.Banana",
+      "got": "-7.6562",
+      "expected": "-7.65843",
+      "tolerance": 0.02,
+      "abs_difference": 0.0022273705961435297,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.p.Brand.Banana",
+      "got": "1.90958e-14",
+      "expected": "1.88218e-14",
+      "tolerance": 0.001,
+      "abs_difference": 2.7398829201224045e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.ci_low.Brand.Banana",
+      "got": "-0.710974",
+      "expected": "-0.711151",
+      "tolerance": 0.003,
+      "abs_difference": 0.0001771644350816448,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.Brand.Banana",
+      "got": "-0.566062",
+      "expected": "-0.6",
+      "tolerance": 0.2,
+      "abs_difference": 0.03393849861045373,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.coef.Brand.Cherry",
+      "got": "0.463917",
+      "expected": "0.463974",
+      "tolerance": 0.001,
+      "abs_difference": 5.658048055989795e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.se.Brand.Cherry",
+      "got": "0.0673471",
+      "expected": "0.0673465",
+      "tolerance": 0.0005,
+      "abs_difference": 6.068050277391324e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.z.Brand.Cherry",
+      "got": "6.88846",
+      "expected": "6.88936",
+      "tolerance": 0.02,
+      "abs_difference": 0.0009022067897088704,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.p.Brand.Cherry",
+      "got": "5.64016e-12",
+      "expected": "5.60446e-12",
+      "tolerance": 0.001,
+      "abs_difference": 3.569033021751119e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.ci_low.Brand.Cherry",
+      "got": "0.331917",
+      "expected": "0.331975",
+      "tolerance": 0.003,
+      "abs_difference": 5.776981841421058e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.Brand.Cherry",
+      "got": "0.463917",
+      "expected": "0.5",
+      "tolerance": 0.2,
+      "abs_difference": 0.036082716406643844,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.reference.Brand.Apple",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.coef.Price.\u20a91,500",
+      "got": "-0.656763",
+      "expected": "-0.656892",
+      "tolerance": 0.001,
+      "abs_difference": 0.00012943614069282905,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.se.Price.\u20a91,500",
+      "got": "0.0653231",
+      "expected": "0.0653243",
+      "tolerance": 0.0005,
+      "abs_difference": 1.183383087979828e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.z.Price.\u20a91,500",
+      "got": "-10.0541",
+      "expected": "-10.0559",
+      "tolerance": 0.02,
+      "abs_difference": 0.0017993057951226632,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.p.Price.\u20a91,500",
+      "got": "0",
+      "expected": "8.65545e-24",
+      "tolerance": 0.001,
+      "abs_difference": 8.655453935969215e-24,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.ci_low.Price.\u20a91,500",
+      "got": "-0.784796",
+      "expected": "-0.784928",
+      "tolerance": 0.003,
+      "abs_difference": 0.00013175557154532225,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.Price.\u20a91,500",
+      "got": "-0.656763",
+      "expected": "-0.7",
+      "tolerance": 0.2,
+      "abs_difference": 0.04323721670451852,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.coef.Price.\u20a92,000",
+      "got": "-1.62492",
+      "expected": "-1.62481",
+      "tolerance": 0.001,
+      "abs_difference": 0.00011025239069728521,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.se.Price.\u20a92,000",
+      "got": "0.0774875",
+      "expected": "0.0774858",
+      "tolerance": 0.0005,
+      "abs_difference": 1.7481271658709163e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.z.Price.\u20a92,000",
+      "got": "-20.9701",
+      "expected": "-20.9692",
+      "tolerance": 0.02,
+      "abs_difference": 0.0009497744441659961,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.p.Price.\u20a92,000",
+      "got": "0",
+      "expected": "1.25481e-97",
+      "tolerance": 0.001,
+      "abs_difference": 1.2548109905212e-97,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.ci_low.Price.\u20a92,000",
+      "got": "-1.7768",
+      "expected": "-1.77668",
+      "tolerance": 0.003,
+      "abs_difference": 0.0001136787199422784,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.Price.\u20a92,000",
+      "got": "-1.62492",
+      "expected": "-1.5",
+      "tolerance": 0.2,
+      "abs_difference": 0.12492073622848587,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.reference.Price.\u20a91,000",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.coef.Storage.256GB",
+      "got": "0.64804",
+      "expected": "0.648018",
+      "tolerance": 0.001,
+      "abs_difference": 2.171143554186017e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.se.Storage.256GB",
+      "got": "0.0666921",
+      "expected": "0.0666922",
+      "tolerance": 0.0005,
+      "abs_difference": 6.943693102445803e-08,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.z.Storage.256GB",
+      "got": "9.71689",
+      "expected": "9.71655",
+      "tolerance": 0.02,
+      "abs_difference": 0.0003356635564895072,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.p.Storage.256GB",
+      "got": "0",
+      "expected": "2.56319e-22",
+      "tolerance": 0.001,
+      "abs_difference": 2.563186511692415e-22,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.ci_low.Storage.256GB",
+      "got": "0.517323",
+      "expected": "0.517302",
+      "tolerance": 0.003,
+      "abs_difference": 2.1847531926688646e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.Storage.256GB",
+      "got": "0.64804",
+      "expected": "0.6",
+      "tolerance": 0.2,
+      "abs_difference": 0.04803997097468826,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.coef.Storage.64GB",
+      "got": "-0.826111",
+      "expected": "-0.826099",
+      "tolerance": 0.001,
+      "abs_difference": 1.2240114079409281e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.se.Storage.64GB",
+      "got": "0.0756502",
+      "expected": "0.0756502",
+      "tolerance": 0.0005,
+      "abs_difference": 1.6346285991453158e-09,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.z.Storage.64GB",
+      "got": "-10.9201",
+      "expected": "-10.92",
+      "tolerance": 0.02,
+      "abs_difference": 0.00016156291942337475,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.p.Storage.64GB",
+      "got": "0",
+      "expected": "9.25091e-28",
+      "tolerance": 0.001,
+      "abs_difference": 9.250906237883255e-28,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.ci_low.Storage.64GB",
+      "got": "-0.974386",
+      "expected": "-0.974373",
+      "tolerance": 0.003,
+      "abs_difference": 1.2243317951465826e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.Storage.64GB",
+      "got": "-0.826111",
+      "expected": "-0.8",
+      "tolerance": 0.2,
+      "abs_difference": 0.026111204711311564,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.reference.Storage.128GB",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.recovery.ASC_none",
+      "got": "-1.19981",
+      "expected": "-1.2",
+      "tolerance": 0.2,
+      "abs_difference": 0.00018974606365107505,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.loglik",
+      "got": "-2885.07",
+      "expected": "-2885.07",
+      "tolerance": 0.001,
+      "abs_difference": 1.117734746003407e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.loglik_null",
+      "got": "-3465.74",
+      "expected": "-3465.74",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.aic",
+      "got": "5784.14",
+      "expected": "5784.14",
+      "tolerance": 0.002,
+      "abs_difference": 2.235469492006814e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.bic(n=choice sets)",
+      "got": "5824.91",
+      "expected": "5824.91",
+      "tolerance": 0.002,
+      "abs_difference": 2.235469492006814e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.aicc",
+      "got": "5784.18",
+      "expected": "5784.18",
+      "tolerance": 0.002,
+      "abs_difference": 2.235469492006814e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.mcfadden_r2",
+      "got": "0.167545",
+      "expected": "0.167545",
+      "tolerance": 1e-06,
+      "abs_difference": 3.225100742021425e-09,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.adj_mcfadden_r2",
+      "got": "0.165525",
+      "expected": "0.165525",
+      "tolerance": 1e-06,
+      "abs_difference": 3.225100742021425e-09,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.hit_rate",
+      "got": "0.502",
+      "expected": "0.502",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.n_respondents",
+      "got": "250",
+      "expected": "250",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.n_tasks(choice sets)",
+      "got": "2500",
+      "expected": "2500",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.n_parameters",
+      "got": "7",
+      "expected": "7",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.none_rate_pct",
+      "got": "16.6",
+      "expected": "16.6",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.importance.Brand",
+      "got": "24.9447",
+      "expected": "24.9498",
+      "tolerance": 0.05,
+      "abs_difference": 0.005073695637857867,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.importance.Price",
+      "got": "39.3534",
+      "expected": "39.3499",
+      "tolerance": 0.05,
+      "abs_difference": 0.0034992458826224038,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.importance.Storage",
+      "got": "35.7019",
+      "expected": "35.7004",
+      "tolerance": 0.05,
+      "abs_difference": 0.0015744497552390158,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.beta_price",
+      "got": "-0.00159097",
+      "expected": "-0.0015912",
+      "tolerance": 2e-06,
+      "abs_difference": 2.327751041225623e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.Brand.Banana",
+      "got": "-354.735",
+      "expected": "-354.588",
+      "tolerance": 1.0,
+      "abs_difference": 0.1469342123758679,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp_ci_low(backend formula, no cov term).Brand.Banana",
+      "got": "-451.545",
+      "expected": "-451.38",
+      "tolerance": 1.5,
+      "abs_difference": 0.16464043278125473,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.recovery.Brand.Banana",
+      "got": "-354.588",
+      "expected": "-400",
+      "tolerance": 140.0,
+      "abs_difference": 45.41222768160196,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.Brand.Cherry",
+      "got": "291.918",
+      "expected": "291.937",
+      "tolerance": 1.0,
+      "abs_difference": 0.019188388566306003,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp_ci_low(backend formula, no cov term).Brand.Cherry",
+      "got": "204.656",
+      "expected": "204.685",
+      "tolerance": 1.5,
+      "abs_difference": 0.02917161470710994,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.recovery.Brand.Cherry",
+      "got": "291.937",
+      "expected": "333.333",
+      "tolerance": 116.66666666666666,
+      "abs_difference": 41.39627783094255,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.Storage.256GB",
+      "got": "407.028",
+      "expected": "406.95",
+      "tolerance": 1.0,
+      "abs_difference": 0.0776453354439468,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp_ci_low(backend formula, no cov term).Storage.256GB",
+      "got": "316.645",
+      "expected": "316.582",
+      "tolerance": 1.5,
+      "abs_difference": 0.06260883981900633,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.recovery.Storage.256GB",
+      "got": "406.95",
+      "expected": "400",
+      "tolerance": 140.0,
+      "abs_difference": 6.9499824537989525,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.Storage.64GB",
+      "got": "-519.431",
+      "expected": "-519.433",
+      "tolerance": 1.0,
+      "abs_difference": 0.0022596103657406275,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp_ci_low(backend formula, no cov term).Storage.64GB",
+      "got": "-624.419",
+      "expected": "-624.409",
+      "tolerance": 1.5,
+      "abs_difference": 0.0103322470480407,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.wtp.recovery.Storage.64GB",
+      "got": "-519.433",
+      "expected": "-533.333",
+      "tolerance": 186.66666666666666,
+      "abs_difference": 13.899847232061461,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.sim.Phone A.utility",
+      "got": "-0.976881",
+      "expected": "-0.976792",
+      "tolerance": 0.002,
+      "abs_difference": 8.854095515542504e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.sim.Phone A.share_pct",
+      "got": "25.9711",
+      "expected": "25.9746",
+      "tolerance": 0.05,
+      "abs_difference": 0.00350179068467682,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.sim.Phone B.utility",
+      "got": "-0.192845",
+      "expected": "-0.192918",
+      "tolerance": 0.002,
+      "abs_difference": 7.28556601329311e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.sim.Phone B.share_pct",
+      "got": "56.8842",
+      "expected": "56.8827",
+      "tolerance": 0.05,
+      "abs_difference": 0.0015114698693636797,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.sim.Phone C.utility",
+      "got": "-1.39217",
+      "expected": "-1.39234",
+      "tolerance": 0.002,
+      "abs_difference": 0.00016238043675453895,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.sim.Phone C.share_pct",
+      "got": "17.1447",
+      "expected": "17.1427",
+      "tolerance": 0.05,
+      "abs_difference": 0.001990320815316693,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.segments.count",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.segments.respondents_sum",
+      "got": "250",
+      "expected": "250",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.segments.pct_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.segment1.importance_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 1.4210854715202004e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.segment2.importance_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_none.segment3.importance_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ref_levels",
+      "got": "{\"Brand\": \"Apple\", \"Price\": \"\\u20a91,000\", \"Storage\": \"128GB\"}",
+      "expected": "{\"Brand\": \"Apple\", \"Price\": \"\\u20a91,000\", \"Storage\": \"128GB\"}",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.converged",
+      "got": "True",
+      "expected": "True",
+      "tolerance": null,
+      "abs_difference": null,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.coef.Brand.Banana",
+      "got": "-0.572927",
+      "expected": "-0.572701",
+      "tolerance": 0.001,
+      "abs_difference": 0.0002257191844763362,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.se.Brand.Banana",
+      "got": "0.0720501",
+      "expected": "0.0720489",
+      "tolerance": 0.0005,
+      "abs_difference": 1.2651373405003774e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.z.Brand.Banana",
+      "got": "-7.95178",
+      "expected": "-7.94879",
+      "tolerance": 0.02,
+      "abs_difference": 0.0029932341712228805,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.p.Brand.Banana",
+      "got": "1.77636e-15",
+      "expected": "1.8834e-15",
+      "tolerance": 0.001,
+      "abs_difference": 1.0703861004667977e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ci_low.Brand.Banana",
+      "got": "-0.714145",
+      "expected": "-0.713917",
+      "tolerance": 0.003,
+      "abs_difference": 0.00022819885366376358,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.recovery.Brand.Banana",
+      "got": "-0.572927",
+      "expected": "-0.6",
+      "tolerance": 0.2,
+      "abs_difference": 0.027072973273879253,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.coef.Brand.Cherry",
+      "got": "0.5611",
+      "expected": "0.561107",
+      "tolerance": 0.001,
+      "abs_difference": 7.124137342495729e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.se.Brand.Cherry",
+      "got": "0.0663511",
+      "expected": "0.0663516",
+      "tolerance": 0.0005,
+      "abs_difference": 5.612455797887606e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.z.Brand.Cherry",
+      "got": "8.45653",
+      "expected": "8.45657",
+      "tolerance": 0.02,
+      "abs_difference": 3.5838542016719543e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.p.Brand.Cherry",
+      "got": "0",
+      "expected": "2.75362e-17",
+      "tolerance": 0.001,
+      "abs_difference": 2.7536202890730688e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ci_low.Brand.Cherry",
+      "got": "0.431052",
+      "expected": "0.431058",
+      "tolerance": 0.003,
+      "abs_difference": 6.024096006085333e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.recovery.Brand.Cherry",
+      "got": "0.5611",
+      "expected": "0.5",
+      "tolerance": 0.2,
+      "abs_difference": 0.06110004216268816,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.reference.Brand.Apple",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.coef.Price.\u20a91,500",
+      "got": "-0.782173",
+      "expected": "-0.782294",
+      "tolerance": 0.001,
+      "abs_difference": 0.0001202890869385076,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.se.Price.\u20a91,500",
+      "got": "0.0661727",
+      "expected": "0.066174",
+      "tolerance": 0.0005,
+      "abs_difference": 1.3377702275801928e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.z.Price.\u20a91,500",
+      "got": "-11.8202",
+      "expected": "-11.8218",
+      "tolerance": 0.02,
+      "abs_difference": 0.001578812683483477,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.p.Price.\u20a91,500",
+      "got": "0",
+      "expected": "3.01294e-32",
+      "tolerance": 0.001,
+      "abs_difference": 3.012943394642415e-32,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ci_low.Price.\u20a91,500",
+      "got": "-0.911872",
+      "expected": "-0.911995",
+      "tolerance": 0.003,
+      "abs_difference": 0.00012291111658457865,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.recovery.Price.\u20a91,500",
+      "got": "-0.782173",
+      "expected": "-0.7",
+      "tolerance": 0.2,
+      "abs_difference": 0.08217339985408234,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.coef.Price.\u20a92,000",
+      "got": "-1.5248",
+      "expected": "-1.52461",
+      "tolerance": 0.001,
+      "abs_difference": 0.0001938541282673345,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.se.Price.\u20a92,000",
+      "got": "0.0745861",
+      "expected": "0.0745838",
+      "tolerance": 0.0005,
+      "abs_difference": 2.2971474427924132e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.z.Price.\u20a92,000",
+      "got": "-20.4435",
+      "expected": "-20.4415",
+      "tolerance": 0.02,
+      "abs_difference": 0.001969494480061229,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.p.Price.\u20a92,000",
+      "got": "0",
+      "expected": "7.14883e-93",
+      "tolerance": 0.001,
+      "abs_difference": 7.14883495747409e-93,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ci_low.Price.\u20a92,000",
+      "got": "-1.67099",
+      "expected": "-1.67079",
+      "tolerance": 0.003,
+      "abs_difference": 0.00019835653725519542,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.recovery.Price.\u20a92,000",
+      "got": "-1.5248",
+      "expected": "-1.5",
+      "tolerance": 0.2,
+      "abs_difference": 0.024800112652474615,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.reference.Price.\u20a91,000",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.coef.Storage.256GB",
+      "got": "0.581265",
+      "expected": "0.58135",
+      "tolerance": 0.001,
+      "abs_difference": 8.506423759757631e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.se.Storage.256GB",
+      "got": "0.0652276",
+      "expected": "0.0652268",
+      "tolerance": 0.0005,
+      "abs_difference": 7.232316262123506e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.z.Storage.256GB",
+      "got": "8.91134",
+      "expected": "8.91275",
+      "tolerance": 0.02,
+      "abs_difference": 0.0014029377023732081,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.p.Storage.256GB",
+      "got": "0",
+      "expected": "4.97831e-19",
+      "tolerance": 0.001,
+      "abs_difference": 4.978311517390367e-19,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ci_low.Storage.256GB",
+      "got": "0.453419",
+      "expected": "0.453506",
+      "tolerance": 0.003,
+      "abs_difference": 8.648177158498971e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.recovery.Storage.256GB",
+      "got": "0.581265",
+      "expected": "0.6",
+      "tolerance": 0.2,
+      "abs_difference": 0.018734616936649684,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.coef.Storage.64GB",
+      "got": "-0.882013",
+      "expected": "-0.882242",
+      "tolerance": 0.001,
+      "abs_difference": 0.00022906728562566148,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.se.Storage.64GB",
+      "got": "0.0733837",
+      "expected": "0.0733858",
+      "tolerance": 0.0005,
+      "abs_difference": 2.0478740192508837e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.z.Storage.64GB",
+      "got": "-12.0192",
+      "expected": "-12.022",
+      "tolerance": 0.02,
+      "abs_difference": 0.002786010094446567,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.p.Storage.64GB",
+      "got": "0",
+      "expected": "2.72383e-33",
+      "tolerance": 0.001,
+      "abs_difference": 2.7238344269288292e-33,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.ci_low.Storage.64GB",
+      "got": "-1.02584",
+      "expected": "-1.02608",
+      "tolerance": 0.003,
+      "abs_difference": 0.00023308111870323778,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.recovery.Storage.64GB",
+      "got": "-0.882013",
+      "expected": "-0.8",
+      "tolerance": 0.2,
+      "abs_difference": 0.08201281963164275,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.reference.Storage.128GB",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.loglik",
+      "got": "-2180.08",
+      "expected": "-2180.08",
+      "tolerance": 0.001,
+      "abs_difference": 2.70811856353248e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.loglik_null",
+      "got": "-2746.53",
+      "expected": "-2746.53",
+      "tolerance": 1e-08,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.aic",
+      "got": "4372.16",
+      "expected": "4372.16",
+      "tolerance": 0.002,
+      "abs_difference": 5.41623712706496e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.bic(n=choice sets)",
+      "got": "4407.11",
+      "expected": "4407.11",
+      "tolerance": 0.002,
+      "abs_difference": 5.41623712706496e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.aicc",
+      "got": "4372.2",
+      "expected": "4372.2",
+      "tolerance": 0.002,
+      "abs_difference": 5.41623712706496e-05,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.mcfadden_r2",
+      "got": "0.206242",
+      "expected": "0.206242",
+      "tolerance": 1e-06,
+      "abs_difference": 9.860143035389513e-09,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.adj_mcfadden_r2",
+      "got": "0.204057",
+      "expected": "0.204057",
+      "tolerance": 1e-06,
+      "abs_difference": 9.86014292436721e-09,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.hit_rate",
+      "got": "0.6044",
+      "expected": "0.6044",
+      "tolerance": 1e-12,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.n_respondents",
+      "got": "250",
+      "expected": "250",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.n_tasks(choice sets)",
+      "got": "2500",
+      "expected": "2500",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.n_parameters",
+      "got": "6",
+      "expected": "6",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.importance.Brand",
+      "got": "27.5109",
+      "expected": "27.5062",
+      "tolerance": 0.05,
+      "abs_difference": 0.0046469353932536706,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.importance.Price",
+      "got": "36.9908",
+      "expected": "36.987",
+      "tolerance": 0.05,
+      "abs_difference": 0.003820605622301798,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.importance.Storage",
+      "got": "35.4983",
+      "expected": "35.5068",
+      "tolerance": 0.05,
+      "abs_difference": 0.00846754101556968,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.beta_price",
+      "got": "-0.00152744",
+      "expected": "-0.00152759",
+      "tolerance": 2e-06,
+      "abs_difference": 1.4250014341720026e-07,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.Brand.Banana",
+      "got": "-375.45",
+      "expected": "-375.215",
+      "tolerance": 1.0,
+      "abs_difference": 0.23500410219122614,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp_ci_low(backend formula, no cov term).Brand.Banana",
+      "got": "-474.563",
+      "expected": "-474.309",
+      "tolerance": 1.5,
+      "abs_difference": 0.2532638243243923,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.recovery.Brand.Banana",
+      "got": "-375.215",
+      "expected": "-400",
+      "tolerance": 140.0,
+      "abs_difference": 24.785117982304598,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.Brand.Cherry",
+      "got": "367.001",
+      "expected": "367.031",
+      "tolerance": 1.0,
+      "abs_difference": 0.029845550466632176,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp_ci_low(backend formula, no cov term).Brand.Cherry",
+      "got": "274.988",
+      "expected": "275.024",
+      "tolerance": 1.5,
+      "abs_difference": 0.03549457886072105,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.recovery.Brand.Cherry",
+      "got": "367.031",
+      "expected": "333.333",
+      "tolerance": 116.66666666666666,
+      "abs_difference": 33.697832541651564,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.Storage.256GB",
+      "got": "380.805",
+      "expected": "380.802",
+      "tolerance": 1.0,
+      "abs_difference": 0.002767997097237185,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp_ci_low(backend formula, no cov term).Storage.256GB",
+      "got": "289.598",
+      "expected": "289.603",
+      "tolerance": 1.5,
+      "abs_difference": 0.005182514870512023,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.recovery.Storage.256GB",
+      "got": "380.802",
+      "expected": "400",
+      "tolerance": 140.0,
+      "abs_difference": 19.197528227884902,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.Storage.64GB",
+      "got": "-577.265",
+      "expected": "-577.226",
+      "tolerance": 1.0,
+      "abs_difference": 0.03879263039846137,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp_ci_low(backend formula, no cov term).Storage.64GB",
+      "got": "-686.304",
+      "expected": "-686.255",
+      "tolerance": 1.5,
+      "abs_difference": 0.0495165318313866,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.wtp.recovery.Storage.64GB",
+      "got": "-577.226",
+      "expected": "-533.333",
+      "tolerance": 186.66666666666666,
+      "abs_difference": 43.89246039276304,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.sim.Phone A.utility",
+      "got": "-0.943535",
+      "expected": "-0.943256",
+      "tolerance": 0.002,
+      "abs_difference": 0.0002789183658649108,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.sim.Phone A.share_pct",
+      "got": "27.3288",
+      "expected": "27.3361",
+      "tolerance": 0.05,
+      "abs_difference": 0.007295597273742516,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.sim.Phone B.utility",
+      "got": "-0.221073",
+      "expected": "-0.221187",
+      "tolerance": 0.002,
+      "abs_difference": 0.00011316494959601187,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.sim.Phone B.share_pct",
+      "got": "56.2835",
+      "expected": "56.2764",
+      "tolerance": 0.05,
+      "abs_difference": 0.007044123316681805,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.sim.Phone C.utility",
+      "got": "-1.45494",
+      "expected": "-1.45494",
+      "tolerance": 0.002,
+      "abs_difference": 3.348101149436289e-06,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.sim.Phone C.share_pct",
+      "got": "16.3878",
+      "expected": "16.3875",
+      "tolerance": 0.05,
+      "abs_difference": 0.0002514739570607105,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.segments.count",
+      "got": "3",
+      "expected": "3",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.segments.respondents_sum",
+      "got": "250",
+      "expected": "250",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.segments.pct_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.segment1.importance_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.segment2.importance_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "cbc_plain.segment3.importance_sum",
+      "got": "100",
+      "expected": "100",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    }
+  ]
+}

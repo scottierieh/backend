@@ -20,6 +20,23 @@ def run_script(script, payload):
         raise RuntimeError(f"{script} failed: {p.stderr[:500]}")
     return json.loads(p.stdout)
 
+def run_router(module_name, path, payload, expect_status=200):
+    """POST a payload to a FastAPI router module (rc_analysis, conjoint_analysis, ...)
+    exactly as the deployed app does — the router is mounted under /api/analysis
+    on a bare FastAPI app, so request validation and the endpoint body run for
+    real. Returns the parsed JSON body."""
+    import importlib
+    root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path: sys.path.insert(0, root)
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    mod=importlib.import_module(module_name)
+    app=FastAPI(); app.include_router(mod.router, prefix="/api/analysis")
+    r=TestClient(app).post(f"/api/analysis{path}", json=payload)
+    if r.status_code!=expect_status:
+        raise RuntimeError(f"{module_name}{path} -> {r.status_code}: {r.text[:500]}")
+    return r.json()
+
 def _fmt(v):
     """Format a scalar value for the per-check detail table."""
     if v is None: return "None"

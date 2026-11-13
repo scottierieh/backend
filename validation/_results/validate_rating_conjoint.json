@@ -1,0 +1,1362 @@
+{
+  "title": "RATING-BASED CONJOINT (Python)",
+  "total_checks": 167,
+  "numeric_checks": 167,
+  "exact_checks": 0,
+  "pass": 167,
+  "fail": 0,
+  "pass_rate": 100.0,
+  "tolerance_min": 0,
+  "tolerance_max": 0.25,
+  "max_abs_difference": 0.03691319751992873,
+  "all_within_tolerance": true,
+  "language": "Python",
+  "runtime_version": "3.11.18",
+  "platform": "Linux-5.10.0-32-cloud-amd64-x86_64-with-glibc2.41",
+  "packages": {
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scipy": "1.14.1",
+    "statsmodels": "0.14.4"
+  },
+  "git_commit": "bcea042",
+  "validation_date": "2026-11-13",
+  "checks": [
+    {
+      "name": "rc.brand.Alpha.utility",
+      "got": "0.788356",
+      "expected": "0.788356",
+      "tolerance": 1e-09,
+      "abs_difference": 4.773959005888173e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Alpha.se",
+      "got": "0.0579377",
+      "expected": "0.0579377",
+      "tolerance": 1e-09,
+      "abs_difference": 1.0408340855860843e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Alpha.t",
+      "got": "13.607",
+      "expected": "13.607",
+      "tolerance": 1e-07,
+      "abs_difference": 5.684341886080802e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Alpha.p",
+      "got": "1.21011e-38",
+      "expected": "1.21011e-38",
+      "tolerance": 1e-06,
+      "abs_difference": 8.133139488913361e-51,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Alpha.ci_low",
+      "got": "0.674655",
+      "expected": "0.674655",
+      "tolerance": 1e-06,
+      "abs_difference": 2.6617485993085666e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Alpha.ci_high",
+      "got": "0.902057",
+      "expected": "0.902057",
+      "tolerance": 1e-06,
+      "abs_difference": 2.6627033911097442e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Beta.utility",
+      "got": "0.12356",
+      "expected": "0.12356",
+      "tolerance": 1e-09,
+      "abs_difference": 1.3877787807814457e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Beta.se",
+      "got": "0.0535548",
+      "expected": "0.0535548",
+      "tolerance": 1e-09,
+      "abs_difference": 3.469446951953614e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Beta.t",
+      "got": "2.30717",
+      "expected": "2.30717",
+      "tolerance": 1e-07,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Beta.p",
+      "got": "0.0212605",
+      "expected": "0.0212605",
+      "tolerance": 1e-06,
+      "abs_difference": 3.9614145297406367e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Beta.ci_low",
+      "got": "0.0184601",
+      "expected": "0.0184601",
+      "tolerance": 1e-06,
+      "abs_difference": 2.4608023951877556e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Beta.ci_high",
+      "got": "0.22866",
+      "expected": "0.22866",
+      "tolerance": 1e-06,
+      "abs_difference": 2.4608287629845904e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Gamma.utility",
+      "got": "-0.911916",
+      "expected": "-0.911916",
+      "tolerance": 1e-09,
+      "abs_difference": 4.884981308350689e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Gamma.se",
+      "got": "0.0544718",
+      "expected": "0.0544718",
+      "tolerance": 1e-09,
+      "abs_difference": 3.469446951953614e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Gamma.t",
+      "got": "-16.7411",
+      "expected": "-16.7411",
+      "tolerance": 1e-07,
+      "abs_difference": 7.815970093361102e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Gamma.p",
+      "got": "2.64486e-55",
+      "expected": "2.64486e-55",
+      "tolerance": 1e-06,
+      "abs_difference": 2.919550935013732e-67,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Gamma.ci_low",
+      "got": "-1.01882",
+      "expected": "-1.01882",
+      "tolerance": 1e-06,
+      "abs_difference": 2.5034418982272655e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.brand.Gamma.ci_high",
+      "got": "-0.805017",
+      "expected": "-0.805017",
+      "tolerance": 1e-06,
+      "abs_difference": 2.5024649019655953e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,000\uc6d0.utility",
+      "got": "1.17968",
+      "expected": "1.17968",
+      "tolerance": 1e-09,
+      "abs_difference": 8.881784197001252e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,000\uc6d0.se",
+      "got": "0.0508972",
+      "expected": "0.0508972",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,000\uc6d0.t",
+      "got": "23.1777",
+      "expected": "23.1777",
+      "tolerance": 1e-07,
+      "abs_difference": 1.7763568394002505e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,000\uc6d0.p",
+      "got": "1.7082e-94",
+      "expected": "1.7082e-94",
+      "tolerance": 1e-06,
+      "abs_difference": 5.460833494810453e-107,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,000\uc6d0.ci_low",
+      "got": "1.0798",
+      "expected": "1.0798",
+      "tolerance": 1e-06,
+      "abs_difference": 2.3386181879914147e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,000\uc6d0.ci_high",
+      "got": "1.27957",
+      "expected": "1.27957",
+      "tolerance": 1e-06,
+      "abs_difference": 2.3387958236753548e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,500\uc6d0.utility",
+      "got": "0.0975568",
+      "expected": "0.0975568",
+      "tolerance": 1e-09,
+      "abs_difference": 4.163336342344337e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,500\uc6d0.se",
+      "got": "0.0501054",
+      "expected": "0.0501054",
+      "tolerance": 1e-09,
+      "abs_difference": 2.0816681711721685e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,500\uc6d0.t",
+      "got": "1.94703",
+      "expected": "1.94703",
+      "tolerance": 1e-07,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,500\uc6d0.p",
+      "got": "0.0518262",
+      "expected": "0.0518262",
+      "tolerance": 1e-06,
+      "abs_difference": 1.6380646838953794e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,500\uc6d0.ci_low",
+      "got": "-0.000773644",
+      "expected": "-0.000773643",
+      "tolerance": 1e-06,
+      "abs_difference": 2.3023125073073913e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.1,500\uc6d0.ci_high",
+      "got": "0.195887",
+      "expected": "0.195887",
+      "tolerance": 1e-06,
+      "abs_difference": 2.3023222217588568e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.2,000\uc6d0.utility",
+      "got": "-1.27724",
+      "expected": "-1.27724",
+      "tolerance": 1e-09,
+      "abs_difference": 8.881784197001252e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.2,000\uc6d0.se",
+      "got": "0.0593803",
+      "expected": "0.0593803",
+      "tolerance": 1e-09,
+      "abs_difference": 2.0816681711721685e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.2,000\uc6d0.t",
+      "got": "-21.5095",
+      "expected": "-21.5095",
+      "tolerance": 1e-07,
+      "abs_difference": 2.1316282072803006e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.2,000\uc6d0.p",
+      "got": "7.09739e-84",
+      "expected": "7.09739e-84",
+      "tolerance": 1e-06,
+      "abs_difference": 2.920561382204469e-96,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.2,000\uc6d0.ci_low",
+      "got": "-1.39377",
+      "expected": "-1.39377",
+      "tolerance": 1e-06,
+      "abs_difference": 2.7285729231607547e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.price.2,000\uc6d0.ci_high",
+      "got": "-1.16071",
+      "expected": "-1.16071",
+      "tolerance": 1e-06,
+      "abs_difference": 2.7283952874768147e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.S.utility",
+      "got": "-0.721386",
+      "expected": "-0.721386",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.S.se",
+      "got": "0.104078",
+      "expected": "0.104078",
+      "tolerance": 1e-09,
+      "abs_difference": 6.938893903907228e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.S.t",
+      "got": "-6.93121",
+      "expected": "-6.93121",
+      "tolerance": 1e-07,
+      "abs_difference": 4.440892098500626e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.S.p",
+      "got": "7.70964e-12",
+      "expected": "7.70964e-12",
+      "tolerance": 1e-06,
+      "abs_difference": 5.557619740590655e-25,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.S.ci_low",
+      "got": "-0.925636",
+      "expected": "-0.925636",
+      "tolerance": 1e-06,
+      "abs_difference": 4.782330087493847e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.S.ci_high",
+      "got": "-0.517136",
+      "expected": "-0.517136",
+      "tolerance": 1e-06,
+      "abs_difference": 4.782330087493847e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.M.utility",
+      "got": "0.0369132",
+      "expected": "0.0369132",
+      "tolerance": 1e-09,
+      "abs_difference": 2.2898349882893854e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.M.se",
+      "got": "0.0596344",
+      "expected": "0.0596344",
+      "tolerance": 1e-09,
+      "abs_difference": 5.551115123125783e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.M.t",
+      "got": "0.618992",
+      "expected": "0.618992",
+      "tolerance": 1e-07,
+      "abs_difference": 3.3306690738754696e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.M.p",
+      "got": "0.536071",
+      "expected": "0.536071",
+      "tolerance": 1e-06,
+      "abs_difference": 4.3298697960381105e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.M.ci_low",
+      "got": "-0.0801176",
+      "expected": "-0.0801176",
+      "tolerance": 1e-06,
+      "abs_difference": 2.740171978210526e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.M.ci_high",
+      "got": "0.153944",
+      "expected": "0.153944",
+      "tolerance": 1e-06,
+      "abs_difference": 2.740127569289541e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.L.utility",
+      "got": "0.401063",
+      "expected": "0.401063",
+      "tolerance": 1e-09,
+      "abs_difference": 1.1102230246251565e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.L.se",
+      "got": "0.0713167",
+      "expected": "0.0713167",
+      "tolerance": 1e-09,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.L.t",
+      "got": "5.62369",
+      "expected": "5.62369",
+      "tolerance": 1e-07,
+      "abs_difference": 1.5987211554602254e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.L.p",
+      "got": "2.45971e-08",
+      "expected": "2.45971e-08",
+      "tolerance": 1e-06,
+      "abs_difference": 1.3863547066388744e-21,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.L.ci_low",
+      "got": "0.261106",
+      "expected": "0.261106",
+      "tolerance": 1e-06,
+      "abs_difference": 3.277067506246567e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.L.ci_high",
+      "got": "0.54102",
+      "expected": "0.54102",
+      "tolerance": 1e-06,
+      "abs_difference": 3.276845461641642e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.XL.utility",
+      "got": "0.28341",
+      "expected": "0.28341",
+      "tolerance": 1e-09,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.XL.se",
+      "got": "0.0700005",
+      "expected": "0.0700005",
+      "tolerance": 1e-09,
+      "abs_difference": 2.7755575615628914e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.XL.t",
+      "got": "4.04869",
+      "expected": "4.04869",
+      "tolerance": 1e-07,
+      "abs_difference": 1.7763568394002505e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.XL.p",
+      "got": "5.57137e-05",
+      "expected": "5.57137e-05",
+      "tolerance": 1e-06,
+      "abs_difference": 1.9027748127120603e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.XL.ci_low",
+      "got": "0.146036",
+      "expected": "0.146036",
+      "tolerance": 1e-06,
+      "abs_difference": 3.216349409029817e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.size.XL.ci_high",
+      "got": "0.420784",
+      "expected": "0.420784",
+      "tolerance": 1e-06,
+      "abs_difference": 3.216615862555727e-11,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.intercept",
+      "got": "5.45335",
+      "expected": "5.45335",
+      "tolerance": 1e-09,
+      "abs_difference": 2.6645352591003757e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.intercept.se",
+      "got": "0.0448051",
+      "expected": "0.0448051",
+      "tolerance": 1e-09,
+      "abs_difference": 6.245004513516506e-17,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.intercept.p",
+      "got": "0",
+      "expected": "0",
+      "tolerance": 1e-06,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.r2",
+      "got": "0.510904",
+      "expected": "0.510904",
+      "tolerance": 1e-10,
+      "abs_difference": 1.1102230246251565e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.adj_r2",
+      "got": "0.507289",
+      "expected": "0.507289",
+      "tolerance": 1e-10,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.rmse(\u221a(SSR/n))",
+      "got": "0.992834",
+      "expected": "0.992834",
+      "tolerance": 1e-10,
+      "abs_difference": 1.1102230246251565e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.loglik",
+      "got": "-1348.22",
+      "expected": "-1348.22",
+      "tolerance": 1e-08,
+      "abs_difference": 2.2737367544323206e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.aic",
+      "got": "2712.44",
+      "expected": "2712.44",
+      "tolerance": 1e-08,
+      "abs_difference": 4.547473508864641e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bic",
+      "got": "2751.33",
+      "expected": "2751.33",
+      "tolerance": 1e-08,
+      "abs_difference": 4.547473508864641e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.aicc",
+      "got": "2712.59",
+      "expected": "2712.59",
+      "tolerance": 1e-08,
+      "abs_difference": 4.547473508864641e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.F",
+      "got": "141.318",
+      "expected": "141.318",
+      "tolerance": 1e-08,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.F.p",
+      "got": "2.35488e-142",
+      "expected": "2.35488e-142",
+      "tolerance": 1e-09,
+      "abs_difference": 3.860274011265732e-155,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.df_resid",
+      "got": "947",
+      "expected": "947",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.n_obs",
+      "got": "955",
+      "expected": "955",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.n_respondents",
+      "got": "80",
+      "expected": "80",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.importance.brand",
+      "got": "32.2043",
+      "expected": "32.2043",
+      "tolerance": 1e-09,
+      "abs_difference": 1.2789769243681803e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.importance.price",
+      "got": "46.5358",
+      "expected": "46.5358",
+      "tolerance": 1e-09,
+      "abs_difference": 4.973799150320701e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.importance.size",
+      "got": "21.2599",
+      "expected": "21.2599",
+      "tolerance": 1e-09,
+      "abs_difference": 5.684341886080802e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.brand.Alpha",
+      "got": "320.871",
+      "expected": "320.871",
+      "tolerance": 1e-06,
+      "abs_difference": 1.8189894035458565e-12,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.brand.Beta",
+      "got": "50.2905",
+      "expected": "50.2905",
+      "tolerance": 1e-06,
+      "abs_difference": 4.263256414560601e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.brand.Gamma",
+      "got": "-371.162",
+      "expected": "-371.162",
+      "tolerance": 1e-06,
+      "abs_difference": 1.8189894035458565e-12,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.size.S",
+      "got": "-293.614",
+      "expected": "-293.614",
+      "tolerance": 1e-06,
+      "abs_difference": 5.684341886080802e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.size.M",
+      "got": "15.0242",
+      "expected": "15.0242",
+      "tolerance": 1e-06,
+      "abs_difference": 9.947598300641403e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.size.L",
+      "got": "163.238",
+      "expected": "163.238",
+      "tolerance": 1e-06,
+      "abs_difference": 5.115907697472721e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.wtp.size.XL",
+      "got": "115.352",
+      "expected": "115.352",
+      "tolerance": 1e-06,
+      "abs_difference": 4.973799150320701e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.holdout.mse",
+      "got": "1.02484",
+      "expected": "1.02484",
+      "tolerance": 1e-09,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.holdout.mae",
+      "got": "0.754716",
+      "expected": "0.754716",
+      "tolerance": 1e-09,
+      "abs_difference": 2.4424906541753444e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.holdout.r2",
+      "got": "0.594123",
+      "expected": "0.594123",
+      "tolerance": 1e-09,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.brand.Alpha",
+      "got": "0.788356",
+      "expected": "0.8",
+      "tolerance": 0.25,
+      "abs_difference": 0.011643785060527656,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.brand.Beta",
+      "got": "0.12356",
+      "expected": "0.1",
+      "tolerance": 0.25,
+      "abs_difference": 0.023559935045762218,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.brand.Gamma",
+      "got": "-0.911916",
+      "expected": "-0.9",
+      "tolerance": 0.25,
+      "abs_difference": 0.011916149985234603,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.price.1,000\uc6d0",
+      "got": "1.17968",
+      "expected": "1.2",
+      "tolerance": 0.25,
+      "abs_difference": 0.020317390020667903,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.price.1,500\uc6d0",
+      "got": "0.0975568",
+      "expected": "0.1",
+      "tolerance": 0.25,
+      "abs_difference": 0.0024431650428101553,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.price.2,000\uc6d0",
+      "got": "-1.27724",
+      "expected": "-1.3",
+      "tolerance": 0.25,
+      "abs_difference": 0.022760555063478183,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.size.S",
+      "got": "-0.721386",
+      "expected": "-0.7",
+      "tolerance": 0.25,
+      "abs_difference": 0.021386182462357683,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.size.M",
+      "got": "0.0369132",
+      "expected": "0",
+      "tolerance": 0.25,
+      "abs_difference": 0.03691319751992873,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.size.L",
+      "got": "0.401063",
+      "expected": "0.4",
+      "tolerance": 0.25,
+      "abs_difference": 0.001062887511072086,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.recovery.size.XL",
+      "got": "0.28341",
+      "expected": "0.3",
+      "tolerance": 0.25,
+      "abs_difference": 0.016589902568643178,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual.count",
+      "got": "80",
+      "expected": "80",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].brand.Alpha",
+      "got": "1.07306",
+      "expected": "1.07306",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].brand.Beta",
+      "got": "0.637443",
+      "expected": "0.637443",
+      "tolerance": 1e-08,
+      "abs_difference": 1.887379141862766e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].brand.Gamma",
+      "got": "-1.7105",
+      "expected": "-1.7105",
+      "tolerance": 1e-08,
+      "abs_difference": 3.9968028886505635e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].price.1,000\uc6d0",
+      "got": "1.70137",
+      "expected": "1.70137",
+      "tolerance": 1e-08,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].price.1,500\uc6d0",
+      "got": "-0.232877",
+      "expected": "-0.232877",
+      "tolerance": 1e-08,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].price.2,000\uc6d0",
+      "got": "-1.46849",
+      "expected": "-1.46849",
+      "tolerance": 1e-08,
+      "abs_difference": 8.881784197001252e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].size.S",
+      "got": "-0.591781",
+      "expected": "-0.591781",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].size.M",
+      "got": "-0.219178",
+      "expected": "-0.219178",
+      "tolerance": 1e-08,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].size.L",
+      "got": "0.767123",
+      "expected": "0.767123",
+      "tolerance": 1e-08,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r0].size.XL",
+      "got": "0.0438356",
+      "expected": "0.0438356",
+      "tolerance": 1e-08,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].brand.Alpha",
+      "got": "0.726027",
+      "expected": "0.726027",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].brand.Beta",
+      "got": "-0.090411",
+      "expected": "-0.090411",
+      "tolerance": 1e-08,
+      "abs_difference": 2.886579864025407e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].brand.Gamma",
+      "got": "-0.635616",
+      "expected": "-0.635616",
+      "tolerance": 1e-08,
+      "abs_difference": 5.10702591327572e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].price.1,000\uc6d0",
+      "got": "0.83653",
+      "expected": "0.83653",
+      "tolerance": 1e-08,
+      "abs_difference": 3.3306690738754696e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].price.1,500\uc6d0",
+      "got": "-0.210046",
+      "expected": "-0.210046",
+      "tolerance": 1e-08,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].price.2,000\uc6d0",
+      "got": "-0.626484",
+      "expected": "-0.626484",
+      "tolerance": 1e-08,
+      "abs_difference": 9.992007221626409e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].size.S",
+      "got": "-0.0808219",
+      "expected": "-0.0808219",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].size.M",
+      "got": "0.321918",
+      "expected": "0.321918",
+      "tolerance": 1e-08,
+      "abs_difference": 1.7763568394002505e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].size.L",
+      "got": "-0.376712",
+      "expected": "-0.376712",
+      "tolerance": 1e-08,
+      "abs_difference": 1.9984014443252818e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r1].size.XL",
+      "got": "0.135616",
+      "expected": "0.135616",
+      "tolerance": 1e-08,
+      "abs_difference": 1.5543122344752192e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].brand.Alpha",
+      "got": "0.789954",
+      "expected": "0.789954",
+      "tolerance": 1e-08,
+      "abs_difference": 2.6645352591003757e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].brand.Beta",
+      "got": "0.0173516",
+      "expected": "0.0173516",
+      "tolerance": 1e-08,
+      "abs_difference": 2.4424906541753444e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].brand.Gamma",
+      "got": "-0.807306",
+      "expected": "-0.807306",
+      "tolerance": 1e-08,
+      "abs_difference": 5.10702591327572e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].price.1,000\uc6d0",
+      "got": "1.91689",
+      "expected": "1.91689",
+      "tolerance": 1e-08,
+      "abs_difference": 4.440892098500626e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].price.1,500\uc6d0",
+      "got": "0.127854",
+      "expected": "0.127854",
+      "tolerance": 1e-08,
+      "abs_difference": 1.9984014443252818e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].price.2,000\uc6d0",
+      "got": "-2.04475",
+      "expected": "-2.04475",
+      "tolerance": 1e-08,
+      "abs_difference": 2.6645352591003757e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].size.S",
+      "got": "0.35137",
+      "expected": "0.35137",
+      "tolerance": 1e-08,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].size.M",
+      "got": "-0.119863",
+      "expected": "-0.119863",
+      "tolerance": 1e-08,
+      "abs_difference": 8.881784197001252e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].size.L",
+      "got": "0.0445205",
+      "expected": "0.0445205",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r2].size.XL",
+      "got": "-0.276027",
+      "expected": "-0.276027",
+      "tolerance": 1e-08,
+      "abs_difference": 1.7763568394002505e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].brand.Alpha",
+      "got": "0.843137",
+      "expected": "0.843137",
+      "tolerance": 1e-08,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].brand.Beta",
+      "got": "1.11373",
+      "expected": "1.11373",
+      "tolerance": 1e-08,
+      "abs_difference": 2.4424906541753444e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].brand.Gamma",
+      "got": "-1.95686",
+      "expected": "-1.95686",
+      "tolerance": 1e-08,
+      "abs_difference": 3.774758283725532e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].price.1,000\uc6d0",
+      "got": "2.15294",
+      "expected": "2.15294",
+      "tolerance": 1e-08,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].price.1,500\uc6d0",
+      "got": "0.588235",
+      "expected": "0.588235",
+      "tolerance": 1e-08,
+      "abs_difference": 5.551115123125783e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].price.2,000\uc6d0",
+      "got": "-2.74118",
+      "expected": "-2.74118",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].size.S",
+      "got": "-1.05",
+      "expected": "-1.05",
+      "tolerance": 1e-08,
+      "abs_difference": 6.217248937900877e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].size.M",
+      "got": "0.338235",
+      "expected": "0.338235",
+      "tolerance": 1e-08,
+      "abs_difference": 8.881784197001252e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].size.L",
+      "got": "0.632353",
+      "expected": "0.632353",
+      "tolerance": 1e-08,
+      "abs_difference": 3.219646771412954e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r3].size.XL",
+      "got": "0.0794118",
+      "expected": "0.0794118",
+      "tolerance": 1e-08,
+      "abs_difference": 2.1094237467877974e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].brand.Alpha",
+      "got": "0.977169",
+      "expected": "0.977169",
+      "tolerance": 1e-08,
+      "abs_difference": 2.886579864025407e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].brand.Beta",
+      "got": "-0.524201",
+      "expected": "-0.524201",
+      "tolerance": 1e-08,
+      "abs_difference": 2.1094237467877974e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].brand.Gamma",
+      "got": "-0.452968",
+      "expected": "-0.452968",
+      "tolerance": 1e-08,
+      "abs_difference": 4.9960036108132044e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].price.1,000\uc6d0",
+      "got": "1.24749",
+      "expected": "1.24749",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].price.1,500\uc6d0",
+      "got": "-0.0730594",
+      "expected": "-0.0730594",
+      "tolerance": 1e-08,
+      "abs_difference": 1.5543122344752192e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].price.2,000\uc6d0",
+      "got": "-1.17443",
+      "expected": "-1.17443",
+      "tolerance": 1e-08,
+      "abs_difference": 1.7763568394002505e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].size.S",
+      "got": "-0.865068",
+      "expected": "-0.865068",
+      "tolerance": 1e-08,
+      "abs_difference": 2.220446049250313e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].size.M",
+      "got": "0.318493",
+      "expected": "0.318493",
+      "tolerance": 1e-08,
+      "abs_difference": 1.3322676295501878e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].size.L",
+      "got": "0.510274",
+      "expected": "0.510274",
+      "tolerance": 1e-08,
+      "abs_difference": 1.5543122344752192e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.individual[r4].size.XL",
+      "got": "0.0363014",
+      "expected": "0.0363014",
+      "tolerance": 1e-08,
+      "abs_difference": 6.661338147750939e-16,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[A].importance.brand",
+      "got": "34.5051",
+      "expected": "34.5051",
+      "tolerance": 1e-08,
+      "abs_difference": 1.0658141036401503e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[A].importance.price",
+      "got": "45.9385",
+      "expected": "45.9385",
+      "tolerance": 1e-08,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[A].importance.size",
+      "got": "19.5564",
+      "expected": "19.5564",
+      "tolerance": 1e-08,
+      "abs_difference": 1.2079226507921703e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[A].n",
+      "got": "53",
+      "expected": "53",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[B].importance.brand",
+      "got": "27.6406",
+      "expected": "27.6406",
+      "tolerance": 1e-08,
+      "abs_difference": 7.105427357601002e-15,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[B].importance.price",
+      "got": "47.7205",
+      "expected": "47.7205",
+      "tolerance": 1e-08,
+      "abs_difference": 1.1368683772161603e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[B].importance.size",
+      "got": "24.639",
+      "expected": "24.639",
+      "tolerance": 1e-08,
+      "abs_difference": 1.1013412404281553e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.segment[B].n",
+      "got": "27",
+      "expected": "27",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.iterations",
+      "got": "500",
+      "expected": "500",
+      "tolerance": 0,
+      "abs_difference": 0.0,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.brand.mean",
+      "got": "32.0898",
+      "expected": "32.0898",
+      "tolerance": 1e-07,
+      "abs_difference": 1.4210854715202004e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.brand.ci_lo",
+      "got": "29.1107",
+      "expected": "29.1107",
+      "tolerance": 1e-07,
+      "abs_difference": 9.947598300641403e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.brand.ci_hi",
+      "got": "34.9268",
+      "expected": "34.9268",
+      "tolerance": 1e-07,
+      "abs_difference": 7.105427357601002e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.price.mean",
+      "got": "46.5257",
+      "expected": "46.5257",
+      "tolerance": 1e-07,
+      "abs_difference": 2.1316282072803006e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.price.ci_lo",
+      "got": "42.9831",
+      "expected": "42.9831",
+      "tolerance": 1e-07,
+      "abs_difference": 1.9895196601282805e-13,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.price.ci_hi",
+      "got": "50.4608",
+      "expected": "50.4608",
+      "tolerance": 1e-07,
+      "abs_difference": 3.552713678800501e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.size.mean",
+      "got": "21.3845",
+      "expected": "21.3845",
+      "tolerance": 1e-07,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.size.ci_lo",
+      "got": "17.6754",
+      "expected": "17.6754",
+      "tolerance": 1e-07,
+      "abs_difference": 4.973799150320701e-14,
+      "status": "PASS"
+    },
+    {
+      "name": "rc.bootstrap.size.ci_hi",
+      "got": "24.8512",
+      "expected": "24.8512",
+      "tolerance": 1e-07,
+      "abs_difference": 2.842170943040401e-14,
+      "status": "PASS"
+    }
+  ]
+}

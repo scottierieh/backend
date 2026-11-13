@@ -51,6 +51,8 @@ Reports: `validation/reports/*.md`.
 | `validate_hdbscan.py` | `hdbscan_analysis.py` | ARI=1 |
 | `validate_kmedoids.py` | `kmedoids_analysis.py` | pass (pinned env, numpy<2) |
 | `validate_lstm_forecasting.py` | `lstm_forecasting_analysis.py` | pass (pinned env, TensorFlow) |
+| `validate_rating_conjoint.py` | `rc_analysis.py` (route `/rating-conjoint`) | 167/167 (statsmodels OLS, effects coding) |
+| `validate_cbc_mnl.py` | `conjoint_analysis.py` (route `/conjoint`) | 162/162 (statsmodels ConditionalLogit); findings in report |
 
 ## Refreshing the public verification page
 The page `/crosschecking` (statistica-frontend) shows these runs. Its Python

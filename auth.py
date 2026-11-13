@@ -16,7 +16,9 @@ ID tokens are verified locally with google-auth against Google's securetoken
 x509 certificates (fetched once and cached for the response's Cache-Control
 max-age). Checks: RS256 signature by a current Google key, exp, aud ==
 project, iss == https://securetoken.google.com/<project>, non-empty sub,
-iat not in the future (300 s skew allowed).
+iat not in the future (300 s skew allowed), and the sign-in provider is not
+"anonymous" (anonymous accounts cost nothing to mint, so they would let a
+script run analyses at will — same rule as r-backend/auth.R).
 
 On success the middleware stores, in the ASGI scope's `state`:
     auth_kind  "user" | "service" | "anonymous" (only when enforcement is off)
@@ -169,6 +171,10 @@ def verify_id_token(token: str, project: str, now: float = None) -> dict:
     if auth_time is not None and (not isinstance(auth_time, (int, float))
                                   or auth_time > now + CLOCK_SKEW_SECS):
         raise AuthError("invalid auth_time")
+    firebase = claims.get("firebase")
+    provider = firebase.get("sign_in_provider") if isinstance(firebase, dict) else None
+    if provider == "anonymous":
+        raise AuthError("anonymous accounts cannot run analyses")
     return claims
 
 

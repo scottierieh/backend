@@ -230,6 +230,10 @@ def section_auth(client, main, auth, key_pem, cert_pem, other_key_pem):
         r = client.get('/__whoami', headers={'Authorization': f'Bearer {tok}'})
         check(r.status_code == 200 and r.json() == {'kind': 'user', 'uid': 'user-a'},
               'valid ID token -> 200, uid on request.state', r.text)
+        for prov in ('google.com', 'password', 'custom'):
+            t = make_token(key_pem, 'kid-1', firebase={'sign_in_provider': prov})
+            r = client.get('/__whoami', headers={'Authorization': f'Bearer {t}'})
+            check(r.status_code == 200, f'signed-in provider {prov} -> 200', f'{r.status_code} {r.text}')
         n = len(fetches)
         client.get('/__whoami', headers={'Authorization': f'Bearer {tok}'})
         check(len(fetches) == n, 'certs cached (no refetch within max-age)')
@@ -251,6 +255,7 @@ def section_auth(client, main, auth, key_pem, cert_pem, other_key_pem):
                 {'iss': f'https://securetoken.google.com/{PROJECT}', 'aud': PROJECT,
                  'sub': 'x', 'iat': now, 'exp': now + 60}) + '.c2ln',
             'garbage': 'not-a-token',
+            'anonymous account': make_token(key_pem, 'kid-1', firebase={'sign_in_provider': 'anonymous'}),
         }
         for label, t in bad_tokens.items():
             r = client.get('/__whoami', headers={'Authorization': f'Bearer {t}'})

@@ -2,8 +2,19 @@
 """Scheduling Optimization — assign jobs to parallel machines to minimise makespan.
 LPT (Longest Processing Time) list-scheduling heuristic — the classic 4/3-approx.
 
+LPT is a heuristic, so status is "heuristic" (proven_optimal false) unless the
+makespan equals a lower bound on the optimal makespan; then the schedule is
+provably optimal and status is "optimal" (proven_optimal true). Lower bound
+(every term is a valid bound for identical parallel machines):
+    max( longest job,
+         total time / machines   (rounded up when every time is a whole number),
+         p[M] + p[M+1]           (jobs sorted longest first, when jobs > machines:
+                                  two of the M+1 longest jobs share a machine) )
+gap = makespan - lower_bound, gap_pct = 100 * gap / lower_bound.
+
 Input: job_names[], processing_times[] (one time per job), machine_names[]
-Output: results{status, unsolved, message, n_jobs, n_machines, makespan,
+Output: results{status, unsolved, message, proven_optimal, lower_bound, gap, gap_pct,
+                n_jobs, n_machines, makespan,
                 assignments:[{job,machine,processing_time,time}],
                 machines:[{machine,name,jobs,n_jobs,load}],
                 interpretation}, plot
@@ -51,6 +62,17 @@ def main():
             assignments.append({"job": jobs[i], "machine": machines[mi],
                                 "processing_time": _fin(times[i], 4), "time": _fin(times[i], 4)})
         makespan = float(max(load))
+
+        total = float(sum(times))
+        integral = all(abs(t - round(t)) < 1e-9 for t in times)
+        avg = total / M
+        if integral:
+            avg = float(np.ceil(avg - 1e-9))
+        srt = sorted(times, reverse=True)
+        lb = max(srt[0], avg, (srt[M - 1] + srt[M]) if J > M else 0.0)
+        gap = max(makespan - lb, 0.0)
+        proven = gap <= 1e-9 * max(1.0, lb)
+        gap_pct = (100.0 * gap / lb) if lb > 0 else 0.0
         # The machine table keys off `machine` and `n_jobs`; `name` and the job
         # list stay for callers that read them.
         machines_out = [{"machine": machines[m], "name": machines[m], "jobs": mjobs[m],
@@ -83,9 +105,16 @@ def main():
             f"Scheduling {J} jobs on {M} machine(s) with the longest-processing-time rule gives a makespan "
             f"(time the last job finishes) of {makespan:g}, set by {busiest}. LPT loads the biggest jobs "
             "first onto the least-busy machine, which keeps the machines balanced and is provably within "
-            "4/3 of the theoretical optimum."
+            "4/3 of the theoretical optimum. "
+            + (f"This makespan equals the lower bound {lb:g}, so no schedule can finish earlier: it is optimal."
+               if proven else
+               f"The lower bound on any schedule is {lb:g}, so this heuristic schedule is at most {gap:g} "
+               f"({gap_pct:.1f}%) longer than the optimum; a better schedule may exist.")
         )
-        results = {"status": "optimal", "unsolved": False, "n_jobs": J, "n_machines": M,
+        results = {"status": "optimal" if proven else "heuristic", "unsolved": False,
+                   "proven_optimal": bool(proven), "lower_bound": _fin(lb, 4),
+                   "gap": _fin(gap, 4), "gap_pct": _fin(gap_pct, 2),
+                   "n_jobs": J, "n_machines": M,
                    "makespan": _fin(makespan, 4), "assignments": assignments,
                    "machines": machines_out, "interpretation": interpretation}
         print(json.dumps({"results": results, "plot": plot}))

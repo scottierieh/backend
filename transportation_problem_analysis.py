@@ -19,6 +19,7 @@ Output: { results: { status, unsolved, message, n_sources, n_destinations,
 import sys, json, io, base64
 import numpy as np
 from scipy.optimize import linprog
+from _solver_status import linprog_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -74,8 +75,7 @@ def main():
         res = linprog(c, A_ub=np.array(A_ub), b_ub=np.array(b_ub),
                       bounds=[(0, None)] * (m * n), method="highs")
         if not res.success:
-            results = {"status": "infeasible", "unsolved": True,
-                       "message": f"No feasible shipping plan: {res.message}"}
+            results = linprog_failure(res, {"infeasible": "No feasible shipping plan:"})
             print(json.dumps({"results": results, "plot": None}))
             return
 
@@ -119,7 +119,7 @@ def main():
             f"lanes for a total cost of {total_cost:,.2f}. "
             + ("Supply equals demand, so the plan is balanced and every unit is used. "
                if balanced else
-               f"Total supply ({tot_s:g}) exceeds demand ({tot_d:g}) by {tot_s-tot_d:g}, which stays unshipped at the cheapest sources. ")
+               f"Total supply ({tot_s:g}) exceeds demand ({tot_d:g}) by {tot_s-tot_d:g}, which stays unshipped at the supply points (see each source's shipped total against its supply). ")
             + "Because the transportation structure guarantees integer solutions for integer "
             "supply/demand, these quantities are whole units with no rounding."
         )
@@ -129,6 +129,7 @@ def main():
             "n_sources": m, "n_destinations": n,
             "total_cost": _fin(total_cost, 4),
             "flows": flows, "interpretation": interpretation,
+            **solved_meta(res),
         }
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:

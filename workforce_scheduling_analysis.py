@@ -26,6 +26,7 @@ import sys, json, io, base64
 import math
 import numpy as np
 from scipy.optimize import milp, LinearConstraint, Bounds
+from _solver_status import milp_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -123,8 +124,7 @@ def main():
             integrality=np.ones(P),                 # whole people, not fractions
         )
         if not res.success or res.x is None:
-            results = {"status": "infeasible", "unsolved": True,
-                       "message": str(res.message or "The covering problem could not be solved.")}
+            results = milp_failure(res, {"infeasible": "No staffing plan covers every shift's requirement:"})
             print(json.dumps({"results": results, "plot": None}))
             return
 
@@ -207,7 +207,7 @@ def main():
                    "n_hires": n_hires, "total_assignments": total_assignments,
                    "total_surplus": _fin(total_surplus, 2),
                    "shifts": shifts, "patterns": patterns,
-                   "interpretation": interpretation}
+                   "interpretation": interpretation, **solved_meta(res)}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

@@ -2,6 +2,12 @@
 """Shortest Path — least-weight route from a source to a sink node.
 Dijkstra via scipy.sparse.csgraph (weights must be non-negative).
 
+The graph is built straight from the arc lists as a sparse matrix with
+EXPLICIT entries, so an arc of weight 0 is a real (free) arc rather than
+"no arc" (a dense matrix turned into csr_matrix drops zeros). Parallel arcs
+between the same pair keep the cheapest weight; with directed=false every
+arc can be used both ways, again at the cheapest weight for the pair.
+
 Input: node_names[], edge_from[], edge_to[], edge_weight[],
        source(name, optional -> first node), sink(name, optional -> last),
        directed(bool, default True)
@@ -50,14 +56,22 @@ def main():
             raise ValueError("source/sink must be valid node names.")
         s, k = idx[src], idx[snk]
 
-        M = np.zeros((N, N))
+        # Cheapest weight per (from, to) pair; undirected arcs count both ways.
+        wmin = {}
         for a, b, w in zip(ef, et, ew):
             if a in idx and b in idx:
-                M[idx[a], idx[b]] = w
-                if not directed:
-                    M[idx[b], idx[a]] = w
-        g = csr_matrix(M)
-        dist, pred = shortest_path(g, method="D", directed=directed,
+                pairs = [(idx[a], idx[b])] if directed else [(idx[a], idx[b]), (idx[b], idx[a])]
+                for key in pairs:
+                    if key not in wmin or w < wmin[key]:
+                        wmin[key] = w
+        keys = list(wmin.keys())
+        rows = np.array([i for i, _ in keys], dtype=np.int32)
+        cols = np.array([j for _, j in keys], dtype=np.int32)
+        data = np.array([wmin[k] for k in keys], dtype=float)
+        # Explicit entries (zeros included) are edges for csgraph; keys are unique,
+        # so the COO -> CSR conversion sums nothing.
+        g = csr_matrix((data, (rows, cols)), shape=(N, N))
+        dist, pred = shortest_path(g, method="D", directed=True,
                                    indices=s, return_predecessors=True)
         if not np.isfinite(dist[k]):
             results = {"status": "unreachable", "unsolved": True,
@@ -75,7 +89,7 @@ def main():
         path = [nodes[i] for i in path_idx]
         edges = []
         for a, b in zip(path_idx[:-1], path_idx[1:]):
-            edges.append({"from": nodes[a], "to": nodes[b], "weight": _fin(M[a, b], 4)})
+            edges.append({"from": nodes[a], "to": nodes[b], "weight": _fin(wmin[(a, b)], 4)})
         total = float(dist[k])
 
         plot = None

@@ -2,9 +2,21 @@
 """Maximum Flow — most units routable from source to sink respecting capacities.
 scipy.sparse.csgraph.maximum_flow (integer capacities).
 
+scipy needs integer capacities: when any capacity has decimals every capacity
+is multiplied by 1000 and rounded to an integer before solving (flows are
+divided back). The response says so: capacity_scale (1 or 1000) and
+capacities_rounded (True when that rounding changed at least one capacity,
+i.e. a capacity had more than three decimals).
+
+Parallel arcs (several input arcs with the same from -> to) are solved as one
+arc whose capacity is their SUM, and the pair's flow is then split back over
+the input arcs in input order (each takes min(its capacity, what is left)), so
+every input arc is reported with its own capacity and a flow <= that capacity.
+
 Input: node_names[], edge_from[], edge_to[], edge_capacity[],
        source(optional -> first), sink(optional -> last)
 Output: results{status, unsolved, message, source, sink, max_flow,
+                capacity_scale, capacities_rounded, parallel_arcs,
                 edges:[{from,to,capacity,flow}], interpretation}, plot
 """
 import sys, json, io, base64
@@ -52,21 +64,34 @@ def main():
         if any(abs(c - round(c)) > 1e-9 for c in ec):
             scale = 1000  # scale fractional capacities to integers
         M = np.zeros((N, N), dtype=np.int64)
-        cap_lookup = {}
-        for a, b, c in zip(ef, et, ec):
+        arcs = []            # (input position, a, b, original capacity, scaled int capacity)
+        rounded = False
+        for e, (a, b, c) in enumerate(zip(ef, et, ec)):
             if a in idx and b in idx:
-                M[idx[a], idx[b]] += int(round(c * scale))
-                cap_lookup[(idx[a], idx[b])] = c
+                ci = int(round(c * scale))
+                if abs(c * scale - ci) > 1e-9:
+                    rounded = True
+                M[idx[a], idx[b]] += ci     # parallel arcs: capacities add up
+                arcs.append((e, idx[a], idx[b], c, ci))
         g = csr_matrix(M)
         res = maximum_flow(g, idx[src], idx[snk])
         flow_matrix = res.flow.toarray()
         max_flow = res.flow_value / scale
 
+        # Split each pair's (net, non-negative) flow over its input arcs in input order.
+        left = {}
+        for _, a, b, _, _ in arcs:
+            left.setdefault((a, b), max(int(flow_matrix[a, b]), 0))
+        n_per_pair = {}
+        for _, a, b, _, _ in arcs:
+            n_per_pair[(a, b)] = n_per_pair.get((a, b), 0) + 1
         edges = []
-        for (a, b), cap in cap_lookup.items():
-            f = flow_matrix[a, b] / scale
+        for _, a, b, cap, ci in arcs:
+            take = min(ci, left[(a, b)])
+            left[(a, b)] -= take
             edges.append({"from": nodes[a], "to": nodes[b],
-                          "capacity": _fin(cap, 4), "flow": _fin(max(f, 0), 4)})
+                          "capacity": _fin(cap, 4), "flow": _fin(take / scale, 4)})
+        parallel = sorted({f"{nodes[a]}→{nodes[b]}" for (a, b), n in n_per_pair.items() if n > 1})
 
         plot = None
         try:
@@ -93,9 +118,15 @@ def main():
             f"{saturated} edge(s) are saturated (flow = capacity) — these form the bottleneck "
             "(the minimum cut). Adding capacity anywhere else will not raise the maximum; only "
             "widening a saturated edge can."
+            + (f" Parallel arcs ({', '.join(parallel)}) were solved as one arc with their summed capacity; "
+               "the pair's flow is split over them in input order." if parallel else "")
+            + (" Capacities with more than three decimals were rounded to 1/1000 because the max-flow "
+               "solver needs integer capacities." if rounded else "")
         )
         results = {"status": "optimal", "unsolved": False, "source": src, "sink": snk,
-                   "max_flow": _fin(max_flow, 4), "edges": edges, "interpretation": interpretation}
+                   "max_flow": _fin(max_flow, 4), "capacity_scale": scale,
+                   "capacities_rounded": bool(rounded), "parallel_arcs": parallel,
+                   "edges": edges, "interpretation": interpretation}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

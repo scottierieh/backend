@@ -11,6 +11,7 @@ Output: results{status, unsolved, message, n_periods, total_cost,
 import sys, json, io, base64
 import numpy as np
 from scipy.optimize import linprog
+from _solver_status import linprog_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -57,8 +58,7 @@ def main():
         bounds = [(0, cap[t]) for t in range(T)] + [(0, None)] * T
         res = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
         if not res.success:
-            results = {"status": "infeasible", "unsolved": True,
-                       "message": f"Demand cannot be met within capacity: {res.message}"}
+            results = linprog_failure(res, {"infeasible": "Demand cannot be met within capacity:"})
             print(json.dumps({"results": results, "plot": None}))
             return
         v = res.x
@@ -94,7 +94,7 @@ def main():
         )
         results = {"status": "optimal", "unsolved": False, "n_periods": T,
                    "total_cost": _fin(total, 2), "total_production": _fin(total_prod, 2),
-                   "periods": periods, "interpretation": interpretation}
+                   "periods": periods, "interpretation": interpretation, **solved_meta(res)}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

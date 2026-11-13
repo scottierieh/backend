@@ -12,6 +12,7 @@ Output: results{status, unsolved, message, n_facilities, n_customers, n_opened,
 import sys, json, io, base64
 import numpy as np
 from scipy.optimize import milp, LinearConstraint, Bounds
+from _solver_status import milp_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -81,8 +82,7 @@ def main():
         lb = np.zeros(nv); ub = np.full(nv, np.inf); ub[nx:] = 1.0
         res = milp(c=c_obj, constraints=cons, integrality=integrality, bounds=Bounds(lb, ub))
         if not res.success:
-            results = {"status": "infeasible", "unsolved": True,
-                       "message": f"No feasible facility plan: {res.message}"}
+            results = milp_failure(res, {"infeasible": "No feasible facility plan:"})
             print(json.dumps({"results": results, "plot": None}))
             return
         v = res.x
@@ -128,7 +128,8 @@ def main():
         results = {"status": "optimal", "unsolved": False, "n_facilities": F, "n_customers": C,
                    "n_opened": n_opened, "total_cost": _fin(total, 2),
                    "fixed_cost_total": _fin(fixed_total, 2), "shipping_cost_total": _fin(ship_total, 2),
-                   "facilities": facilities, "assignments": assignments, "interpretation": interpretation}
+                   "facilities": facilities, "assignments": assignments, "interpretation": interpretation,
+                   **solved_meta(res)}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

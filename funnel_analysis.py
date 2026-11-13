@@ -432,7 +432,7 @@ def main():
         "has_segment": bool(segment_funnel),
         "has_channel": bool(channel_funnel),
         "has_device": bool(device_funnel),
-        "has_time_analysis": granular_enough,
+        "has_time_analysis": bool(granular_enough),
         "has_trend": trend is not None,
         "has_revenue": has_revenue,
     }

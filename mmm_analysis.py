@@ -50,7 +50,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
-from scipy.optimize import nnls, minimize
+from scipy.optimize import nnls, minimize, lsq_linear
 
 warnings.filterwarnings("ignore")
 
@@ -157,7 +157,14 @@ def main():
         # then rescale coefficients back
         scales = np.maximum(np.abs(X).max(axis=0), 1e-9)
         Xs = X / scales
-        coef_s, _ = nnls(Xs, y)
+        # scipy>=1.12 rewrote nnls and it can stop with "Maximum number of
+        # iterations reached" on ordinary MMM data (the example included). Give it
+        # room, and fall back to the bounded least-squares solver (same problem:
+        # min ||Xs b - y||, b >= 0) if it still gives up.
+        try:
+            coef_s, _ = nnls(Xs, y, maxiter=max(50 * Xs.shape[1], 1000))
+        except RuntimeError:
+            coef_s = lsq_linear(Xs, y, bounds=(0, np.inf), method="bvls").x
         coef = coef_s / scales
 
         coef_map = dict(zip(col_names, coef))
@@ -258,8 +265,23 @@ def main():
         current_alloc = np.array([spend_total[ch] for ch in channel_cols], dtype=float)
         total_budget = float(total_budget_in) if safe_num(total_budget_in) else float(current_alloc.sum())
 
+        # The model is fit per period on log1p(adstocked spend). A budget is a
+        # total over the n periods, so evaluate it on the same scale: spread it
+        # evenly (per period = total / n), take the steady-state adstock of a
+        # constant spend (s / (1 - decay)), then sum the per-period effect over
+        # the n periods. (Before, log1p was applied to the n-period total, which
+        # put projected revenue on a different scale from actual sales.)
+        def media_revenue(alloc_totals):
+            out = 0.0
+            for ch, v in zip(channel_cols, alloc_totals):
+                per = max(float(v), 0.0) / n
+                d = decays[ch]
+                level = per / (1.0 - d) if d < 1 else per
+                out += n * coef_map[ch] * np.log1p(level)
+            return out
+
         def neg_revenue(x):
-            return -sum(coef_map[ch] * np.log1p(max(v, 0)) for ch, v in zip(channel_cols, x))
+            return -media_revenue(x)
 
         b_lo, b_hi = [], []
         for ch in channel_cols:
@@ -280,14 +302,16 @@ def main():
         # more/less overall".
         current_share = current_alloc / current_alloc.sum() if current_alloc.sum() > 0 else np.full(len(channel_cols), 1 / len(channel_cols))
         current_scaled = current_share * total_budget
-        current_pred_media = sum(coef_map[ch] * np.log1p(max(current_scaled[i], 0)) for i, ch in enumerate(channel_cols))
-        optimal_pred_media = sum(coef_map[ch] * np.log1p(max(optimal_alloc[i], 0)) for i, ch in enumerate(channel_cols))
+        current_pred_media = media_revenue(current_scaled)
+        optimal_pred_media = media_revenue(optimal_alloc)
         budget_gain_pct = ((optimal_pred_media - current_pred_media) / current_pred_media * 100) if current_pred_media > 0 else 0.0
 
         channels_table = []
         for i, ch in enumerate(channel_cols):
             cur = float(current_alloc[i])
             opt_v = float(optimal_alloc[i])
+            # % change against the current split rescaled to the same total budget
+            cur_same_total = float(current_scaled[i])
             channels_table.append({
                 "channel": ch,
                 "spend": round(spend_total[ch], 2),
@@ -299,13 +323,12 @@ def main():
                 "beta": round(float(coef_map[ch]), 4),
                 "current_budget": round(cur, 2),
                 "optimal_budget": round(opt_v, 2),
-                "budget_change_pct": round((opt_v - cur) / cur * 100, 1) if cur > 0 else None,
+                "budget_change_pct": round((opt_v - cur_same_total) / cur_same_total * 100, 1) if cur_same_total > 0 else None,
             })
 
         # --- scenario simulation ---------------------------------------------
         def scaled_media_revenue(scale):
-            alloc = current_alloc * scale
-            return sum(coef_map[ch] * np.log1p(max(alloc[i], 0)) for i, ch in enumerate(channel_cols))
+            return media_revenue(current_scaled * scale)
 
         scenarios = []
         for label, media_rev in [

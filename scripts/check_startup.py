@@ -100,7 +100,7 @@ _HELPER_MODULES = {
     'main.py', 'models_api.py', 'model_store.py', 'analysis_common.py',
     'cv_strategy.py', 'feature_pipeline.py', 'blend_registry.py',
     'algorithm_registry.py', 'guardrails.py', 'hb_mnl.py', '_optexpr.py',
-    'price_levels.py', 'auth.py',
+    'price_levels.py', 'auth.py', 'usage_ticket.py',
 }
 
 # requirements.txt pins distributions; scripts import modules. Where the two

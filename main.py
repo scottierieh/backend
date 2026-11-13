@@ -24,6 +24,8 @@ import logging
 import signal
 
 from auth import AuthMiddleware
+import auth as _auth
+import usage_ticket
 
 _skari_log = logging.getLogger("skari")
 if not _skari_log.handlers:
@@ -83,6 +85,23 @@ def _rl_key(request: Request):
 # CORS outermost so 401/413/429 responses still carry CORS headers and
 # preflights are answered before auth; auth before the limiter so the limiter
 # can key on the authenticated uid.
+# Usage pass for metered runs (AutoML): the app signs one when it counts a run
+# against the monthly limit (POST /api/usage/consume); this checks it so the
+# count cannot be skipped by calling here directly. Defined before the rate
+# limiter so it sits inside it (after auth, which sets the uid). Mode
+# SKARI_USAGE_TICKETS = off (default) | monitor | on — usage_ticket.py.
+@app.middleware("http")
+async def usage_ticket_middleware(request: Request, call_next):
+    state = request.scope.get("state") or {}
+    ok, reason = usage_ticket.check_request(
+        request.url.path, request.method, state.get("auth_kind"), state.get("uid"),
+        request.headers, _auth.service_key(), usage_ticket.mode())
+    if not ok:
+        return JSONResponse(status_code=403, content={
+            "detail": usage_ticket.MESSAGE, "error": usage_ticket.MESSAGE,
+            "code": f"usage_ticket_{reason}"})
+    return await call_next(request)
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     if request.url.path in ("/health", "/") or request.method == "OPTIONS":
@@ -167,7 +186,7 @@ app.add_middleware(
     # would make Starlette reflect the caller's Origin verbatim.
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "X-Skari-Service-Key"],
+    allow_headers=["Authorization", "Content-Type", "X-Skari-Service-Key", "X-Skari-Usage-Ticket"],
 )
 
 @app.get("/")

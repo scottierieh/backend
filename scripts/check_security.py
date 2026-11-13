@@ -543,6 +543,91 @@ def section_e2e(client, main, auth, model_store, fake, key_pem):
         os.environ.pop('SKARI_BACKEND_KEY', None)
 
 
+# ---------------------------------------------------------------------------
+# usage pass (metered AutoML runs) — usage_ticket.py
+# ---------------------------------------------------------------------------
+# Same string the app signs in src/lib/__tests__/usage-ticket-check.ts and the
+# R server checks in r-backend/tests/check-usage-ticket.R.
+USAGE_VECTOR = ('eyJ2IjoxLCJ1IjoidXNlci0xMjMiLCJtIjoiZXJnbSIsIngiOjE5MDAwMDAwMDAsImoiOiJhYmNkZWYwMTIzNDU2Nzg5MDEiLCJzIjowfQ'
+                '.oitflVXsqKiZk2bl2V8UpgdIwv7kRm8B0NNy3y-PACQ')
+
+
+def section_usage_ticket(client, main, key_pem):
+    import usage_ticket as ut
+    K = 'test-service-key'
+    AT = 1899999900
+    check(ut.sign({'v': 1, 'u': 'user-123', 'm': 'ergm', 'x': 1900000000, 'j': 'abcdef012345678901', 's': 0}, K) == USAGE_VECTOR,
+          'usage pass: Python signs the shared vector byte for byte')
+    check(ut.verify(USAGE_VECTOR, 'user-123', 'ergm', K, AT)[0], 'usage pass: shared vector verifies')
+    for label, args, want in [
+        ('another account', ('user-9', 'ergm', K, AT), 'account'),
+        ('another meter', ('user-123', 'automl', K, AT), 'meter'),
+        ('another key', ('user-123', 'ergm', 'other', AT), 'signature'),
+        ('expired', ('user-123', 'ergm', K, 1900000001), 'expired'),
+    ]:
+        r = ut.verify(USAGE_VECTOR, *args)
+        check(r == (False, want), f'usage pass: {label} refused', r)
+    far = ut.sign({'v': 1, 'u': 'user-123', 'm': 'ergm', 'x': AT + 86400, 'j': 'x', 's': 0}, K)
+    check(ut.verify(far, 'user-123', 'ergm', K, AT) == (False, 'expiry'), 'usage pass: far-future expiry refused')
+    body, sig = USAGE_VECTOR.split('.')
+    forged = ut._b64url(b'{"v":1,"u":"user-123","m":"automl","x":1900000000,"j":"abcdef012345678901","s":0}')
+    check(ut.verify(f'{forged}.{sig}', 'user-123', 'automl', K, AT) == (False, 'signature'),
+          'usage pass: edited payload (meter swapped) refused')
+    check(ut.verify('', 'u', 'automl', K, AT) == (False, 'missing') and ut.verify('abc', 'u', 'automl', K, AT)[1] == 'malformed',
+          'usage pass: empty / garbage refused')
+    check(ut.mode('') == 'off' and ut.mode(' ON') == 'on' and ut.mode('typo') == 'off', 'usage pass: mode default off')
+
+    # Through the app, on a probe route standing in for /api/analysis/autogluon.
+    @main.app.post('/__ticketprobe')
+    def _probe():
+        return {'ran': True}
+    ut.ROUTES['/__ticketprobe'] = 'automl'
+    os.environ['SKARI_FIREBASE_PROJECT'] = PROJECT
+    os.environ['SKARI_BACKEND_KEY'] = K
+    main._rl_store.clear()
+    ut.reset_uses()
+    try:
+        tok = make_token(key_pem, 'kid-1', sub='user-a')
+        H = {'Authorization': f'Bearer {tok}'}
+        now = int(time.time())
+        good = ut.sign({'v': 1, 'u': 'user-a', 'm': 'automl', 'x': now + 600, 'j': 'p1', 's': 0}, K)
+
+        os.environ.pop('SKARI_USAGE_TICKETS', None)
+        check(client.post('/__ticketprobe', headers=H).status_code == 200, 'usage pass: mode off -> run without a pass')
+        os.environ['SKARI_USAGE_TICKETS'] = 'monitor'
+        check(client.post('/__ticketprobe', headers=H).status_code == 200, 'usage pass: monitor -> no pass logged, allowed')
+        os.environ['SKARI_USAGE_TICKETS'] = 'on'
+        r = client.post('/__ticketprobe', headers=H)
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_missing' and 'Refresh' in r.json().get('detail', ''),
+              'usage pass: on, no pass -> 403 usage_ticket_missing (bilingual detail)', f'{r.status_code} {r.text}')
+        r = client.post('/__ticketprobe', headers={**H, 'X-Skari-Usage-Ticket': good})
+        check(r.status_code == 200 and r.json() == {'ran': True}, 'usage pass: on, valid pass -> runs', r.text)
+        codes = [client.post('/__ticketprobe', headers={**H, 'X-Skari-Usage-Ticket': good}).status_code for _ in range(3)]
+        check(codes == [200, 200, 403], 'usage pass: one pass serves 3 uses (retries), the 4th is refused', codes)
+        other = ut.sign({'v': 1, 'u': 'user-b', 'm': 'automl', 'x': now + 600, 'j': 'p2', 's': 0}, K)
+        r = client.post('/__ticketprobe', headers={**H, 'X-Skari-Usage-Ticket': other})
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_account', "usage pass: someone else's pass -> 403")
+        ergm = ut.sign({'v': 1, 'u': 'user-a', 'm': 'ergm', 'x': now + 600, 'j': 'p3', 's': 0}, K)
+        r = client.post('/__ticketprobe', headers={**H, 'X-Skari-Usage-Ticket': ergm})
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_meter', 'usage pass: a network pass does not open AutoML')
+        r = client.post('/__ticketprobe', headers={'X-Skari-Service-Key': K})
+        check(r.status_code == 200, 'usage pass: service-key call needs no pass', f'{r.status_code} {r.text}')
+        r = client.post('/api/analysis/nonlinear-programming', headers=H, json={})
+        check(r.json().get('code', '') == '' if r.headers.get('content-type', '').startswith('application/json') else True,
+              'usage pass: unmetered route is not checked', r.text[:120])
+        r = client.options('/api/analysis/autogluon', headers={
+            'Origin': 'https://app.example', 'Access-Control-Request-Method': 'POST',
+            'Access-Control-Request-Headers': 'authorization,content-type,x-skari-usage-ticket'})
+        check(r.status_code == 200 and 'x-skari-usage-ticket' in r.headers.get('access-control-allow-headers', '').lower(),
+              'usage pass: CORS preflight allows X-Skari-Usage-Ticket', f'{r.status_code} {dict(r.headers)}')
+    finally:
+        os.environ.pop('SKARI_USAGE_TICKETS', None)
+        os.environ.pop('SKARI_FIREBASE_PROJECT', None)
+        os.environ.pop('SKARI_BACKEND_KEY', None)
+        ut.ROUTES.pop('/__ticketprobe', None)
+        main._rl_store.clear()
+
+
 def main_():
     section_expr()
 
@@ -563,6 +648,8 @@ def main_():
     section_model_store(model_store, fake)
     main._rl_store.clear()
     section_e2e(client, main, auth, model_store, fake, key_pem)
+    main._rl_store.clear()
+    section_usage_ticket(client, main, key_pem)
 
     if os.path.exists(MARKER):
         os.remove(MARKER)

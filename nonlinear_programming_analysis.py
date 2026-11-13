@@ -4,7 +4,9 @@ constraints. scipy.optimize.minimize (SLSQP).
 
 Input: objective(str), maximize(bool), var_names[], start[],
        con_expr[], con_ops[] (<=|>=|=), con_rhs[], con_names[]
-Output: results{status, unsolved, message, maximize, n_vars, n_constraints,
+Output: results{status (optimal|approximate|failed), unsolved, message, success,
+                solver_status_code, solver_message (SLSQP's own status/message),
+                maximize, n_vars, n_constraints,
                 objective_value, iterations, variables:[{name,value}],
                 constraints:[{name,expr,op,type,lhs,value,rhs,satisfied,slack,
                               binding,multiplier}], interpretation}, plot
@@ -108,10 +110,33 @@ def _multipliers(fobj, x, gfuncs, active):
     return mults
 
 
+def solver_info(res):
+    """SLSQP's own verdict, passed through so a caller can tell *why* a run
+    stopped (e.g. 4 "Inequality constraints incompatible", 8 "Positive
+    directional derivative for linesearch", 9 "Iteration limit reached")."""
+    try:
+        code = int(getattr(res, "status", None))
+    except (TypeError, ValueError):
+        code = None
+    return {"success": bool(getattr(res, "success", False)),
+            "solver_status_code": code,
+            "solver_message": str(getattr(res, "message", "") or "")}
+
+
+def not_converged_text(out):
+    """Interpretation prefix for a run SLSQP did not finish ("approximate")."""
+    msg = out.get("solver_message") or "no message"
+    code = out.get("solver_status_code")
+    violated = [c["name"] for c in out.get("constraints", []) if not c.get("satisfied", True)]
+    return (f"SLSQP stopped without converging (solver status {code}: {msg}), so the point it stopped at "
+            "is not proven optimal"
+            + (f" and violates {', '.join(violated)}" if violated else "") + ". ")
+
+
 def build_result(res, fobj, maximize, var_names, con_expr, con_ops, con_rhs, gfuncs, extra=None):
     if not res.success and not np.all(np.isfinite(res.x)):
         return {"status": "failed", "unsolved": True,
-                "message": f"Solver did not converge: {res.message}"}, None
+                "message": f"Solver did not converge: {res.message}", **solver_info(res)}, None
     x = res.x
     obj_val = float(fobj(x))
     n = len(var_names)
@@ -147,6 +172,7 @@ def build_result(res, fobj, maximize, var_names, con_expr, con_ops, con_rhs, gfu
            "maximize": maximize, "n_vars": n, "n_constraints": len(gfuncs),
            "objective_value": _fin(obj_val, 6),
            "iterations": int(getattr(res, "nit", 0) or 0),
+           **solver_info(res),
            "variables": variables, "constraints": constraints}
     if extra:
         out.update(extra)
@@ -200,12 +226,20 @@ def main():
         if out.get("unsolved"):
             print(json.dumps({"results": out, "plot": None})); return
         obj_val = out["objective_value"]
-        out["interpretation"] = (
-            f"The {'maximum' if maximize else 'minimum'} of the objective is {obj_val:.4f}, reached at "
-            + ", ".join(f"{var_names[i]}={x[i]:.4f}" for i in range(len(var_names))) + ". "
-            "SLSQP follows the objective's gradient while staying feasible; because the problem is nonlinear "
-            "this is a local optimum — for a non-convex objective, try different starting points to check it is global."
-        )
+        at = ", ".join(f"{var_names[i]}={x[i]:.4f}" for i in range(len(var_names)))
+        if out["status"] == "optimal":
+            out["interpretation"] = (
+                f"The {'maximum' if maximize else 'minimum'} of the objective is {obj_val:.4f}, reached at "
+                + at + ". "
+                "SLSQP follows the objective's gradient while staying feasible; because the problem is nonlinear "
+                "this is a local optimum — for a non-convex objective, try different starting points to check it is global."
+            )
+        else:
+            out["interpretation"] = (
+                not_converged_text(out)
+                + f"The objective there is {obj_val:.4f}, at {at}. Try other starting points, and check that "
+                "the constraints can all hold at the same time."
+            )
         plot = make_plot(fobj, var_names, x)
         print(json.dumps({"results": out, "plot": plot}))
     except Exception as e:

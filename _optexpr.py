@@ -189,18 +189,124 @@ def num_grad(f, x, h=1e-6):
     return g
 
 
-def is_convex_numeric(f, x, n_dirs=8, h=1e-4):
-    """Rough convexity check: second directional differences >= 0 at x."""
+# ── Numeric curvature (convexity) sampling ───────────────────────────────
+#
+# The old check compared the RAW second difference f(x+hd) - 2f(x) + f(x-hd)
+# with h = 1e-4 against -1e-6. That raw difference is about h**2 * curvature
+# = 1e-8 * curvature, so any function whose curvature was above about -100 —
+# e.g. the concave -(x1**2) - x2**2 (curvature -2) — "passed", and the convex
+# page then called the minimum global. The second difference is now divided by
+# h**2, so it estimates the directional second derivative d'H d itself, and
+# it is compared with a tolerance relative to the function's size. It is
+# sampled at several points (the solution plus seeded random points around it,
+# kept inside a caller-supplied region such as the inequality-feasible set) and
+# in several directions (every axis, the e_i ± e_j diagonals and seeded random
+# directions). A pass means "no violation found at the sampled points" — a
+# numerical sampling check, not a proof of convexity.
+
+CURV_TOL = 1e-6        # relative: s must be >= -CURV_TOL * max(1, |f(p)|)
+CURV_POINTS = 12       # the solution + 11 random points around it
+CURV_RANDOM_DIRS = 4
+CURV_MAX_DIAG_PAIRS = 15
+
+
+def _curv_directions(n, rng):
+    eye = np.eye(n)
+    dirs = [eye[i] for i in range(n)]
+    pairs = [(i, j) for i in range(n) for j in range(i + 1, n)][:CURV_MAX_DIAG_PAIRS]
+    for i, j in pairs:
+        for sgn in (1.0, -1.0):
+            d = eye[i] + sgn * eye[j]
+            dirs.append(d / np.linalg.norm(d))
+    for _ in range(CURV_RANDOM_DIRS):
+        d = rng.standard_normal(n)
+        nd = np.linalg.norm(d)
+        if nd > 0:
+            dirs.append(d / nd)
+    return dirs
+
+
+def curvature_sample_points(x, region=None, n_points=CURV_POINTS, seed=0):
+    """The solution x plus seeded random points in a box of half-width
+    max(1, |x|_inf) around it, keeping only those `region(p)` accepts."""
     x = np.asarray(x, float)
-    rng = np.random.default_rng(0)
-    ok = 0; tot = 0
-    for _ in range(n_dirs):
-        d = rng.standard_normal(len(x)); d /= (np.linalg.norm(d) or 1)
+    rng = np.random.default_rng(seed)
+    scale = max(1.0, float(np.max(np.abs(x)))) if x.size else 1.0
+    pts = [x.copy()]
+    tries = 0
+    while len(pts) < n_points and tries < 40 * n_points:
+        tries += 1
+        p = x + scale * rng.uniform(-1.0, 1.0, x.size)
         try:
-            s = f(x + h*d) - 2*f(x) + f(x - h*d)
+            with np.errstate(all="ignore"):
+                keep = region is None or bool(region(p))
         except Exception:
-            continue
-        tot += 1
-        if s >= -1e-6:
-            ok += 1
-    return (tot > 0 and ok == tot), (ok, tot)
+            keep = False
+        if keep:
+            pts.append(p)
+    return pts
+
+
+def curvature_check(f, points, require="convex", tol=CURV_TOL, seed=0):
+    """Sample the directional second derivative s = (f(p+hd) - 2f(p) + f(p-hd)) / h**2.
+
+    require: "convex"  -> violation when s < -tol*max(1,|f(p)|)
+             "concave" -> violation when s >  tol*max(1,|f(p)|)
+             "affine"  -> violation when |s| > tol*max(1,|f(p)|)
+    Points or directions where f is undefined (nan/inf, domain errors) are
+    skipped. Returns a dict; `ok` is None when nothing could be tested."""
+    pts = [np.asarray(p, float) for p in points]
+    if not pts:
+        return {"ok": None, "require": require, "n_points": 0, "n_directions": 0,
+                "n_tests": 0, "n_violations": 0, "worst": None}
+    n = pts[0].size
+    rng = np.random.default_rng(seed)
+    dirs = _curv_directions(n, rng)
+    n_tests = 0
+    n_viol = 0
+    used_pts = 0
+    worst = None
+    worst_excess = 0.0
+    for p in pts:
+        h = 1e-3 * max(1.0, float(np.max(np.abs(p))) if n else 1.0)
+        tested_here = False
+        for d in dirs:
+            try:
+                with np.errstate(all="ignore"):
+                    f0 = float(f(p)); fp = float(f(p + h * d)); fm = float(f(p - h * d))
+            except Exception:
+                continue
+            if not (np.isfinite(f0) and np.isfinite(fp) and np.isfinite(fm)):
+                continue
+            s = (fp - 2.0 * f0 + fm) / (h * h)
+            thr = tol * max(1.0, abs(f0))
+            if require == "convex":
+                excess = -s - thr
+            elif require == "concave":
+                excess = s - thr
+            else:
+                excess = abs(s) - thr
+            n_tests += 1
+            tested_here = True
+            if excess > 0:
+                n_viol += 1
+                if worst is None or excess > worst_excess:
+                    worst_excess = excess
+                    worst = {"point": [float(round(v, 6)) for v in p],
+                             "direction": [float(round(v, 6)) for v in d],
+                             "second_derivative": float(round(s, 6))}
+        if tested_here:
+            used_pts += 1
+    return {"ok": (n_viol == 0) if n_tests else None, "require": require,
+            "n_points": used_pts, "n_directions": len(dirs),
+            "n_tests": n_tests, "n_violations": n_viol, "worst": worst}
+
+
+def is_convex_numeric(f, x, n_dirs=8, h=None, region=None):
+    """Backwards-compatible wrapper: (passed, (n_ok, n_tests)).
+
+    `passed` is True only when the sampling check found no violation —
+    "no violation found", not a proof. n_dirs/h are accepted for old callers
+    and ignored (directions and step are chosen by curvature_check)."""
+    rep = curvature_check(f, curvature_sample_points(x, region=region), require="convex")
+    return bool(rep["ok"]), (rep["n_tests"] - rep["n_violations"], rep["n_tests"])

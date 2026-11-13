@@ -26,6 +26,8 @@ import seaborn as sns
 sns.set_theme(style="darkgrid")
 
 
+_given = lambda v: v is not None and v != ""  # 0 is a real value (0% rate, 0-day window, seed 0); only blank means "use the default"
+
 def _fin(x, nd=6):
     try:
         v = float(x)
@@ -71,7 +73,7 @@ def main():
         is_returns = bool(p.get("is_returns", False))
         rtype = (p.get("return_type") or "simple").lower()
         ppy = int(p.get("periods_per_year") or 252)
-        rf = float(p.get("rf_annual") or 0.02)
+        rf = float(p["rf_annual"]) if _given(p.get("rf_annual")) else 0.02
 
         R = _returns_df(df, cols, is_returns, rtype)
         if len(R) < 10:

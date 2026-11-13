@@ -42,6 +42,8 @@ AMBER = "#f59e0b"
 GREEN = "#16a34a"
 
 
+_given = lambda v: v is not None and v != ""  # 0 is a real value (0% rate, 0-day window, seed 0); only blank means "use the default"
+
 def _fin(x, nd=6):
     try:
         v = float(x)
@@ -71,9 +73,9 @@ def main():
             raise ValueError("Select the market return column.")
         ev = int(p.get("event_index"))
         est_w = int(p.get("estimation_window") or 120)
-        pre = int(p.get("event_pre") or 5)
-        post = int(p.get("event_post") or 5)
-        gap = int(p.get("gap") or 5)
+        pre = int(p["event_pre"]) if _given(p.get("event_pre")) else 5
+        post = int(p["event_post"]) if _given(p.get("event_post")) else 5
+        gap = int(p["gap"]) if _given(p.get("gap")) else 5
         date_col = p.get("date_col")
         return_type = (p.get("return_type") or "simple").lower()
         event_label = p.get("event_label") or None

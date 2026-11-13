@@ -47,6 +47,8 @@ LIGHT_BLUE = "#93c5fd"
 PURPLE = "#9333ea"
 
 
+_given = lambda v: v is not None and v != ""  # 0 is a real value (0% rate, 0-day window, seed 0); only blank means "use the default"
+
 def _fin(x, nd=6):
     try:
         v = float(x)
@@ -81,7 +83,7 @@ def main():
         steps = max(1, min(int(p.get("steps") or 252), 2520))
         n_paths = max(1, min(int(p.get("n_paths") or 10000), 100000))
         conf = float(p.get("confidence") or 0.95)
-        seed = int(p.get("seed") or 42)
+        seed = int(p["seed"]) if _given(p.get("seed")) else 42
         strike = p.get("option_strike")
         rf_in = p.get("risk_free_rate")
         if S0 <= 0 or sigma <= 0 or T <= 0:

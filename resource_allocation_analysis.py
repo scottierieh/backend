@@ -12,6 +12,7 @@ Output: results{status, unsolved, message, n_activities, n_resources, total_valu
 import sys, json, io, base64
 import numpy as np
 from scipy.optimize import linprog
+from _solver_status import linprog_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -49,7 +50,11 @@ def main():
         A_ub = np.array(U).T   # R x A
         res = linprog(c, A_ub=A_ub, b_ub=np.array(avail), bounds=[(0, None)] * A, method="highs")
         if not res.success:
-            results = {"status": "infeasible", "unsolved": True, "message": res.message}
+            results = linprog_failure(res, {
+                "infeasible": "No activity plan satisfies every resource limit.",
+                "unbounded": "The model is unbounded: some activity earns value without using any limited "
+                             "resource, so total value can grow without limit (a usage coefficient is probably missing).",
+            })
             print(json.dumps({"results": results, "plot": None}))
             return
         x = res.x
@@ -103,7 +108,7 @@ def main():
         )
         results = {"status": "optimal", "unsolved": False, "n_activities": A, "n_resources": R,
                    "total_value": _fin(total, 4), "activities": activities, "resources": resources,
-                   "interpretation": interpretation}
+                   "interpretation": interpretation, **solved_meta(res)}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

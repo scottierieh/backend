@@ -192,16 +192,31 @@ def main():
             constraints.append(named)
 
         status_code = prob.solve(pulp.PULP_CBC_CMD(msg=0))
-        status = pulp.LpStatus[status_code]
+        status = pulp.LpStatus.get(status_code, "Undefined")
+        # PuLP reports "Optimal" also when CBC stopped on a limit with a feasible
+        # but unproven point (sol_status = LpSolutionIntegerFeasible); that is not
+        # an optimum, so read the solution status as well.
+        sol_status = getattr(prob, "sol_status", None)
+        solver_message = f"PuLP status {status}; solution status {pulp.LpSolution.get(sol_status, sol_status)}"
+        if status == "Optimal" and sol_status == pulp.LpSolutionIntegerFeasible:
+            status = "Not Solved"
 
-        if status in ("Infeasible", "Unbounded", "Undefined"):
+        if status != "Optimal":
+            key = {"Infeasible": "infeasible", "Unbounded": "unbounded",
+                   "Not Solved": "not_solved"}.get(status, "undefined")
             msg = {
-                "Infeasible": "The problem is INFEASIBLE — no point satisfies all constraints at once.",
-                "Unbounded": "The problem is UNBOUNDED — the objective can improve without limit; add a binding constraint.",
-                "Undefined": "The solver could not find a solution (status: undefined).",
-            }[status]
-            print(json.dumps({"results": {"status": status.lower(), "unsolved": True, "message": msg},
-                              "plot": None}))
+                "infeasible": "The problem is INFEASIBLE — no point satisfies all constraints at once.",
+                "unbounded": "The problem is UNBOUNDED — the objective can improve without limit; add a binding constraint.",
+                "not_solved": "The solver stopped before proving an optimal solution (status: not solved)"
+                              + (" — a feasible solution was found but it is not proven optimal, so it is not reported."
+                                 if sol_status == pulp.LpSolutionIntegerFeasible else "."),
+                "undefined": "The solver could not find a solution (status: undefined).",
+            }[key]
+            out = {"status": key, "unsolved": True, "message": msg,
+                   "solver_status_code": int(status_code), "solver_message": solver_message}
+            if key == "not_solved":
+                out["feasible_solution_found"] = sol_status == pulp.LpSolutionIntegerFeasible
+            print(json.dumps({"results": out, "plot": None}))
             return
 
         xstar = [float(v.value() or 0.0) for v in xvars]
@@ -225,7 +240,12 @@ def main():
             lhs_val = sum(A[i][j] * xstar[j] for j in range(n))
             slack = (rhs[i] - lhs_val) if ops[i] == "<=" else (lhs_val - rhs[i]) if ops[i] == ">=" else 0.0
             pi = _fin(constraints[i].pi) if duals_ok else None
-            binding = abs(lhs_val - rhs[i]) <= 1e-6 or (pi is not None and abs(pi) > tol)
+            # Relative tolerance: CBC writes values to ~8 significant digits, so a
+            # row at its limit can read 399.999996 against 400. An equality row
+            # holds at every solution the solver accepts, so it is always binding.
+            row_tol = 1e-6 * max(1.0, abs(rhs[i]))
+            binding = (ops[i] == "=" or abs(lhs_val - rhs[i]) <= row_tol
+                       or (pi is not None and abs(pi) > tol))
             if binding:
                 n_binding += 1
             cons_out.append({
@@ -258,6 +278,7 @@ def main():
             "objective_value": _fin(zstar), "n_binding": n_binding,
             "variables": variables, "constraints": cons_out,
             "interpretation": interpretation,
+            "solver_status_code": int(status_code), "solver_message": solver_message,
         }
         print(json.dumps({"results": results, "plot": plot}))
 

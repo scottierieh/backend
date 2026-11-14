@@ -10,6 +10,7 @@ Output: results{status, unsolved, message, source, sink, required_flow,
 import sys, json, io, base64
 import numpy as np
 from scipy.optimize import linprog
+from _solver_status import linprog_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -46,6 +47,10 @@ def main():
         if src not in idx or snk not in idx or src == snk:
             raise ValueError("source and sink must be distinct valid nodes.")
         s, k = idx[src], idx[snk]
+        bad = [f"{a} → {b}" for a, b in zip(ef, et) if a not in idx or b not in idx]
+        if bad:
+            missing = sorted({x for a, b in zip(ef, et) for x in (a, b) if x not in idx})
+            raise ValueError(f"Edge(s) {', '.join(bad)} refer to node(s) not in node_names: {', '.join(missing)}.")
 
         # flow conservation: A_eq f = b, b[src]=+req (net out), b[sink]=-req, else 0
         A_eq = np.zeros((N, E)); b_eq = np.zeros(N)
@@ -56,8 +61,7 @@ def main():
         res = linprog(np.array(ecost), A_eq=A_eq, b_eq=b_eq,
                       bounds=[(0, cap) for cap in ecap], method="highs")
         if not res.success:
-            results = {"status": "infeasible", "unsolved": True,
-                       "message": f"Cannot route {req:g} units from {src} to {snk} within capacities: {res.message}"}
+            results = linprog_failure(res, {"infeasible": f"Cannot route {req:g} units from {src} to {snk} within capacities:"})
             print(json.dumps({"results": results, "plot": None}))
             return
         f = res.x
@@ -89,7 +93,7 @@ def main():
         )
         results = {"status": "optimal", "unsolved": False, "source": src, "sink": snk,
                    "required_flow": _fin(req, 4), "total_cost": _fin(total, 4),
-                   "edges": edges, "interpretation": interpretation}
+                   "edges": edges, "interpretation": interpretation, **solved_meta(res)}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

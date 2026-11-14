@@ -10,6 +10,7 @@ Output: results{status, unsolved, message, n_nodes, n_edges, total_cost,
 import sys, json, io, base64
 import numpy as np
 from scipy.optimize import linprog
+from _solver_status import linprog_failure, solved_meta
 
 import matplotlib
 matplotlib.use("Agg")
@@ -45,6 +46,10 @@ def main():
         if abs(sum(bal)) > 1e-6:
             raise ValueError(f"Total supply must equal total demand (sum of balances = {sum(bal):g}, should be 0).")
         idx = {n: i for i, n in enumerate(nodes)}
+        bad = [f"{a} → {b}" for a, b in zip(ef, et) if a not in idx or b not in idx]
+        if bad:
+            missing = sorted({x for a, b in zip(ef, et) for x in (a, b) if x not in idx})
+            raise ValueError(f"Edge(s) {', '.join(bad)} refer to node(s) not in node_names: {', '.join(missing)}.")
         A_eq = np.zeros((N, E))
         for e, (a, b) in enumerate(zip(ef, et)):
             A_eq[idx[a], e] += 1.0
@@ -53,8 +58,7 @@ def main():
         res = linprog(np.array(ecost), A_eq=A_eq, b_eq=b_eq,
                       bounds=[(0, c) for c in ecap], method="highs")
         if not res.success:
-            results = {"status": "infeasible", "unsolved": True,
-                       "message": f"No feasible flow meets all node balances within capacities: {res.message}"}
+            results = linprog_failure(res, {"infeasible": "No feasible flow meets all node balances within capacities:"})
             print(json.dumps({"results": results, "plot": None}))
             return
         f = res.x
@@ -85,7 +89,8 @@ def main():
             "its balance exactly; cheap edges carry as much as capacity allows before costlier ones are used."
         )
         results = {"status": "optimal", "unsolved": False, "n_nodes": N, "n_edges": E,
-                   "total_cost": _fin(total, 4), "edges": edges, "interpretation": interpretation}
+                   "total_cost": _fin(total, 4), "edges": edges, "interpretation": interpretation,
+                   **solved_meta(res)}
         print(json.dumps({"results": results, "plot": plot}))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

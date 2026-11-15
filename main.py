@@ -7,7 +7,11 @@ import subprocess
 import sys
 import os
 import json
+import shutil
+import tempfile
+import threading
 import time
+import uuid
 from collections import defaultdict
 
 # The conjoint/survey analysis family (RC, CBC, ACA, CBC-HB, ACBC) was
@@ -18,7 +22,14 @@ from collections import defaultdict
 # numpy/scipy Gibbs/Metropolis sampler, not PyMC, so no new compiler-needing
 # dependency was added).
 
-app = FastAPI()
+# /docs, /redoc and /openapi.json describe all ~130 routes to any signed-in
+# account; off unless SKARI_API_DOCS=1 (local development).
+_API_DOCS = os.environ.get("SKARI_API_DOCS", "").strip() == "1"
+app = FastAPI(
+    docs_url="/docs" if _API_DOCS else None,
+    redoc_url="/redoc" if _API_DOCS else None,
+    openapi_url="/openapi.json" if _API_DOCS else None,
+)
 
 import logging
 import signal
@@ -59,6 +70,27 @@ _RL_WINDOW_SECS = 60
 _RL_MAX_REQUESTS = 60
 _RL_SERVICE_MAX_REQUESTS = int(os.environ.get("SKARI_RL_SERVICE_MAX", "600"))
 _rl_store = defaultdict(list)
+# Two more ceilings, the same as r-backend/plumber.R's (2026-11 audit L5): many
+# accounts from one address share one per-minute bucket by IP -- counted
+# BEFORE authentication, so a flood of rejected (401) requests, each an RS256
+# verification, is limited too -- and one account has a daily total. Generous
+# for real use (a class behind one NAT, a day of Auto Compare); per instance,
+# like the rest. The service key is exempt from the IP bucket (it is one
+# trusted caller fanning in many users, with its own bucket above).
+_RL_IP_MAX_REQUESTS = int(os.environ.get("SKARI_RL_IP_PER_MIN", "300"))
+_RL_DAY_MAX_REQUESTS = int(os.environ.get("SKARI_RL_UID_PER_DAY", "5000"))
+_rl_ip_store = defaultdict(list)
+_rl_day_store = {}
+_rl_calls = 0
+# Requests one caller may have running at once (2026-11 audit M3). The rate
+# limit counts starts, not work in flight: 60 a minute of 900-second jobs is
+# every worker thread on the instance. Model Lab's Auto Compare runs 3 at a
+# time; the service key fans in many users.
+_INFLIGHT_MAX = int(os.environ.get("SKARI_MAX_INFLIGHT_PER_UID", "6"))
+_INFLIGHT_SERVICE_MAX = int(os.environ.get("SKARI_MAX_INFLIGHT_SERVICE", "16"))
+_inflight = defaultdict(int)
+_inflight_lock = threading.Lock()
+_RL_EXEMPT = ("/health", "/")
 
 def _rl_client_ip(request: Request) -> str:
     # Cloud Run's front end APPENDS the real client address to
@@ -80,8 +112,27 @@ def _rl_key(request: Request):
         return "service", _RL_SERVICE_MAX_REQUESTS
     return _rl_client_ip(request), _RL_MAX_REQUESTS
 
+
+def _rl_prune(now):
+    """Drop idle buckets now and then so the stores do not grow without bound."""
+    global _rl_calls
+    _rl_calls += 1
+    if _rl_calls % 1000:
+        return
+    for store in (_rl_store, _rl_ip_store):
+        for k in [k for k, v in store.items() if not v or v[-1] <= now - _RL_WINDOW_SECS]:
+            del store[k]
+    today = time.strftime("%Y-%m-%d", time.gmtime(now))
+    for k in [k for k, v in _rl_day_store.items() if v[0] != today]:
+        del _rl_day_store[k]
+
+
+def _too_many(message="Too many requests, slow down."):
+    return JSONResponse(status_code=429, content={"error": message, "detail": message})
+
 # Middleware order (Starlette: the LAST one added is the OUTERMOST):
-#   CORS -> body-size limit -> auth -> rate limit -> routes
+#   CORS -> body-size limit -> per-IP limit -> auth -> rate limit (uid/minute,
+#   uid/day, in-flight) -> usage pass -> routes
 # CORS outermost so 401/413/429 responses still carry CORS headers and
 # preflights are answered before auth; auth before the limiter so the limiter
 # can key on the authenticated uid.
@@ -90,12 +141,16 @@ def _rl_key(request: Request):
 # count cannot be skipped by calling here directly. Defined before the rate
 # limiter so it sits inside it (after auth, which sets the uid). Mode
 # SKARI_USAGE_TICKETS = off (default) | monitor | on — usage_ticket.py.
+#
+# Every middleware reads the path the ROUTER uses, request.scope["path"].
+# request.url.path is rebuilt from the Host header, so `Host: x/health?` made
+# a metered route look like /health to these checks (2026-11 audit L1).
 @app.middleware("http")
 async def usage_ticket_middleware(request: Request, call_next):
     state = request.scope.get("state") or {}
     ok, reason = usage_ticket.check_request(
-        request.url.path, request.method, state.get("auth_kind"), state.get("uid"),
-        request.headers, _auth.service_key(), usage_ticket.mode())
+        request.scope.get("path", ""), request.method, state.get("auth_kind"), state.get("uid"),
+        request.headers, usage_ticket.signing_secret(), usage_ticket.mode())
     if not ok:
         return JSONResponse(status_code=403, content={
             "detail": usage_ticket.MESSAGE, "error": usage_ticket.MESSAGE,
@@ -104,18 +159,77 @@ async def usage_ticket_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    if request.url.path in ("/health", "/") or request.method == "OPTIONS":
+    if request.scope.get("path") in _RL_EXEMPT or request.method == "OPTIONS":
         return await call_next(request)
     key, cap = _rl_key(request)
     now = time.time()
+    _rl_prune(now)
     hits = [t for t in _rl_store[key] if t > now - _RL_WINDOW_SECS]
     if len(hits) >= cap:
-        return JSONResponse(status_code=429, content={"error": "Too many requests, slow down."})
+        return _too_many()
+    state = request.scope.get("state") or {}
+    uid = state.get("uid") if state.get("auth_kind") == "user" else None
+    if uid:
+        today = time.strftime("%Y-%m-%d", time.gmtime(now))
+        day, n = _rl_day_store.get(uid, (today, 0))
+        if day != today:
+            n = 0
+        if n >= _RL_DAY_MAX_REQUESTS:
+            return _too_many("Daily analysis limit reached. Try again tomorrow.")
+        _rl_day_store[uid] = (today, n + 1)
     hits.append(now)
     _rl_store[key] = hits
-    return await call_next(request)
+
+    inflight_cap = _INFLIGHT_SERVICE_MAX if key == "service" else _INFLIGHT_MAX
+    with _inflight_lock:
+        if _inflight[key] >= inflight_cap:
+            busy = True
+        else:
+            busy = False
+            _inflight[key] += 1
+    if busy:
+        return _too_many("Too many analyses running at once for this account. "
+                         "Wait for one to finish and try again.")
+    try:
+        return await call_next(request)
+    finally:
+        # Released when the response starts. A handler running in the thread
+        # pool after its client went away is not stopped by this; the cap
+        # bounds how many one account can START, which is what it is for.
+        with _inflight_lock:
+            _inflight[key] -= 1
+            if _inflight[key] <= 0:
+                del _inflight[key]
+
 
 app.add_middleware(AuthMiddleware)
+
+
+class IpRateLimitMiddleware:
+    """Per-IP ceiling (SKARI_RL_IP_PER_MIN), outside AuthMiddleware so that
+    rejected requests count too. Pure ASGI, like AuthMiddleware."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if (scope["type"] != "http" or scope.get("method") == "OPTIONS"
+                or scope.get("path") in _RL_EXEMPT):
+            return await self.app(scope, receive, send)
+        request = Request(scope)
+        if _auth.check_service_key(request.headers.get(_auth.SERVICE_KEY_HEADER, "")):
+            return await self.app(scope, receive, send)
+        ip = _rl_client_ip(request)
+        now = time.time()
+        hits = [t for t in _rl_ip_store[ip] if t > now - _RL_WINDOW_SECS]
+        if len(hits) >= _RL_IP_MAX_REQUESTS:
+            return await _too_many()(scope, receive, send)
+        hits.append(now)
+        _rl_ip_store[ip] = hits
+        return await self.app(scope, receive, send)
+
+
+app.add_middleware(IpRateLimitMiddleware)
 
 
 class BodySizeLimitMiddleware:
@@ -198,6 +312,20 @@ def health_check():
     return {"status": "ok"}
 
 
+def _error_ref() -> str:
+    return uuid.uuid4().hex[:12]
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    # Tracebacks go to the log under a reference; the caller gets the
+    # reference, never the stack (2026-11 audit L2).
+    ref = _error_ref()
+    _skari_log.error("[%s] unhandled error on %s %s", ref, request.method,
+                     request.scope.get("path"), exc_info=exc)
+    return JSONResponse(status_code=500, content={"detail": f"Internal error (ref {ref})."})
+
+
 # Conjoint / survey-analysis family — real APIRouter modules (not the
 # subprocess-script pattern below), each already prefixed with its own path
 # in-module (e.g. rc_analysis.py's router defines POST /rating-conjoint), so
@@ -238,46 +366,92 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 # --timeout must be at least this. Override with SKARI_SCRIPT_TIMEOUT_SECS.
 _SCRIPT_TIMEOUT_SECS = float(os.environ.get("SKARI_SCRIPT_TIMEOUT_SECS", "900"))
 
+# What an analysis subprocess inherits from this server's environment: runtime
+# and library settings only. Never the service key, the model-signing key or
+# anything else secret -- the scripts parse user data with a large dependency
+# set and need none of it (2026-11 audit L4). Prefix match for the families.
+_CHILD_ENV_NAMES = frozenset({
+    "PATH", "HOME", "LANG", "LANGUAGE", "TZ", "TMPDIR", "TEMP", "TMP",
+    "VIRTUAL_ENV", "LD_LIBRARY_PATH", "MPLCONFIGDIR", "MPLBACKEND",
+})
+_CHILD_ENV_PREFIXES = ("LC_", "PYTHON", "OMP_", "OPENBLAS_", "MKL_", "NUMEXPR_",
+                       "NUMBA_", "KMP_", "TF_", "JOBLIB_", "LOKY_")
+
+
+def _child_env() -> dict:
+    return {k: v for k, v in os.environ.items()
+            if k in _CHILD_ENV_NAMES or k.startswith(_CHILD_ENV_PREFIXES)}
+
+
+def _script_error_message(text: str):
+    """The {"error": "..."} a script printed on failure, if any (the last
+    JSON line wins: a library may have printed warnings first)."""
+    for chunk in [text] + list(reversed(text.strip().splitlines())):
+        try:
+            parsed = json.loads(chunk)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+        if isinstance(parsed, dict) and isinstance(parsed.get("error"), str):
+            msg = parsed["error"]
+            if "Traceback (most recent call last)" not in msg:
+                return msg[:2000]
+    return None
+
+
 def run_script(script_file: str, payload: dict) -> dict:
     script_path = os.path.join(_BACKEND_DIR, script_file)
-    # Own process group, so a timeout also kills the workers a script forks
-    # (joblib/loky, n_jobs=-1) rather than orphaning them.
-    child = subprocess.Popen(
-        [sys.executable, script_path],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,
-    )
+    # A fresh working directory per run: a script that writes relative files
+    # (fruit_clustering_analysis.py) writes them there, not into /app shared
+    # by every request (and read-only for the non-root image user). Imports
+    # are unaffected -- sys.path[0] is the script's own directory.
+    workdir = tempfile.mkdtemp(prefix="skari_run_")
     try:
-        out, err = child.communicate(json.dumps(payload), timeout=_SCRIPT_TIMEOUT_SECS)
-    except subprocess.TimeoutExpired:
-        try:
-            os.killpg(child.pid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            child.kill()
-        child.communicate()
-        raise HTTPException(
-            status_code=504,
-            detail=f"Analysis exceeded the {int(_SCRIPT_TIMEOUT_SECS)}s time limit.",
+        # Own process group, so a timeout also kills the workers a script forks
+        # (joblib/loky, n_jobs=-1) rather than orphaning them.
+        child = subprocess.Popen(
+            [sys.executable, script_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+            env=_child_env(),
+            cwd=workdir,
         )
+        try:
+            out, err = child.communicate(json.dumps(payload), timeout=_SCRIPT_TIMEOUT_SECS)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                child.kill()
+            child.communicate()
+            raise HTTPException(
+                status_code=504,
+                detail=f"Analysis exceeded the {int(_SCRIPT_TIMEOUT_SECS)}s time limit.",
+            )
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
     proc = subprocess.CompletedProcess(child.args, child.returncode, out, err)
     if proc.returncode != 0:
-        detail = proc.stderr.strip() or proc.stdout.strip() or "unknown error"
-        try:
-            parsed = json.loads(proc.stdout or proc.stderr)
-            if isinstance(parsed, dict) and "error" in parsed:
-                detail = parsed["error"]
-        except json.JSONDecodeError:
-            pass
+        # The script's own {"error": ...} is written for the user and goes
+        # back as it always has. Anything else -- an uncaught traceback, a
+        # native crash -- stays in the log under a reference (audit L2).
+        detail = _script_error_message(proc.stderr or "") or _script_error_message(proc.stdout or "")
+        if detail is None:
+            ref = _error_ref()
+            _skari_log.error("[%s] %s exited %s; stderr tail: %s", ref, script_file,
+                             proc.returncode, (proc.stderr or proc.stdout or "")[-4000:])
+            detail = f"The analysis failed unexpectedly (ref {ref})."
         raise HTTPException(status_code=400, detail=detail)
     try:
         return json.loads(proc.stdout)
     except json.JSONDecodeError:
+        ref = _error_ref()
+        _skari_log.error("[%s] non-JSON output from %s: %r", ref, script_file, proc.stdout[:2000])
         raise HTTPException(
             status_code=500,
-            detail=f"Non-JSON output from {script_file}: {proc.stdout[:500]!r}",
+            detail=f"The analysis returned an unreadable result (ref {ref}).",
         )
 
 
@@ -287,7 +461,10 @@ def register_script_route(path: str, script_file: str):
     # every other concurrent request. run_in_threadpool offloads it to a worker thread so
     # other requests keep being served while this one's subprocess runs.
     async def _route(request: Request):
-        payload = await request.json()
+        try:
+            payload = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            raise HTTPException(status_code=400, detail="The request body must be JSON.")
         return await run_in_threadpool(run_script, script_file, payload)
     app.add_api_route(path, _route, methods=["POST"], name=script_file)
 

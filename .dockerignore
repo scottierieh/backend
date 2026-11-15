@@ -24,3 +24,12 @@ ENV/
 .DS_Store
 .idea/
 .vscode/
+
+# Not code the service runs: notes, validation fixtures, stray diffs (they
+# describe removed endpoints and internals; 2026-11 audit L3). scripts/ stays:
+# check_startup.py is written to run inside the image.
+maindiff.txt
+eline*
+docs/
+validation/
+*.md

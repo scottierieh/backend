@@ -20,6 +20,19 @@ half: that the numbers are the right ones.
 
 import os
 import sys
+
+# train_model / predict_model take the request since the 2026-11 auth work:
+# the caller comes from request.scope['state'] (auth.AuthMiddleware sets it).
+from types import SimpleNamespace as _NS  # noqa: E402
+_CHECK_REQUEST = _NS(scope={'state': {'auth_kind': 'user', 'uid': 'check-user'}}, headers={})
+
+
+def _train_model(model_id, req):
+    return sys.modules['models_api'].train_model(model_id, req, _CHECK_REQUEST)
+
+
+def _predict_model(model_id, req):
+    return sys.modules['models_api'].predict_model(model_id, req, _CHECK_REQUEST)
 import types
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,10 +42,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # (Same stand-in check_autogluon_serving.py uses.)
 _store: dict = {}
 _fake = types.ModuleType('model_store')
-_fake.save_pipeline = lambda model_id, artifact: (
+_fake.save_pipeline = lambda model_id, artifact, *_a, **_k: (
     _store.__setitem__(f'gs://check/{model_id}', artifact) or f'gs://check/{model_id}')
-_fake.load_pipeline = lambda uri: _store[uri]
-_fake.delete_artifact = lambda uri: _store.pop(uri, None)
+_fake.load_pipeline = lambda uri, *_a, **_k: _store[uri]
+_fake.delete_artifact = lambda uri, *_a, **_k: _store.pop(uri, None)
+_fake.NotOwner = type("NotOwner", (Exception,), {})
+_fake.validate_model_id = lambda model_id: model_id
 sys.modules['model_store'] = _fake
 
 import numpy as np  # noqa: E402
@@ -226,7 +241,7 @@ def main():
          'churn': 'yes' if (i % 30) % 3 == 0 else 'no'}
         for i in range(300)
     ]
-    trained = models_api.train_model('check-te', models_api.TrainRequest(
+    trained = _train_model('check-te', models_api.TrainRequest(
         data=deterministic, algorithm='Decision Tree', target='churn',
         features=['sku_te', 'age'], task='classification',
         pipeline=[{'id': 't', 'kind': 'target_encode', 'columns': ['sku'],
@@ -248,7 +263,7 @@ def main():
           'and remembers the task it was fitted for, so a reload encodes the '
           'same way')
 
-    served = models_api.predict_model('check-te', models_api.PredictRequest(
+    served = _predict_model('check-te', models_api.PredictRequest(
         rows=[{'sku': 'sku-3', 'age': 31}, {'sku': 'never-seen', 'age': 31}],
         artifactUri=trained['artifactUri']))
     check(len(served.get('predictions') or []) == 2,
@@ -256,7 +271,7 @@ def main():
           'from the lookup alone',
           served.get('predictions'))
     try:
-        models_api.predict_model('check-te', models_api.PredictRequest(
+        _predict_model('check-te', models_api.PredictRequest(
             rows=[{'age': 31}], artifactUri=trained['artifactUri']))
         detail, status = '<no exception>', 0
     except Exception as exc:

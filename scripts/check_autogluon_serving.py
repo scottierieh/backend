@@ -21,6 +21,19 @@ because that is the shape the app's ranking policy exists for.
 
 import os
 import sys
+
+# train_model / predict_model take the request since the 2026-11 auth work:
+# the caller comes from request.scope['state'] (auth.AuthMiddleware sets it).
+from types import SimpleNamespace as _NS  # noqa: E402
+_CHECK_REQUEST = _NS(scope={'state': {'auth_kind': 'user', 'uid': 'check-user'}}, headers={})
+
+
+def _train_model(model_id, req):
+    return sys.modules['models_api'].train_model(model_id, req, _CHECK_REQUEST)
+
+
+def _predict_model(model_id, req):
+    return sys.modules['models_api'].predict_model(model_id, req, _CHECK_REQUEST)
 import types
 import math
 import random
@@ -54,10 +67,12 @@ def make_rows(n: int, seed: int = 20260928) -> list[dict]:
 # model_store, in memory. Everything else is the real module.
 _store: dict = {}
 _fake = types.ModuleType('model_store')
-_fake.save_pipeline = lambda model_id, artifact: (
+_fake.save_pipeline = lambda model_id, artifact, *_a, **_k: (
     _store.__setitem__(f'gs://check/{model_id}', artifact) or f'gs://check/{model_id}')
-_fake.load_pipeline = lambda uri: _store[uri]
-_fake.delete_artifact = lambda uri: _store.pop(uri, None)
+_fake.load_pipeline = lambda uri, *_a, **_k: _store[uri]
+_fake.delete_artifact = lambda uri, *_a, **_k: _store.pop(uri, None)
+_fake.NotOwner = type("NotOwner", (Exception,), {})
+_fake.validate_model_id = lambda model_id: model_id
 sys.modules['model_store'] = _fake
 
 import models_api  # noqa: E402  — after the stand-in is registered
@@ -102,7 +117,7 @@ def main() -> int:
         features=FEATURES, task='classification', holdout=holdout_rows,
         engine='autogluon', timeLimit=45, evalMetric='average_precision',
     )
-    res = models_api.train_model('m-check', req)
+    res = _train_model('m-check', req)
     art = _store[res['artifactUri']]
 
     check(art.get('kind') == 'autogluon', 'the artifact says which engine it is', art.get('kind'))
@@ -128,7 +143,7 @@ def main() -> int:
 
     score_rows = [{k: r[k] for k in FEATURES} for r in holdout_rows[:6]]
     uri = res['artifactUri']
-    p = models_api.predict_model('m-check', models_api.PredictRequest(artifactUri=uri, rows=score_rows))
+    p = _predict_model('m-check', models_api.PredictRequest(artifactUri=uri, rows=score_rows))
 
     check(len(p['predictions']) == len(score_rows), 'every row comes back with a prediction')
     check(all(v in (0, 1) for v in p['predictions']), 'in the label space it was trained on',
@@ -148,7 +163,7 @@ def main() -> int:
     # -- right by accident on integer labels, an error on string ones.
     import time as _time
     t0 = _time.time()
-    e = models_api.predict_model('m-check', models_api.PredictRequest(
+    e = _predict_model('m-check', models_api.PredictRequest(
         artifactUri=uri, rows=score_rows[:2], explain=True))
     took = _time.time() - t0
 
@@ -178,14 +193,14 @@ def main() -> int:
     # Untarring on every call would work and would be slow enough to matter.
     loaded = art.get('_ag_loaded')
     check(loaded is not None, 'the predictor is kept on the artifact after the first call')
-    models_api.predict_model('m-check', models_api.PredictRequest(artifactUri=uri, rows=score_rows))
+    _predict_model('m-check', models_api.PredictRequest(artifactUri=uri, rows=score_rows))
     check(art.get('_ag_loaded') is loaded, 'and a second call reuses it rather than unpacking again')
 
-    refuses(lambda: models_api.predict_model('m-check', models_api.PredictRequest(
+    refuses(lambda: _predict_model('m-check', models_api.PredictRequest(
         artifactUri=uri, rows=[{k: v for k, v in score_rows[0].items() if k != 'age'}])),
         400, "a row missing a column the model needs")
 
-    refuses(lambda: models_api.train_model('m-bad', models_api.TrainRequest(
+    refuses(lambda: _train_model('m-bad', models_api.TrainRequest(
         data=train_rows, algorithm='AutoGluon', target=TARGET, features=FEATURES,
         task='classification', engine='autogluon', timeLimit=20, agModel='NoSuchModel')),
         400, 'a model name that is not on the predictor')

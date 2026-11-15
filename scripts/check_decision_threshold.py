@@ -23,6 +23,19 @@ None of those raise. All three return a well-shaped response.
 
 import os
 import sys
+
+# train_model / predict_model take the request since the 2026-11 auth work:
+# the caller comes from request.scope['state'] (auth.AuthMiddleware sets it).
+from types import SimpleNamespace as _NS  # noqa: E402
+_CHECK_REQUEST = _NS(scope={'state': {'auth_kind': 'user', 'uid': 'check-user'}}, headers={})
+
+
+def _train_model(model_id, req):
+    return sys.modules['models_api'].train_model(model_id, req, _CHECK_REQUEST)
+
+
+def _predict_model(model_id, req):
+    return sys.modules['models_api'].predict_model(model_id, req, _CHECK_REQUEST)
 import types
 import math
 import random
@@ -54,10 +67,12 @@ def make_rows(n: int, seed: int = 20260929) -> list[dict]:
 
 _store: dict = {}
 _fake = types.ModuleType('model_store')
-_fake.save_pipeline = lambda model_id, artifact: (
+_fake.save_pipeline = lambda model_id, artifact, *_a, **_k: (
     _store.__setitem__(f'gs://check/{model_id}', artifact) or f'gs://check/{model_id}')
-_fake.load_pipeline = lambda uri: _store[uri]
-_fake.delete_artifact = lambda uri: _store.pop(uri, None)
+_fake.load_pipeline = lambda uri, *_a, **_k: _store[uri]
+_fake.delete_artifact = lambda uri, *_a, **_k: _store.pop(uri, None)
+_fake.NotOwner = type("NotOwner", (Exception,), {})
+_fake.validate_model_id = lambda model_id: model_id
 sys.modules['model_store'] = _fake
 
 import models_api  # noqa: E402
@@ -82,7 +97,7 @@ def main() -> int:
     positives = sum(r[TARGET] for r in rows)
     print(f'{len(rows)} rows, {positives} positive ({positives / len(rows) * 100:.1f}%)\n')
 
-    res = models_api.train_model('m-th', models_api.TrainRequest(
+    res = _train_model('m-th', models_api.TrainRequest(
         data=train, algorithm='Random Forest', target=TARGET, features=FEATURES,
         task='classification', holdout=hold))
     t = res.get('threshold')
@@ -113,7 +128,7 @@ def main() -> int:
 
     # ---- and it is what the service actually answers by ------------------
     score = [{k: r[k] for k in FEATURES} for r in hold]
-    p = models_api.predict_model('m-th', models_api.PredictRequest(
+    p = _predict_model('m-th', models_api.PredictRequest(
         artifactUri=res['artifactUri'], rows=score))
 
     idx = t['positive_index']
@@ -137,7 +152,7 @@ def main() -> int:
     # ---- when there is no cut to choose ----------------------------------
     # Regression has no classes to cut between. A number here would be one
     # nobody could act on.
-    reg = models_api.train_model('m-reg', models_api.TrainRequest(
+    reg = _train_model('m-reg', models_api.TrainRequest(
         data=train, algorithm='Random Forest', target='income',
         features=['age', 'tenure', 'complaints', 'region'], task='regression',
         holdout=hold))

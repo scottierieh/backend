@@ -164,8 +164,11 @@ def _wtp(part_worths_flat, price_name):
             for p in part_worths_flat if p["attribute"] != price_name}
 
 
+# Plain `def`, not `async def`: the whole fit runs inline, and inside an
+# async route it held the event loop -- /health included -- until it ended.
+# FastAPI runs a `def` route in its thread pool.
 @router.post("/adaptive-cbc")
-async def analyze_acbc(payload: ACBCPayload):
+def analyze_acbc(payload: ACBCPayload):
     try:
         rows, attr_cols = _tournament_to_rows(payload.attributes, payload.responses)
         if len(rows) < 4:

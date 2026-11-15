@@ -22,6 +22,19 @@ See docs/automl-class-imbalance.md for the table this checks against.
 import os
 import sys
 
+# train_model / predict_model take the request since the 2026-11 auth work:
+# the caller comes from request.scope['state'] (auth.AuthMiddleware sets it).
+from types import SimpleNamespace as _NS  # noqa: E402
+_CHECK_REQUEST = _NS(scope={'state': {'auth_kind': 'user', 'uid': 'check-user'}}, headers={})
+
+
+def _train_model(model_id, req):
+    return sys.modules['models_api'].train_model(model_id, req, _CHECK_REQUEST)
+
+
+def _predict_model(model_id, req):
+    return sys.modules['models_api'].predict_model(model_id, req, _CHECK_REQUEST)
+
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -124,15 +137,17 @@ def main() -> int:
     import types
     _store: dict = {}
     fake = types.ModuleType('model_store')
-    fake.save_pipeline = lambda i, a: (_store.__setitem__(f'gs://c/{i}', a) or f'gs://c/{i}')
-    fake.load_pipeline = lambda u: _store[u]
-    fake.delete_artifact = lambda u: None
+    fake.save_pipeline = lambda i, a, *_a, **_k: (_store.__setitem__(f'gs://c/{i}', a) or f'gs://c/{i}')
+    fake.load_pipeline = lambda u, *_a, **_k: _store[u]
+    fake.delete_artifact = lambda u, *_a, **_k: None
+    fake.NotOwner = type("NotOwner", (Exception,), {})
+    fake.validate_model_id = lambda model_id: model_id
     sys.modules['model_store'] = fake
     import models_api
     models_api.model_store = fake
 
     rows = make_rows(900)
-    res = models_api.train_model('m-cw', models_api.TrainRequest(
+    res = _train_model('m-cw', models_api.TrainRequest(
         data=rows, algorithm='Random Forest', target=TARGET,
         features=FEATURES, task='classification'))
     rep = res.get('classWeighting')
@@ -145,7 +160,7 @@ def main() -> int:
           'and the estimator in the saved artifact carries it, not just the report',
           est.get_params().get('class_weight'))
 
-    off = models_api.train_model('m-cw-off', models_api.TrainRequest(
+    off = _train_model('m-cw-off', models_api.TrainRequest(
         data=rows, algorithm='Random Forest', target=TARGET,
         features=FEATURES, task='classification', classWeight=None))
     off_est = _store[off['artifactUri']]['pipeline'].named_steps['est']
@@ -154,14 +169,14 @@ def main() -> int:
           'and a caller that turns it off gets the unweighted fit it asked for',
           off.get('classWeighting'))
 
-    reg = models_api.train_model('m-cw-reg', models_api.TrainRequest(
+    reg = _train_model('m-cw-reg', models_api.TrainRequest(
         data=rows, algorithm='Random Forest', target='income',
         features=['age', 'tenure', 'complaints', 'region'], task='regression'))
     check(reg.get('classWeighting') is None,
           'regression reports none, rather than a balance it cannot have')
 
     # The estimators with no route must reach /train the same way.
-    knn = models_api.train_model('m-cw-knn', models_api.TrainRequest(
+    knn = _train_model('m-cw-knn', models_api.TrainRequest(
         data=rows, algorithm='K-Nearest Neighbors (KNN)', target=TARGET,
         features=FEATURES, task='classification'))
     krep = knn.get('classWeighting') or {}

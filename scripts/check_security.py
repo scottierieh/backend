@@ -18,6 +18,12 @@ Sections:
      ever deserialized; delete requires the owner.
   6. end to end through FastAPI: the optimisation analyses, and Model Lab
      train -> predict -> delete.
+  7. 2026-11 audit fixes (area C, Python): fail-closed auth (M2), real path in
+     the middlewares (L1), no tracebacks / API docs (L2), scrubbed script
+     environment (L4), per-IP / per-day / in-flight ceilings (L5, M3), the
+     tuned-parameter allowlist (H2), predict bound to the owner (H3), the
+     AutoGluon save metered (M1), usage-pass edge cases (L6), bounded model
+     cache and the owner purge (M3, E-06).
 """
 
 import datetime
@@ -33,7 +39,8 @@ _ROOT = os.path.dirname(_HERE)
 sys.path.insert(0, _ROOT)
 
 # Make sure nothing in the environment leaks into the checks.
-for _k in ('SKARI_FIREBASE_PROJECT', 'SKARI_BACKEND_KEY', 'SKARI_MODEL_SIGNING_KEY'):
+for _k in ('SKARI_FIREBASE_PROJECT', 'SKARI_BACKEND_KEY', 'SKARI_MODEL_SIGNING_KEY',
+           'SKARI_AUTH_DISABLED', 'SKARI_USAGE_TICKET_KEY', 'SKARI_USAGE_TICKETS', 'SKARI_API_DOCS'):
     os.environ.pop(_k, None)
 
 _ok = 0
@@ -201,16 +208,30 @@ def section_auth(client, main, auth, key_pem, cert_pem, other_key_pem):
         return {'kid-1': cert_pem}, 3600
     auth.cert_cache.set_fetcher(fetcher)
 
-    # Enforcement off: allowed, anonymous.
+    # No project and no explicit switch: fail closed (M2).
+    r = client.get('/__whoami')
+    check(r.status_code == 503 and 'not configured' in r.json().get('detail', ''),
+          'SKARI_FIREBASE_PROJECT unset: every route 503 (fail closed)', f'{r.status_code} {r.text}')
+    check(client.get('/health').status_code == 200, 'SKARI_FIREBASE_PROJECT unset: /health still 200')
+    os.environ['SKARI_BACKEND_KEY'] = 'svc-only'
+    r = client.get('/__whoami', headers={'X-Skari-Service-Key': 'svc-only'})
+    check(r.status_code == 200 and r.json()['kind'] == 'service',
+          'SKARI_FIREBASE_PROJECT unset: the service key still works', r.text)
+    os.environ.pop('SKARI_BACKEND_KEY', None)
+    os.environ['SKARI_AUTH_DISABLED'] = '1'
     r = client.get('/__whoami')
     check(r.status_code == 200 and r.json()['kind'] == 'anonymous',
-          'SKARI_FIREBASE_PROJECT unset: requests allowed (dev mode)', r.text)
+          'SKARI_AUTH_DISABLED=1 and no project: requests allowed (local dev)', r.text)
+    os.environ['SKARI_AUTH_DISABLED'] = 'yes'
+    check(client.get('/__whoami').status_code == 503, "SKARI_AUTH_DISABLED must be exactly '1'")
+    os.environ['SKARI_AUTH_DISABLED'] = '1'
 
     os.environ['SKARI_FIREBASE_PROJECT'] = PROJECT
     try:
         r = client.get('/__whoami')
         check(r.status_code == 401 and r.json() == {'detail': 'Authentication required.'},
-              'no credentials -> 401 JSON', f'{r.status_code} {r.text}')
+              'no credentials -> 401 JSON (SKARI_AUTH_DISABLED=1 is ignored once a project is set)',
+              f'{r.status_code} {r.text}')
         check(client.get('/health').status_code == 200, '/health exempt')
         check(client.get('/').status_code == 200, '/ exempt')
         r = client.options('/api/analysis/nonlinear-programming', headers={
@@ -304,6 +325,7 @@ def section_auth(client, main, auth, key_pem, cert_pem, other_key_pem):
         os.environ.pop('SKARI_BACKEND_KEY', None)
 
     # ---- 4. body limit + timeout ----------------------------------------
+    # (local-dev mode from here: the body limit sits outside authentication)
     big = b'{"a": "' + b'x' * (main._MAX_BODY_BYTES + 10) + b'"}'
     r = client.post('/api/analysis/nonlinear-programming', content=big,
                     headers={'Content-Type': 'application/json'})
@@ -330,6 +352,7 @@ def section_auth(client, main, auth, key_pem, cert_pem, other_key_pem):
         main._BACKEND_DIR, main._SCRIPT_TIMEOUT_SECS = real_dir, real_to
     check(e is not None and getattr(e, 'status_code', 0) == 504 and time.time() - t0 < 10,
           'run_script: a script past the timeout is killed -> 504', repr(e))
+    os.environ.pop('SKARI_AUTH_DISABLED', None)
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +381,15 @@ class FakeBucket:
 
     def blob(self, name):
         return FakeBlob(self.store, name)
+
+    def list_blobs(self, prefix=''):
+        out = []
+        for name in list(self.store):
+            if name.startswith(prefix):
+                b = FakeBlob(self.store, name)
+                b.metadata = dict(self.store[name][1])
+                out.append(b)
+        return out
 
     def get_blob(self, name):
         if name not in self.store:
@@ -392,6 +424,20 @@ def section_model_store(model_store, fake):
           'save_pipeline writes models/{id}/<ts>/pipeline.joblib', uri)
     check(model_store.load_pipeline(uri, 'm1') == {'hello': 'world'},
           'a signed artifact loads for its own model id')
+    model_store._pipeline_cache.clear()
+    fake.downloads.clear()
+    e = raises(lambda: model_store.load_pipeline(uri, 'm1', caller_uid='user-b', is_service=False),
+               model_store.NotOwner)
+    check(e is not None and not fake.downloads,
+          'load for another account -> NotOwner, refused from metadata before any download')
+    check(model_store.load_pipeline(uri, 'm1', caller_uid='user-a', is_service=False) == {'hello': 'world'},
+          'load for the signed owner')
+    e = raises(lambda: model_store.load_pipeline(uri, 'm1', caller_uid='user-b', is_service=False),
+               model_store.NotOwner)
+    check(e is not None, 'a cached artifact is still refused to another account')
+    e = raises(lambda: model_store.load_pipeline(uri, 'm1', caller_uid=None, is_service=False,
+                                                 auth_enforced=False), model_store.NotOwner)
+    check(e is not None, 'local-dev anonymous caller cannot load an artifact that names an owner')
     model_store._pipeline_cache.clear()
 
     e = raises(lambda: model_store.load_pipeline(uri, 'm2'), ValueError)
@@ -514,10 +560,18 @@ def section_e2e(client, main, auth, model_store, fake, key_pem):
               f'{r.status_code} {r.text[:300]}')
         if uri:
             model_store._pipeline_cache.clear()
-            r = client.post('/api/models/abc123/predict', headers=B, json={
+            r = client.post('/api/models/abc123/predict', headers=A, json={
                 'artifactUri': uri, 'rows': [{'f1': 6, 'f2': 1}]})
             check(r.status_code == 200 and r.json()['predictions'] == ['yes'],
-                  'predict with the returned artifactUri -> 200, same shape', f'{r.status_code} {r.text[:300]}')
+                  'predict (owner) with the returned artifactUri -> 200, same shape', f'{r.status_code} {r.text[:300]}')
+            r = client.post('/api/models/abc123/predict', headers=B, json={
+                'artifactUri': uri, 'rows': [{'f1': 6, 'f2': 1}], 'explain': True})
+            check(r.status_code == 403 and 'shapImportance' not in r.text,
+                  'predict/explain by another account -> 403 (H3)', f'{r.status_code} {r.text[:200]}')
+            r = client.post('/api/models/abc123/predict', headers=svc, json={
+                'artifactUri': uri, 'rows': [{'f1': 6, 'f2': 1}]})
+            check(r.status_code == 200 and r.json()['predictions'] == ['yes'],
+                  'predict with the service key (public form route) -> 200', f'{r.status_code} {r.text[:200]}')
             r = client.post('/api/models/zzz999/predict', headers=A, json={
                 'artifactUri': uri, 'rows': [{'f1': 6, 'f2': 1}]})
             check(r.status_code == 403, "predict naming another model's artifact -> 403", r.status_code)
@@ -628,6 +682,330 @@ def section_usage_ticket(client, main, key_pem):
         main._rl_store.clear()
 
 
+# ---------------------------------------------------------------------------
+# 7. 2026-11 audit fixes (area C, Python)
+# ---------------------------------------------------------------------------
+def section_audit_2026_11(client, main, auth, model_store, fake, key_pem):
+    import inspect
+    import socket
+    import threading
+    import usage_ticket as ut
+    import models_api
+    import algorithm_registry as ar
+
+    K = 's3cret-service-key'
+    os.environ['SKARI_FIREBASE_PROJECT'] = PROJECT
+    os.environ['SKARI_BACKEND_KEY'] = K
+    os.environ['SKARI_MODEL_SIGNING_KEY'] = 'model-signing-key-1'
+    svc = {'X-Skari-Service-Key': K}
+    A = {'Authorization': 'Bearer ' + make_token(key_pem, 'kid-1', sub='user-a')}
+    B = {'Authorization': 'Bearer ' + make_token(key_pem, 'kid-1', sub='user-b')}
+    main._rl_store.clear(); main._rl_ip_store.clear(); main._rl_day_store.clear()
+    rows = [{'f1': i % 7, 'f2': (i * 3) % 5, 'y': 'yes' if i % 7 > 3 else 'no'} for i in range(60)]
+    base = {'data': rows, 'target': 'y', 'features': ['f1', 'f2'], 'task': 'classification'}
+    try:
+        # ---- H2: tuned-parameter allowlist --------------------------------
+        def train(mid, headers=A, **over):
+            return client.post(f'/api/models/{mid}/train', headers=headers, json={**base, **over})
+
+        lst = socket.socket(); lst.bind(('127.0.0.1', 0)); lst.listen(1)
+        port = lst.getsockname()[1]
+        seen = []
+
+        def acc():
+            lst.settimeout(3)
+            try:
+                c, addr = lst.accept(); seen.append(addr); c.close()
+            except Exception:
+                pass
+        t = threading.Thread(target=acc, daemon=True); t.start()
+        t0 = time.time()
+        r = train('h2lgb', algorithm='LightGBM', params={
+            'n_estimators': 3, 'tree_learner': 'data', 'num_machines': 2, 'time_out': 1,
+            'machines': f'127.0.0.1:{port},127.0.0.1:{port + 1}', 'local_listen_port': port + 1})
+        t.join(4); lst.close()
+        check(r.status_code == 400 and not seen and time.time() - t0 < 10,
+              'H2: LightGBM network parameters -> 400 before any fit, no outbound connection',
+              f'{r.status_code} {r.text[:200]} seen={seen}')
+        out_dir = tempfile.mkdtemp(prefix='skari_h2_')
+        target = os.path.join(out_dir, 'catboost_dir')
+        r = train('h2cat', algorithm='CatBoost', params={
+            'iterations': 5, 'train_dir': target, 'allow_writing_files': True,
+            'save_snapshot': True, 'snapshot_file': os.path.join(out_dir, 'json.py')})
+        check(r.status_code == 400 and not os.path.exists(target) and os.listdir(out_dir) == [],
+              'H2: CatBoost train_dir / snapshot_file -> 400, nothing written', f'{r.status_code} {r.text[:200]}')
+        import shutil
+        shutil.rmtree(out_dir, ignore_errors=True)
+        for label, algo, params in [
+            ('thread_count', 'CatBoost', {'thread_count': 64}),
+            ('n_jobs', 'Random Forest', {'n_jobs': -1}),
+            ('n_estimators above the ceiling', 'Random Forest', {'n_estimators': 10 ** 7}),
+            ('learning_rate 0', 'XGBoost', {'learning_rate': 0}),
+            ('a bool for an int', 'GBM', {'max_depth': True}),
+            ('a string for a float', 'LightGBM', {'subsample': '0.5'}),
+            ('NaN', 'XGBoost', {'subsample': float('nan')}),
+            ('max_features as a path', 'Random Forest', {'max_features': '/etc/passwd'}),
+            ('params for an untuned model', 'Decision Tree', {'max_depth': 3}),
+            ('nthread (xgboost)', 'XGBoost', {'nthread': 64}),
+        ]:
+            e = raises(lambda: ar.build_estimator(algo, 'classification', params), ValueError)
+            check(e is not None, f'H2: refused -- {label}', repr(params))
+        good = {
+            'Random Forest': {'n_estimators': 100, 'max_depth': None, 'min_samples_split': 5,
+                              'min_samples_leaf': 2, 'max_features': 'sqrt'},
+            'GBM': {'n_estimators': 100, 'learning_rate': 0.1, 'max_depth': 3, 'subsample': 0.85},
+            'XGBoost': {'n_estimators': 100, 'learning_rate': 0.05, 'max_depth': 6, 'subsample': 0.7,
+                        'colsample_bytree': 1.0, 'min_child_weight': 3},
+            'LightGBM': {'n_estimators': 100, 'learning_rate': 0.03, 'num_leaves': 31, 'max_depth': -1,
+                         'subsample': 1.0, 'colsample_bytree': 0.85},
+            'CatBoost': {'iterations': 100, 'learning_rate': 0.1, 'depth': 6, 'l2_leaf_reg': 3},
+        }
+        for algo, params in good.items():
+            try:
+                est = ar.build_estimator(algo, 'classification', params)
+                got = est.get_params()
+                check(all(got.get(k) == v for k, v in params.items()),
+                      f'H2: a tune_analysis.py best_params set still applies -- {algo}')
+            except Exception as ex:
+                check(False, f'H2: a tune_analysis.py best_params set still applies -- {algo}', repr(ex))
+        check(ar.validate_params('LightGBM', {'n_estimators': 200.0}) == {'n_estimators': 200},
+              'H2: 200.0 for an int parameter is taken as 200')
+        r = train('h2ok', algorithm='Random Forest', params={'n_estimators': 20, 'max_depth': 4})
+        check(r.status_code == 200 and r.json().get('artifactUri'),
+              'H2: train with allowed tuned params -> 200', f'{r.status_code} {r.text[:200]}')
+
+        # ---- H3: predict bound to the owner; service key never sees rows ---
+        r = train('h3model', algorithm='Decision Tree')
+        uri = r.json().get('artifactUri') if r.status_code == 200 else None
+        check(bool(uri), 'H3: owner trains a model', r.text[:200])
+        model_store._pipeline_cache.clear()
+        fake.downloads.clear()
+        req = {'artifactUri': uri, 'rows': [{'f1': 6, 'f2': 1}], 'explain': True}
+        r = client.post('/api/models/h3model/predict', headers=B, json=req)
+        check(r.status_code == 403 and not fake.downloads,
+              'H3: another account -> 403, artifact never downloaded', f'{r.status_code} {fake.downloads}')
+        r = client.post('/api/models/h3model/predict', headers=A, json=req)
+        pts = [p for f in ((r.json().get('shapImportance') or {}).get('features') or []) for p in f['points']]
+        check(r.status_code == 200 and pts and all('value' in p for p in pts),
+              'H3: owner explain unchanged (beeswarm points carry their values)', f'{r.status_code} {r.text[:200]}')
+        r = client.post('/api/models/h3model/predict', headers=B, json=req)
+        check(r.status_code == 403, 'H3: another account still 403 once the artifact is cached', r.status_code)
+        r = client.post('/api/models/h3model/predict', headers=svc, json=req)
+        j = r.json() if r.status_code == 200 else {}
+        pts = [p for f in ((j.get('shapImportance') or {}).get('features') or []) for p in f['points']]
+        check(r.status_code == 200 and pts and not any('value' in p for p in pts)
+              and all('meanAbsShap' in f for f in j['shapImportance']['features']),
+              'H3: service-key explain -> SHAP kept, training-row values stripped', f'{r.status_code} {r.text[:200]}')
+        r = client.post('/api/models/h3model/predict', headers=A, json={
+            'artifactUri': uri, 'rows': [{'f1': 1, 'f2': 1}] * (models_api.MAX_EXPLAIN_ROWS + 1), 'explain': True})
+        check(r.status_code == 400, f'M3: explain over {models_api.MAX_EXPLAIN_ROWS} rows -> 400', r.status_code)
+        real = models_api.MAX_PREDICT_ROWS
+        models_api.MAX_PREDICT_ROWS = 5
+        try:
+            r = client.post('/api/models/h3model/predict', headers=A, json={
+                'artifactUri': uri, 'rows': [{'f1': 1, 'f2': 1}] * 6})
+            check(r.status_code == 400, 'M3: predict over the row cap -> 400', r.status_code)
+        finally:
+            models_api.MAX_PREDICT_ROWS = real
+        real = models_api.MAX_TRAIN_ROWS
+        models_api.MAX_TRAIN_ROWS = 30
+        try:
+            r = train('m3rows', algorithm='Decision Tree')
+            check(r.status_code == 400 and 'Too many rows' in r.text, 'M3: train over the row cap -> 400', r.text[:200])
+        finally:
+            models_api.MAX_TRAIN_ROWS = real
+        r = train('m3preset', algorithm='x', engine='autogluon', preset='/tmp/evil')
+        check(r.status_code == 400 and 'preset' in r.text, 'M3: unknown AutoGluon preset -> 400', r.text[:200])
+
+        # ---- E-06: purge every artifact of one account (service key only) --
+        train('e06a2', algorithm='Decision Tree')
+        r = train('e06b1', headers=B, algorithm='Decision Tree')
+        b_uri = r.json().get('artifactUri', '')
+        def signed_for(name, meta):
+            try:
+                return model_store._verify(name, meta) == 'user-a'
+            except ValueError:
+                return False  # e.g. section 5's planted copy: not servable, not purged
+        a_paths = [n for n, (_, m) in fake.store.items() if signed_for(n, m)]
+        r = client.post('/api/models/owner-purge', headers=A, json={'uid': 'user-a'})
+        check(r.status_code == 403 and all(p in fake.store for p in a_paths),
+              'E-06: owner purge with a user token -> 403', r.status_code)
+        r = client.post('/api/models/owner-purge', headers=svc, json={'uid': 'user-a'})
+        check(r.status_code == 200 and r.json().get('deleted') == len(a_paths) >= 3
+              and not any(p in fake.store for p in a_paths)
+              and b_uri.split('/', 3)[-1] in fake.store,
+              "E-06: service-key purge deletes all of that account's artifacts, nobody else's",
+              f'{r.status_code} {r.text} {len(a_paths)}')
+        r = client.post('/api/models/owner-purge', headers=svc, json={'uid': ''})
+        check(r.status_code == 400, 'E-06: purge with an empty uid -> 400', r.status_code)
+
+        # ---- M2: local-dev mode cannot delete someone's artifact -----------
+        os.environ.pop('SKARI_FIREBASE_PROJECT')
+        os.environ['SKARI_AUTH_DISABLED'] = '1'
+        r = client.delete('/api/models/e06b1', params={'artifactUri': b_uri})
+        check(r.status_code == 403 and b_uri.split('/', 3)[-1] in fake.store,
+              'M2: with authentication off, an owned artifact still cannot be deleted', r.status_code)
+        os.environ.pop('SKARI_AUTH_DISABLED')
+        os.environ['SKARI_FIREBASE_PROJECT'] = PROJECT
+
+        # ---- M1 + L6: usage pass on the AutoGluon save ----------------------
+        ut.reset_uses()
+        os.environ['SKARI_USAGE_TICKETS'] = 'on'
+        now = int(time.time())
+        ag = dict(algorithm='AutoGluon', engine='autogluon', target='nope', timeLimit=600)
+
+        def save(headers):
+            return client.post('/api/models/m1save/train', headers=headers, json={**base, **ag})
+
+        r = save(A)
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_missing',
+              'M1: /train engine=autogluon without a pass -> 403 usage_ticket_missing', f'{r.status_code} {r.text[:200]}')
+        r = train('m1plain', algorithm='Decision Tree')
+        check(r.status_code == 200, 'M1: /train without engine needs no pass', r.status_code)
+        r = save(svc)
+        check(r.json().get('code', '') == '' and r.status_code != 403,
+              'M1: service-key /train engine=autogluon needs no pass', f'{r.status_code} {r.text[:120]}')
+        p = ut.sign({'v': 1, 'u': 'user-a', 'm': 'automl', 'x': now - 1800, 'j': 'save1', 's': 0}, K)
+        codes = [save({**A, 'X-Skari-Usage-Ticket': p}) for _ in range(ut.MAX_SAVE_USES + 1)]
+        check(all(c.status_code != 403 for c in codes[:-1])
+              and codes[-1].status_code == 403 and codes[-1].json().get('code') == 'usage_ticket_reused',
+              f'M1: a run\'s pass (expired 30 min ago) covers {ut.MAX_SAVE_USES} saves, then 403 reused',
+              [(c.status_code, c.text[:80]) for c in codes])
+        old = ut.sign({'v': 1, 'u': 'user-a', 'm': 'automl', 'x': now - ut.SAVE_GRACE - 60, 'j': 'save2', 's': 0}, K)
+        r = save({**A, 'X-Skari-Usage-Ticket': old})
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_expired',
+              'M1: a pass older than the save grace -> 403 expired', r.text[:200])
+        net = ut.sign({'v': 1, 'u': 'user-a', 'm': 'ergm', 'x': now + 600, 'j': 'save3', 's': 0}, K)
+        r = save({**A, 'X-Skari-Usage-Ticket': net})
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_meter',
+              'M1: a network-model pass does not open the AutoGluon save', r.text[:200])
+        ok_, why = ut.check_request('/api/analysis/autogluon', 'POST', 'user', 'user-a', {}, '', 'on')
+        check((ok_, why) == (False, 'unconfigured'),
+              'L6: mode on with no key -> metered run refused, not allowed', (ok_, why))
+        check(ut.verify('abc.déf', 'u', 'automl', K)[1] == 'malformed',
+              'L6: non-ASCII signature -> malformed (no TypeError)')
+        ut.ROUTES['/__l6probe'] = 'automl'
+
+        @main.app.post('/__l6probe')
+        def _l6():
+            return {'ran': True}
+        r = client.post('/__l6probe', headers={**A, 'X-Skari-Usage-Ticket': 'abc.déf'.encode('latin-1')})
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_malformed',
+              'L6: non-ASCII pass through the app -> 403 malformed, not 500', f'{r.status_code} {r.text[:120]}')
+
+        # ---- L1: the middlewares follow the router's path, not Host ---------
+        r = client.post('/__l6probe', headers={**A, 'Host': 'x/health?'})
+        check(r.status_code == 403 and r.json().get('code') == 'usage_ticket_missing',
+              'L1: Host: x/health? no longer skips the usage pass', f'{r.status_code} {r.text[:120]}')
+        main._rl_store.clear()
+        codes = [client.post('/__l6probe', headers={**A, 'Host': 'x/health?'}).status_code
+                 for _ in range(main._RL_MAX_REQUESTS + 2)]
+        check(codes.count(429) >= 2, 'L1: Host: x/health? no longer skips the rate limit', codes[-3:])
+        main._rl_store.clear()
+        os.environ.pop('SKARI_USAGE_TICKETS', None)
+        ut.ROUTES.pop('/__l6probe', None)
+
+        # ---- L5: per-IP (counts 401s), per-uid per day ----------------------
+        real_ip, real_day = main._RL_IP_MAX_REQUESTS, main._RL_DAY_MAX_REQUESTS
+        main._RL_IP_MAX_REQUESTS, main._RL_DAY_MAX_REQUESTS = 5, 4
+        try:
+            main._rl_ip_store.clear()
+            ip = {'X-Forwarded-For': '203.0.113.77'}
+            codes = [client.get('/__whoami', headers=ip).status_code for _ in range(6)]
+            check(codes == [401] * 5 + [429], 'L5: rejected (401) requests count toward the per-IP ceiling', codes)
+            r = client.get('/__whoami', headers={**ip, **svc})
+            check(r.status_code == 200, 'L5: the service key is exempt from the per-IP ceiling', r.status_code)
+            check(client.get('/health', headers=ip).status_code == 200, 'L5: /health exempt from the per-IP ceiling')
+            main._rl_ip_store.clear(); main._rl_store.clear(); main._rl_day_store.clear()
+            codes = [client.get('/__whoami', headers={**A, 'X-Forwarded-For': f'198.51.100.{i}'}).status_code
+                     for i in range(5)]
+            r = client.get('/__whoami', headers={**A, 'X-Forwarded-For': '198.51.100.99'})
+            check(codes == [200] * 4 + [429] and 'Daily' in r.text,
+                  'L5: per-account daily ceiling (SKARI_RL_UID_PER_DAY)', codes)
+        finally:
+            main._RL_IP_MAX_REQUESTS, main._RL_DAY_MAX_REQUESTS = real_ip, real_day
+            main._rl_ip_store.clear(); main._rl_store.clear(); main._rl_day_store.clear()
+
+        # ---- M3: in-flight cap, conjoint routes off the event loop, LRU ----
+        main._inflight['uid:user-a'] = main._INFLIGHT_MAX
+        try:
+            r = client.get('/__whoami', headers=A)
+            check(r.status_code == 429 and 'running at once' in r.text,
+                  f'M3: a {main._INFLIGHT_MAX + 1}th request in flight for one account -> 429', r.status_code)
+            r = client.get('/__whoami', headers=B)
+            check(r.status_code == 200, 'M3: another account is not affected', r.status_code)
+        finally:
+            main._inflight.pop('uid:user-a', None)
+        check(client.get('/__whoami', headers=A).status_code == 200 and not main._inflight,
+              'M3: in-flight slots are released after each response')
+        sync = {r.path: not inspect.iscoroutinefunction(r.endpoint) for r in main.app.routes
+                if getattr(r, 'path', '') in ('/api/analysis/rating-conjoint', '/api/analysis/conjoint',
+                                              '/api/analysis/adaptive-conjoint', '/api/analysis/conjoint-hb',
+                                              '/api/analysis/adaptive-cbc')}
+        check(len(sync) == 5 and all(sync.values()),
+              'M3: the five conjoint routes are plain def (thread pool, not the event loop)', sync)
+        real_max = model_store._CACHE_MAX
+        model_store._CACHE_MAX = 2
+        try:
+            model_store._pipeline_cache.clear()
+            ag_dir = tempfile.mkdtemp(prefix='ag_serve_')
+            uris = []
+            for i in range(3):
+                time.sleep(0.002)
+                uris.append(model_store.save_pipeline('lru', {'i': i, '_ag_dir': ag_dir if i == 0 else None}, 'user-a'))
+            for u in uris:
+                model_store.load_pipeline(u, 'lru')
+            check(len(model_store._pipeline_cache) == 2 and not os.path.exists(ag_dir),
+                  'M3: model cache is LRU-bounded; eviction removes the ag_serve_* directory',
+                  f'{len(model_store._pipeline_cache)} {os.path.exists(ag_dir)}')
+        finally:
+            model_store._CACHE_MAX = real_max
+            model_store._pipeline_cache.clear()
+
+        # ---- L2: no API docs, no tracebacks ---------------------------------
+        for path in ('/openapi.json', '/docs', '/redoc'):
+            r = client.get(path, headers=A)
+            check(r.status_code == 404, f'L2: {path} not served (SKARI_API_DOCS unset)', r.status_code)
+        r = client.post('/api/analysis/nps', headers={**A, 'Content-Type': 'application/json'}, content=b'{')
+        check(r.status_code == 400, 'L2: malformed JSON on a script route -> 400, not 500', r.status_code)
+        tmp = tempfile.mkdtemp()
+        with open(os.path.join(tmp, 'crash.py'), 'w') as fh:
+            fh.write('import os, sys, json\n'
+                     'leaked = sorted(k for k in os.environ if k.startswith("SKARI_"))\n'
+                     'cwd_is_backend = os.path.abspath(os.getcwd()) == os.path.abspath(sys.argv[0]).rsplit("/", 1)[0]\n'
+                     'if json.load(sys.stdin).get("crash"):\n'
+                     '    raise RuntimeError("boom at /app/secret_path.py")\n'
+                     'print(json.dumps({"leaked": leaked, "cwd_is_script_dir": cwd_is_backend, "cwd": os.getcwd()}))\n')
+        real_dir = main._BACKEND_DIR
+        main._BACKEND_DIR = tmp
+        os.environ['SKARI_USAGE_TICKET_KEY'] = 'k2'
+        try:
+            e = raises(lambda: main.run_script('crash.py', {'crash': True}))
+            d = getattr(e, 'detail', '')
+            check(getattr(e, 'status_code', 0) == 400 and 'Traceback' not in d and 'secret_path' not in d
+                  and 'ref ' in d, 'L2: an uncaught script traceback -> generic message with a reference', d)
+            out = main.run_script('crash.py', {})
+            check(out['leaked'] == [], 'L4: analysis subprocesses get no SKARI_* secrets', out['leaked'])
+            check(not out['cwd_is_script_dir'] and not os.path.exists(out['cwd']),
+                  'L4: each run gets its own working directory, removed afterwards', out)
+        finally:
+            main._BACKEND_DIR = real_dir
+            os.environ.pop('SKARI_USAGE_TICKET_KEY', None)
+            shutil.rmtree(tmp, ignore_errors=True)
+
+        # ---- L4: separate usage-pass key, with the old one as fallback ------
+        check(ut.signing_secret() == K, 'L4: usage-pass key falls back to SKARI_BACKEND_KEY')
+        os.environ['SKARI_USAGE_TICKET_KEY'] = 'separate'
+        check(ut.signing_secret() == 'separate', 'L4: SKARI_USAGE_TICKET_KEY is used when set')
+        os.environ.pop('SKARI_USAGE_TICKET_KEY', None)
+    finally:
+        for k in ('SKARI_FIREBASE_PROJECT', 'SKARI_BACKEND_KEY', 'SKARI_USAGE_TICKETS',
+                  'SKARI_AUTH_DISABLED', 'SKARI_USAGE_TICKET_KEY'):
+            os.environ.pop(k, None)
+        main._rl_store.clear(); main._rl_ip_store.clear(); main._rl_day_store.clear()
+        ut.reset_uses()
+
+
 def main_():
     section_expr()
 
@@ -650,6 +1028,8 @@ def main_():
     section_e2e(client, main, auth, model_store, fake, key_pem)
     main._rl_store.clear()
     section_usage_ticket(client, main, key_pem)
+    main._rl_store.clear()
+    section_audit_2026_11(client, main, auth, model_store, fake, key_pem)
 
     if os.path.exists(MARKER):
         os.remove(MARKER)

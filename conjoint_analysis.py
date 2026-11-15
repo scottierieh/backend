@@ -702,8 +702,11 @@ def market_simulation(
 # Main Endpoint
 # ─────────────────────────────────────────────────────────────
 
+# Plain `def`, not `async def`: the whole fit runs inline, and inside an
+# async route it held the event loop -- /health included -- until it ended.
+# FastAPI runs a `def` route in its thread pool.
 @router.post("/conjoint")
-async def conjoint_analysis(request: ConjointRequest):
+def conjoint_analysis(request: ConjointRequest):
     try:
         # ── 1. Parse Data ──
         df, design_cols, attribute_map, ref_levels, data_summary = parse_conjoint_data(
@@ -876,4 +879,6 @@ async def conjoint_analysis(request: ConjointRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+        # The traceback goes to the log, not to the caller (audit L2).
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e)[:500])

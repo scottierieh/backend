@@ -95,12 +95,13 @@ _MODELS_PATHS = {
     '/api/models/{model_id}/train',
     '/api/models/{model_id}/predict',
     '/api/models/{model_id}',
+    '/api/models/owner-purge',
 }
 _HELPER_MODULES = {
     'main.py', 'models_api.py', 'model_store.py', 'analysis_common.py',
     'cv_strategy.py', 'feature_pipeline.py', 'blend_registry.py',
     'algorithm_registry.py', 'guardrails.py', 'hb_mnl.py', '_optexpr.py',
-    'price_levels.py', 'auth.py', 'usage_ticket.py',
+    'price_levels.py', 'auth.py', 'usage_ticket.py', '_solver_status.py',
 }
 
 # requirements.txt pins distributions; scripts import modules. Where the two
@@ -210,6 +211,12 @@ def main():
     paths = [r[0] for r in routes]
     scripts = [r[1] for r in routes]
 
+    # This drives the app without credentials, as local development does.
+    # Since 2026-11 that needs the explicit switch; with no project and no
+    # switch every route answers 503 (auth.py, fail closed).
+    if not os.environ.get('SKARI_FIREBASE_PROJECT'):
+        os.environ['SKARI_AUTH_DISABLED'] = '1'
+
     # --- 1. the real boot path -------------------------------------------
     started = time.time()
     try:
@@ -296,7 +303,7 @@ def main():
               'nothing, silently — this path is not served')
     check(_MODELS_PATHS <= set(served),
           f'models_api contributed all {len(_MODELS_PATHS)} registry '
-          f'endpoints (train / predict / delete)',
+          f'endpoints (train / predict / delete / owner purge)',
           *sorted(_MODELS_PATHS - set(served)))
 
     expected = len(paths) + len(_ROUTER_MODULES) + len(_MODELS_PATHS) + 2
@@ -348,8 +355,11 @@ def main():
             except Exception as exc:
                 detail = getattr(exc, 'detail', str(exc))
                 status = getattr(exc, 'status_code', 0)
-            check(status == 500 and 'junk.py' in str(detail),
-                  'a script printing non-JSON is a 500 that names the script',
+            # The output itself and the script's name go to the log under a
+            # reference; the caller gets the reference (2026-11 audit L2).
+            check(status == 500 and 'ref ' in str(detail) and 'not json' not in str(detail),
+                  'a script printing non-JSON is a 500 with a log reference, '
+                  'not its output',
                   f'status={status} detail={str(detail)[:80]!r}')
         finally:
             app_module._BACKEND_DIR = real_dir
@@ -447,15 +457,16 @@ _FAULTS = [
     ('a script is added but never wired',
      _copy('knn_analysis.py', 'brand_new_analysis.py'), 'unaccounted for'),
     ("a failing script's message is swallowed",
-     _sub('main.py', r'detail = parsed\["error"\]', 'pass'),
+     _sub('main.py', r'return msg\[:2000\]', 'pass'),
      'reaches the user'),
     ('non-JSON output is not reported',
-     _sub('main.py', r'status_code=500', 'status_code=200'),
-     'names the script'),
+     _sub('main.py', r'status_code=500,\n(\s+)detail=f"The analysis returned',
+          'status_code=200,\n\\1detail=f"The analysis returned'),
+     'log reference'),
     ('the limiter stops counting',
      _sub('main.py', r'\n    hits\.append\(now\)', '\n    pass'), '429'),
     ('/health loses its exemption',
-     _sub('main.py', r'in \("/health", "/"\)', 'in ("/__none__",)'),
+     _sub('main.py', r'_RL_EXEMPT = \("/health", "/"\)', '_RL_EXEMPT = ("/__none__",)'),
      'readiness probe'),
 ]
 

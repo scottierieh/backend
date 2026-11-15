@@ -22,8 +22,12 @@ import logging
 import os
 import re
 import secrets
+import shutil
+import tempfile
 import threading
 import time
+from collections import OrderedDict
+
 import joblib
 
 logger = logging.getLogger("skari.model_store")
@@ -46,8 +50,24 @@ _BUCKET_NAME = os.environ.get('MODEL_ARTIFACTS_BUCKET', 'restart2-98207181-3e3a5
 #      is recomputed over the bytes actually downloaded, so a swapped object
 #      fails even if its metadata was copied.
 #
-# Delete needs the same signature and the caller must be the uid recorded as
-# owner at train time (or the service key).
+# Predict and delete need the same signature AND the caller must be the uid
+# recorded as owner at train time, or the service key (the Next.js server: the
+# public-form route, which checks the form and the model record itself, and
+# account deletion). The owner is checked from the verified metadata BEFORE
+# the bytes are downloaded or unpickled. An artifact signed without an owner
+# (trained while authentication was off) is service-key only, except in
+# explicit local-dev mode (SKARI_AUTH_DISABLED=1), where the anonymous caller
+# may use those and only those.
+#
+# WHAT AN ARTIFACT HOLDS (2026-11 audit E-06): the fitted pipeline, the label
+# encoder, the feature list, the threshold, the fitted Feature Engineering
+# recipe and `background` -- up to 50 RAW training rows (feature columns only,
+# no target) that SHAP needs as its reference distribution for per-row
+# explanations; the AutoGluon kind also carries the packed predictor. Some
+# fitted models hold training data themselves (k-NN, SVM support vectors,
+# several AutoGluon members). So an artifact is personal data of the account
+# that trained it: delete_owner_artifacts() removes all of an account's
+# artifacts for account deletion.
 # ---------------------------------------------------------------------------
 _SIG_VERSION = 'v1'
 _META_SIG = 'skari-sig'
@@ -59,8 +79,21 @@ _MODEL_ID_RE = re.compile(r'^[A-Za-z0-9_-]{1,128}$')
 _ephemeral_key = None
 
 
+_warned_fallback = False
+
+
 def _signing_key() -> bytes:
-    key = os.environ.get('SKARI_MODEL_SIGNING_KEY') or os.environ.get('SKARI_BACKEND_KEY') or ''
+    key = os.environ.get('SKARI_MODEL_SIGNING_KEY') or ''
+    if not key:
+        # Fallback kept so artifacts already signed with the service key keep
+        # loading; the Next.js server also holds that key, so set a separate
+        # SKARI_MODEL_SIGNING_KEY (and re-sign with scripts/sign_legacy_models.py).
+        key = os.environ.get('SKARI_BACKEND_KEY') or ''
+        global _warned_fallback
+        if key and not _warned_fallback:
+            _warned_fallback = True
+            logger.warning('SKARI_MODEL_SIGNING_KEY is not set: model artifacts are signed '
+                           'with SKARI_BACKEND_KEY. Set a separate signing key.')
     if key:
         return key.encode('utf-8')
     # Local dev without any key: a per-process random key. Models trained in
@@ -107,12 +140,50 @@ def _expected_path_re(model_id: str):
 
 
 # Process-local cache: a warm Cloud Run instance shouldn't re-download the
-# same artifact on every predict call in a burst. Small and unbounded by
-# design — one instance serves a handful of active models at a time, not
-# thousands; if that ever changes, cap it with an LRU eviction instead.
-# Only ever holds artifacts that passed signature verification.
+# same artifact on every predict call in a burst. Least-recently-used, at most
+# _CACHE_MAX artifacts (SKARI_MODEL_CACHE_MAX, default 16): unbounded, one
+# account could fill the instance's memory by training and scoring many small
+# models. Evicting an AutoGluon artifact also removes the ag_serve_* directory
+# its predictor was unpacked into (models_api._ag_unpack records it as
+# `_ag_dir`). Holds (artifact, signed owner); only ever artifacts that passed
+# signature verification.
+_CACHE_MAX = max(1, int(os.environ.get('SKARI_MODEL_CACHE_MAX', '16')))
 _cache_lock = threading.Lock()
-_pipeline_cache: dict[str, object] = {}
+_pipeline_cache: 'OrderedDict[str, tuple]' = OrderedDict()
+
+
+def _release(artifact):
+    """Free what an evicted artifact holds outside the Python heap."""
+    d = artifact.get('_ag_dir') if isinstance(artifact, dict) else None
+    if isinstance(d, str) and os.path.basename(d).startswith('ag_serve_') \
+            and os.path.dirname(os.path.abspath(d)) == os.path.abspath(tempfile.gettempdir()):
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def _cache_get(path):
+    with _cache_lock:
+        hit = _pipeline_cache.get(path)
+        if hit is not None:
+            _pipeline_cache.move_to_end(path)
+        return hit
+
+
+def _cache_put(path, artifact, owner):
+    evicted = []
+    with _cache_lock:
+        _pipeline_cache[path] = (artifact, owner)
+        _pipeline_cache.move_to_end(path)
+        while len(_pipeline_cache) > _CACHE_MAX:
+            evicted.append(_pipeline_cache.popitem(last=False)[1][0])
+    for a in evicted:
+        _release(a)
+
+
+def _cache_pop(path):
+    with _cache_lock:
+        hit = _pipeline_cache.pop(path, None)
+    if hit is not None:
+        _release(hit[0])
 
 
 def _client():
@@ -164,27 +235,49 @@ def save_pipeline(model_id: str, artifact: dict, owner_uid: str = None) -> str:
     return f'gs://{_BUCKET_NAME}/{path}'
 
 
-def load_pipeline(artifact_uri: str, model_id: str) -> dict:
+class NotOwner(Exception):
+    pass
+
+
+def _check_owner(owner: str, caller_uid=None, is_service=False, auth_enforced=True):
+    """Raise NotOwner unless the caller may use an artifact signed for `owner`.
+
+    `auth_enforced=False` is passed only in explicit local-dev mode
+    (auth.auth_disabled()); even then an artifact that names an owner stays
+    that owner's."""
+    if is_service:
+        return
+    if not auth_enforced and not caller_uid and not owner:
+        return
+    if not caller_uid or not owner or not hmac.compare_digest(owner, caller_uid):
+        raise NotOwner()
+
+
+def load_pipeline(artifact_uri: str, model_id: str, caller_uid: str = None,
+                  is_service: bool = True, auth_enforced: bool = True) -> dict:
     """Load (and cache) an artifact previously written by save_pipeline for
-    `model_id`. Raises ValueError for anything this service did not sign."""
+    `model_id`. Raises ValueError for anything this service did not sign and
+    NotOwner when the caller is neither its signed owner nor the service key.
+
+    The default (is_service=True) is for in-process callers (scripts, checks);
+    the HTTP route passes the real caller."""
     path = _blob_path_from_uri(artifact_uri, model_id)
-    with _cache_lock:
-        cached = _pipeline_cache.get(path)
+    cached = _cache_get(path)
     if cached is not None:
-        return cached
+        _check_owner(cached[1], caller_uid, is_service, auth_enforced)
+        return cached[0]
     blob = _bucket().get_blob(path)
     if blob is None:
         raise ValueError('Model artifact not found.')
+    # Owner first, from the signed metadata alone: a caller who may not use
+    # this model never makes us download or unpickle it.
+    owner = _verify(path, blob.metadata)
+    _check_owner(owner, caller_uid, is_service, auth_enforced)
     data = blob.download_as_bytes()
     _verify(path, blob.metadata, hashlib.sha256(data).hexdigest())
     artifact = joblib.load(io.BytesIO(data))
-    with _cache_lock:
-        _pipeline_cache[path] = artifact
+    _cache_put(path, artifact, owner)
     return artifact
-
-
-class NotOwner(Exception):
-    pass
 
 
 def delete_artifact(artifact_uri: str, model_id: str, caller_uid: str = None,
@@ -205,18 +298,51 @@ def delete_artifact(artifact_uri: str, model_id: str, caller_uid: str = None,
         return False
     if not is_service:
         # The trusted Next.js server (service key) may delete any artifact of
-        # this model, signed or legacy; everyone else must be the signed owner.
+        # this model, signed or legacy; everyone else must be the signed owner
+        # -- also when authentication is off for local dev (_check_owner).
         try:
             owner = _verify(path, blob.metadata)  # metadata only; never deserialized
         except ValueError:
             raise NotOwner()
-        if auth_enforced and (not caller_uid or not owner
-                              or not hmac.compare_digest(owner, caller_uid)):
-            raise NotOwner()
+        _check_owner(owner, caller_uid, False, auth_enforced)
     try:
         blob.delete(if_generation_match=blob.generation)
     except Exception:
         pass
-    with _cache_lock:
-        _pipeline_cache.pop(path, None)
+    _cache_pop(path)
     return True
+
+
+_ANY_ARTIFACT_RE = re.compile(r'^models/[A-Za-z0-9_-]{1,128}/[0-9]{1,20}/pipeline\.joblib$')
+
+
+def delete_owner_artifacts(owner_uid: str) -> dict:
+    """Delete every artifact whose signed owner is `owner_uid` (account
+    deletion). Service-key only -- the route checks that. Lists models/ and
+    reads each object's metadata; nothing is downloaded or deserialized. An
+    object whose signature does not verify is skipped: its owner field cannot
+    be trusted, and it is not servable anyway.
+
+    Returns {'deleted': n, 'failed': n}."""
+    if not isinstance(owner_uid, str) or not owner_uid or len(owner_uid) > 128:
+        raise ValueError('Invalid uid.')
+    deleted = failed = 0
+    for blob in _bucket().list_blobs(prefix='models/'):
+        name = getattr(blob, 'name', '')
+        if not _ANY_ARTIFACT_RE.match(name or ''):
+            continue
+        try:
+            owner = _verify(name, blob.metadata)
+        except ValueError:
+            continue
+        if not hmac.compare_digest(owner, owner_uid):
+            continue
+        try:
+            blob.delete()
+            deleted += 1
+        except Exception:
+            logger.exception('could not delete model artifact %s', name)
+            failed += 1
+            continue
+        _cache_pop(name)
+    return {'deleted': deleted, 'failed': failed}

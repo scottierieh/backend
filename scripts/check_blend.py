@@ -24,6 +24,19 @@ import os
 import subprocess
 import sys
 
+# train_model / predict_model take the request since the 2026-11 auth work:
+# the caller comes from request.scope['state'] (auth.AuthMiddleware sets it).
+from types import SimpleNamespace as _NS  # noqa: E402
+_CHECK_REQUEST = _NS(scope={'state': {'auth_kind': 'user', 'uid': 'check-user'}}, headers={})
+
+
+def _train_model(model_id, req):
+    return sys.modules['models_api'].train_model(model_id, req, _CHECK_REQUEST)
+
+
+def _predict_model(model_id, req):
+    return sys.modules['models_api'].predict_model(model_id, req, _CHECK_REQUEST)
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -159,15 +172,17 @@ def main():
     import types
     store: dict = {}
     fake = types.ModuleType('model_store')
-    fake.save_pipeline = lambda mid, art: (
+    fake.save_pipeline = lambda mid, art, *_a, **_k: (
         store.__setitem__(f'gs://check/{mid}', art) or f'gs://check/{mid}')
-    fake.load_pipeline = lambda uri: store[uri]
-    fake.delete_artifact = lambda uri: store.pop(uri, None)
+    fake.load_pipeline = lambda uri, *_a, **_k: store[uri]
+    fake.delete_artifact = lambda uri, *_a, **_k: store.pop(uri, None)
+    fake.NotOwner = type("NotOwner", (Exception,), {})
+    fake.validate_model_id = lambda model_id: model_id
     sys.modules['model_store'] = fake
     import models_api  # noqa: E402
     models_api.model_store = fake
 
-    got = models_api.train_model('m-blend', models_api.TrainRequest(
+    got = _train_model('m-blend', models_api.TrainRequest(
         data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
         features=FEATURES, task='classification',
         ensemble={'members': asked, 'method': 'voting', 'votingType': 'soft'}))
@@ -179,7 +194,7 @@ def main():
           'and the served blend is class-weighted member by member',
           got.get('classWeighting'))
 
-    fixed = models_api.train_model('m-fixed', models_api.TrainRequest(
+    fixed = _train_model('m-fixed', models_api.TrainRequest(
         data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
         features=FEATURES, task='classification'))
     fixed_est = store[fixed['artifactUri']]['pipeline'].named_steps['est']
@@ -187,7 +202,7 @@ def main():
           'while no member list still gets the old fixed ensemble, so the two differ',
           [n for n, _ in getattr(fixed_est, 'estimators', [])])
 
-    stacked = models_api.train_model('m-stack', models_api.TrainRequest(
+    stacked = _train_model('m-stack', models_api.TrainRequest(
         data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
         features=FEATURES, task='classification',
         ensemble={'members': ['random_forest', 'knn'], 'method': 'stacking',
@@ -197,7 +212,7 @@ def main():
           f'a stacking blend is served as one, not voted instead: {type(st_est).__name__}')
 
     try:
-        models_api.train_model('m-bad-blend', models_api.TrainRequest(
+        _train_model('m-bad-blend', models_api.TrainRequest(
             data=rows, algorithm='Voting / Stacking Ensemble', target=TARGET,
             features=FEATURES, task='classification',
             ensemble={'members': ['autogluon']}))

@@ -492,8 +492,11 @@ def run_rc_analysis(profiles, responses, attributes, price_attribute_id=None):
 
 # ── endpoint ───────────────────────────────────────────────────────────────
 
+# Plain `def`, not `async def`: the whole fit runs inline, and inside an
+# async route it held the event loop -- /health included -- until it ended.
+# FastAPI runs a `def` route in its thread pool.
 @router.post("/rating-conjoint")
-async def analyze_rating_conjoint(payload: RCAnalysisPayload):
+def analyze_rating_conjoint(payload: RCAnalysisPayload):
     try:
         results = run_rc_analysis(
             profiles=payload.profiles,

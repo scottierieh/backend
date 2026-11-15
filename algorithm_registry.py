@@ -13,9 +13,121 @@ reported metrics (computed in models_api.py after fitting) are what the
 registry and the user actually see and judge it by.
 """
 
+import math
 from typing import Literal, Optional
 
 Task = Literal['classification', 'regression']
+
+
+# ---------------------------------------------------------------------------
+# Which `params` /train accepts. Until 2026-11 they went straight into
+# estimator.set_params(**params), and LightGBM / XGBoost / CatBoost accept far
+# more than hyperparameters: LightGBM's distributed-training options
+# (`machines`, `local_listen_port`, `num_machines`, `tree_learner`) bound a
+# port, connected to a caller-chosen host and aborted the whole server
+# process; CatBoost's `train_dir` / `snapshot_file` / `save_snapshot` wrote
+# files at any path. So: only the names tune_analysis.py's _model_space
+# searches over (the only thing that produces `params` -- its `best_params`),
+# each with a type and a range a little wider than the search space. Anything
+# else -- thread counts, paths, network, logging, callbacks -- is refused.
+#
+# Spec: ('int', lo, hi) | ('float', lo, hi) with lo < x <= hi when lo is
+# exclusive (`'float_pos'`) | ('choice', {...}). `None` allowed where listed.
+# ---------------------------------------------------------------------------
+_N_TREES = ('int', 1, 1000)
+_RATE = ('float_pos', 0.0, 1.0)
+_FRACTION = ('float_pos', 0.0, 1.0)
+
+TUNABLE_PARAMS = {
+    'Random Forest': {
+        'n_estimators': _N_TREES,
+        'max_depth': ('int', 1, 100, 'none'),
+        'min_samples_split': ('int', 2, 1000),
+        'min_samples_leaf': ('int', 1, 1000),
+        'max_features': ('choice', {'sqrt', 'log2', None}),
+    },
+    'GBM': {
+        'n_estimators': _N_TREES,
+        'learning_rate': _RATE,
+        'max_depth': ('int', 1, 32),
+        'subsample': _FRACTION,
+    },
+    'XGBoost': {
+        'n_estimators': _N_TREES,
+        'learning_rate': _RATE,
+        'max_depth': ('int', 1, 16),
+        'subsample': _FRACTION,
+        'colsample_bytree': _FRACTION,
+        'min_child_weight': ('float', 0.0, 100.0),
+    },
+    'LightGBM': {
+        'n_estimators': _N_TREES,
+        'learning_rate': _RATE,
+        'num_leaves': ('int', 2, 1024),
+        # -1 is LightGBM's "no limit", and in the search space.
+        'max_depth': ('int', -1, 64, 'no_zero'),
+        'subsample': _FRACTION,
+        'colsample_bytree': _FRACTION,
+    },
+    'CatBoost': {
+        'iterations': _N_TREES,
+        'learning_rate': _RATE,
+        'depth': ('int', 1, 12),
+        'l2_leaf_reg': ('float', 0.0, 100.0),
+    },
+}
+
+
+def _ok_value(spec, v) -> bool:
+    kind = spec[0]
+    if kind == 'choice':
+        return v in spec[1] if (v is None or isinstance(v, str)) else False
+    flags = spec[3:] if len(spec) > 3 else ()
+    if v is None:
+        return 'none' in flags
+    if isinstance(v, bool):
+        return False
+    if kind == 'int':
+        if isinstance(v, float) and v.is_integer():
+            v = int(v)
+        if not isinstance(v, int):
+            return False
+        if 'no_zero' in flags and v == 0:
+            return False
+        return spec[1] <= v <= spec[2]
+    if not isinstance(v, (int, float)) or not math.isfinite(v):
+        return False
+    if kind == 'float_pos':
+        return spec[1] < v <= spec[2]
+    return spec[1] <= v <= spec[2]
+
+
+def validate_params(algorithm: str, params: Optional[dict]) -> dict:
+    """The tuned parameters /train may apply to `algorithm`, or ValueError.
+
+    Returns a clean copy (whole-number floats for int parameters become ints)."""
+    if not params:
+        return {}
+    if not isinstance(params, dict):
+        raise ValueError('params must be an object')
+    allowed = TUNABLE_PARAMS.get(algorithm)
+    if allowed is None:
+        raise ValueError(f'{algorithm} takes no tuned parameters here.')
+    refused = [k for k in params if k not in allowed]
+    if refused:
+        raise ValueError(
+            f'{algorithm} does not accept '
+            + ', '.join(repr(str(k)[:40]) for k in refused[:5])
+            + f' here (tunable: {", ".join(sorted(allowed))})')
+    bad = [k for k, v in params.items() if not _ok_value(allowed[k], v)]
+    if bad:
+        raise ValueError(f'{algorithm}: value out of range for ' + ', '.join(repr(k) for k in bad))
+    out = {}
+    for k, v in params.items():
+        if allowed[k][0] == 'int' and isinstance(v, float):
+            v = int(v)
+        out[k] = v
+    return out
 
 
 def _build_default_estimator(algorithm: str, task: Task):
@@ -126,6 +238,7 @@ def build_estimator(algorithm: str, task: Task, params: Optional[dict] = None):
     was shown is not the model they got.
     """
     estimator = _build_default_estimator(algorithm, task)
+    params = validate_params(algorithm, params)
     if not params:
         return estimator
     try:

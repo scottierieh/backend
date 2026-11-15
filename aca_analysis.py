@@ -452,8 +452,11 @@ def run_aca_analysis(attributes, responses, price_attribute_id=None):
     return _native(result)
 
 
+# Plain `def`, not `async def`: the whole fit runs inline, and inside an
+# async route it held the event loop -- /health included -- until it ended.
+# FastAPI runs a `def` route in its thread pool.
 @router.post("/adaptive-conjoint")
-async def analyze_adaptive_conjoint(payload: ACAAnalysisPayload):
+def analyze_adaptive_conjoint(payload: ACAAnalysisPayload):
     try:
         results = run_aca_analysis(
             attributes=payload.attributes,

@@ -6,8 +6,12 @@ Contract shared with the Next.js frontend and the R server:
   * Next.js server requests  X-Skari-Service-Key: <secret>
 
 Enforcement is ON when env SKARI_FIREBASE_PROJECT is set (the Firebase
-project id, which is also the ID token's `aud`). When it is unset the
-middleware logs one warning and lets every request through — local dev only.
+project id, which is also the ID token's `aud`). When it is unset the server
+FAILS CLOSED: every route except / and /health answers 503 (a service-key call
+still works). Running without authentication needs an explicit
+SKARI_AUTH_DISABLED=1 as well — local development only. (Until 2026-11 an
+unset project silently opened every route; a deploy that replaced the env-var
+set had already lost it once.)
 
 SKARI_BACKEND_KEY holds the service key, compared in constant time. Empty or
 unset means service-key auth is unavailable (the header is then ignored).
@@ -21,7 +25,7 @@ iat not in the future (300 s skew allowed), and the sign-in provider is not
 script run analyses at will — same rule as r-backend/auth.R).
 
 On success the middleware stores, in the ASGI scope's `state`:
-    auth_kind  "user" | "service" | "anonymous" (only when enforcement is off)
+    auth_kind  "user" | "service" | "anonymous" (only with SKARI_AUTH_DISABLED=1)
     uid        the Firebase uid for "user", else None
 so route handlers read them as request.state.auth_kind / request.state.uid.
 """
@@ -51,8 +55,20 @@ class AuthError(Exception):
     pass
 
 
+class AuthNotConfigured(AuthError):
+    """No SKARI_FIREBASE_PROJECT and no explicit SKARI_AUTH_DISABLED=1."""
+
+
 def firebase_project() -> str:
     return os.environ.get("SKARI_FIREBASE_PROJECT", "").strip()
+
+
+def auth_disabled() -> bool:
+    """True only when authentication is OFF on purpose: no project configured
+    AND SKARI_AUTH_DISABLED=1 (local development). A missing project alone is a
+    deployment mistake, not a mode, and is refused instead."""
+    return (not firebase_project()
+            and os.environ.get("SKARI_AUTH_DISABLED", "").strip() == "1")
 
 
 def service_key() -> str:
@@ -183,6 +199,7 @@ def verify_id_token(token: str, project: str, now: float = None) -> dict:
 # ---------------------------------------------------------------------------
 
 _warned_disabled = False
+_warned_unconfigured = False
 
 
 def _warn_disabled_once():
@@ -190,15 +207,25 @@ def _warn_disabled_once():
     if not _warned_disabled:
         _warned_disabled = True
         logger.warning(
-            "SKARI_FIREBASE_PROJECT is not set: API authentication is DISABLED. "
-            "This is only acceptable for local development.")
+            "SKARI_AUTH_DISABLED=1 and no SKARI_FIREBASE_PROJECT: API authentication "
+            "is DISABLED. This is only acceptable for local development.")
+
+
+def _error_unconfigured_once():
+    global _warned_unconfigured
+    if not _warned_unconfigured:
+        _warned_unconfigured = True
+        logger.error(
+            "SKARI_FIREBASE_PROJECT is not set: refusing every request except / and "
+            "/health (503). Set it, or set SKARI_AUTH_DISABLED=1 for local development.")
 
 
 def authenticate(headers: dict):
     """(auth_kind, uid) for a request's lower-cased headers, or raise AuthError.
 
-    Returns ("anonymous", None) when enforcement is off and no valid
-    credential was presented."""
+    Returns ("anonymous", None) only when authentication is explicitly
+    disabled (auth_disabled()) and no valid credential was presented; with no
+    project and no explicit switch it raises AuthNotConfigured."""
     project = firebase_project()
 
     presented_key = headers.get(SERVICE_KEY_HEADER, "")
@@ -211,8 +238,11 @@ def authenticate(headers: dict):
         return "user", claims["sub"]
 
     if not project:
-        _warn_disabled_once()
-        return "anonymous", None
+        if auth_disabled():
+            _warn_disabled_once()
+            return "anonymous", None
+        _error_unconfigured_once()
+        raise AuthNotConfigured("SKARI_FIREBASE_PROJECT is not set")
     raise AuthError("missing or invalid credentials")
 
 
@@ -234,6 +264,13 @@ class AuthMiddleware:
             headers[k.decode("latin-1").lower()] = v.decode("latin-1")
         try:
             kind, uid = authenticate(headers)
+        except AuthNotConfigured:
+            body = json.dumps({"detail": "This service is not configured to accept requests."}).encode()
+            await send({"type": "http.response.start", "status": 503,
+                        "headers": [(b"content-type", b"application/json"),
+                                    (b"content-length", str(len(body)).encode())]})
+            await send({"type": "http.response.body", "body": body})
+            return
         except AuthError as e:
             logger.info("auth rejected %s %s: %s", scope.get("method"), scope.get("path"), e)
             body = json.dumps({"detail": "Authentication required."}).encode()

@@ -62,8 +62,11 @@ def _compute_wtp(partworth_rows, price_col):
     return rows, float(slope)
 
 
+# Plain `def`, not `async def`: the whole fit runs inline, and inside an
+# async route it held the event loop -- /health included -- until it ended.
+# FastAPI runs a `def` route in its thread pool.
 @router.post("/conjoint-hb")
-async def analyze_conjoint_hb(payload: ConjointHBPayload):
+def analyze_conjoint_hb(payload: ConjointHBPayload):
     try:
         res = run_hb_mnl(
             data=payload.data,

@@ -40,7 +40,11 @@ Design choices worth knowing before touching this file:
     once per explain click" workload with typical tabular column counts.
   - A small background sample of training rows is persisted in the artifact
     itself (not recomputed at predict time) so per-row explain doesn't need
-    the original training data around.
+    the original training data around. SHAP needs it: it is the reference
+    distribution every row explanation is measured against. Those are raw
+    feature values of the owner's data, so only the owner (or the service key)
+    can load an artifact, and the beeswarm built from it at predict time
+    carries its per-point values only for the owner -- see predict_model.
   - Every persisted artifact is a dict {pipeline, label_encoder, task,
     features, background}, not a bare sklearn object — label_encoder is
     needed to turn predicted class indices back into the original label
@@ -48,6 +52,9 @@ Design choices worth knowing before touching this file:
 """
 
 import time
+import logging
+import os
+import uuid
 import numpy as np
 import io
 import shutil
@@ -55,6 +62,7 @@ import tarfile
 import tempfile
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Any, Literal, Optional
 
@@ -69,9 +77,12 @@ from analysis_common import _to_native_type, balanced_weighting
 from algorithm_registry import build_estimator
 from blend_registry import build_blend, UnknownEstimators
 from feature_pipeline import FeatureEngineer
+import auth
 import model_store
+import usage_ticket
 
 router = APIRouter()
+logger = logging.getLogger("skari.models")
 
 Task = Literal['classification', 'regression']
 
@@ -81,6 +92,18 @@ MIN_TRAINING_ROWS = 10
 # A score on a handful of rows is noise wearing a decimal point. The AutoML
 # screen seals 20% of the table, so this only bites on very small uploads.
 MIN_HOLDOUT_ROWS = 20
+
+# Size caps for the work these routes do in the server process (not in a
+# subprocess with a timeout, as the scripts are). The 25 MB body cap alone let
+# one request ask for SHAP over thousands of rows or hundreds of columns.
+# Generous for Model Lab / Auto Lab (batch scoring sends 500 rows a call, the
+# Explain screen one row); override per deploy if a real table needs more.
+MAX_TRAIN_ROWS = int(os.environ.get('SKARI_MAX_TRAIN_ROWS', '300000'))   # data + holdout
+MAX_FEATURES = int(os.environ.get('SKARI_MAX_FEATURES', '300'))
+MAX_PREDICT_ROWS = int(os.environ.get('SKARI_MAX_PREDICT_ROWS', '50000'))
+MAX_EXPLAIN_ROWS = int(os.environ.get('SKARI_MAX_EXPLAIN_ROWS', '20'))
+# AutoGluon's own presets; `preset` used to reach TabularPredictor.fit as sent.
+AG_PRESETS = frozenset({'best_quality', 'high_quality', 'good_quality', 'medium_quality'})
 
 
 class TrainRequest(BaseModel):
@@ -745,18 +768,25 @@ def _ag_unpack(bundle: bytes):
             # Python < 3.12 has no `filter`; the default is the old behaviour.
             tar.extractall(out)
     from autogluon.tabular import TabularPredictor
-    return TabularPredictor.load(out)
+    try:
+        return TabularPredictor.load(out), out
+    except Exception:
+        shutil.rmtree(out, ignore_errors=True)
+        raise
 
 
 def _ag_predictor(artifact: dict):
     """The loaded predictor for an artifact, unpacked once per instance.
 
     Cached inside the artifact dict itself, which model_store already keeps per
-    URI, so a burst of predictions untars once rather than once each.
+    URI, so a burst of predictions untars once rather than once each. The
+    directory is recorded as `_ag_dir` so model_store removes it when the
+    artifact leaves its (bounded) cache.
     """
     loaded = artifact.get('_ag_loaded')
     if loaded is None:
-        loaded = _ag_unpack(artifact['bundle'])
+        loaded, out = _ag_unpack(artifact['bundle'])
+        artifact['_ag_dir'] = out
         artifact['_ag_loaded'] = loaded
     return loaded
 
@@ -778,12 +808,52 @@ def _check_model_id(model_id: str):
         _fail(400, 'Invalid model id.')
 
 
+def _fail_logged(status: int, message: str, exc: Exception):
+    """A failure whose cause is server-side (storage, credentials): the detail
+    goes to the log under a reference, the caller gets the reference."""
+    ref = uuid.uuid4().hex[:12]
+    logger.error('[%s] %s: %r', ref, message, exc)
+    _fail(status, f'{message} (ref {ref})')
+
+
+def _without_point_values(importance: Optional[dict]) -> Optional[dict]:
+    """shapImportance minus each point's `value` -- those are raw rows of the
+    training background. Kept: the feature ranking and the SHAP values."""
+    if not importance:
+        return importance
+    return {**importance, 'features': [
+        {**f, 'points': [{'shap': pt.get('shap')} for pt in (f.get('points') or [])]}
+        for f in importance.get('features') or []
+    ]}
+
+
 @router.post("/models/{model_id}/train")
 def train_model(model_id: str, req: TrainRequest, request: Request):
     _check_model_id(model_id)
-    owner_uid, _kind = _caller(request)
+    owner_uid, kind = _caller(request)
+    # An AutoGluon fit here is the same fit /api/analysis/autogluon runs, so it
+    # needs the same usage pass (usage_ticket.check_train) -- otherwise this
+    # route was a way round the monthly AutoML limit. Checked before anything
+    # else is done with the body.
+    ok, reason = usage_ticket.check_train(
+        req.engine, kind, owner_uid, request.headers, usage_ticket.signing_secret(), usage_ticket.mode())
+    if not ok:
+        return JSONResponse(status_code=403, content={
+            'detail': usage_ticket.MESSAGE, 'error': usage_ticket.MESSAGE,
+            'code': f'usage_ticket_{reason}'})
     if not req.data:
         _fail(400, "No training data provided")
+    n_rows = len(req.data) + len(req.holdout or [])
+    if n_rows > MAX_TRAIN_ROWS:
+        _fail(400, f"Too many rows to train on here ({n_rows}; at most {MAX_TRAIN_ROWS}).")
+    if len(req.features) > MAX_FEATURES:
+        _fail(400, f"Too many feature columns ({len(req.features)}; at most {MAX_FEATURES}).")
+    if req.preset is not None and req.preset not in AG_PRESETS:
+        _fail(400, f"Unsupported preset — expected one of {sorted(AG_PRESETS)}")
+    if req.evalMetric is not None and not (
+            isinstance(req.evalMetric, str) and 0 < len(req.evalMetric) <= 64
+            and req.evalMetric.replace('_', '').isalnum() and req.evalMetric.isascii()):
+        _fail(400, "Unsupported evalMetric")
     if req.target not in (req.data[0].keys() if req.data else []):
         _fail(400, f"Target column '{req.target}' not found in data")
     df = pd.DataFrame(req.data)
@@ -1045,7 +1115,7 @@ def train_model(model_id: str, req: TrainRequest, request: Request):
         try:
             artifact_uri = model_store.save_pipeline(model_id, artifact, owner_uid)
         except Exception as e:
-            _fail(502, f'Could not save model artifact: {e}')
+            _fail_logged(502, 'Could not save model artifact.', e)
 
         return {
             'artifactUri': artifact_uri,
@@ -1193,7 +1263,7 @@ def train_model(model_id: str, req: TrainRequest, request: Request):
     try:
         artifact_uri = model_store.save_pipeline(model_id, artifact, owner_uid)
     except Exception as e:
-        _fail(502, f"Could not save model artifact: {e}")
+        _fail_logged(502, 'Could not save model artifact.', e)
 
     return {
         'artifactUri': artifact_uri, 'metrics': metrics or None, 'shapBeeswarm': shap_beeswarm,
@@ -1220,18 +1290,34 @@ def train_model(model_id: str, req: TrainRequest, request: Request):
 
 
 @router.post("/models/{model_id}/predict")
-def predict_model(model_id: str, req: PredictRequest):
+def predict_model(model_id: str, req: PredictRequest, request: Request):
     if not req.rows:
         _fail(400, "No rows to predict")
+    if len(req.rows) > MAX_PREDICT_ROWS:
+        _fail(400, f"Too many rows in one call ({len(req.rows)}; at most {MAX_PREDICT_ROWS}).")
+    if req.explain and len(req.rows) > MAX_EXPLAIN_ROWS:
+        _fail(400, f"Explain at most {MAX_EXPLAIN_ROWS} rows per call.")
     _check_model_id(model_id)
+    uid, kind = _caller(request)
+    is_service = kind == 'service'
     # load_pipeline only deserializes models/{model_id}/<ts>/pipeline.joblib
-    # objects carrying this service's HMAC signature -- see model_store.py.
+    # objects carrying this service's HMAC signature, and only for the account
+    # that trained it or the service key -- see model_store.py. Until 2026-11
+    # any signed-in account holding modelId + artifactUri (both are in every
+    # published form document) could score the model and, with explain, read
+    # its training background; revoking the form did not stop it. The public
+    # form route (/api/forms/[formId]/predict) calls with the service key after
+    # its own form and owner checks.
     try:
-        artifact = model_store.load_pipeline(req.artifactUri, model_id)
+        artifact = model_store.load_pipeline(
+            req.artifactUri, model_id, caller_uid=uid, is_service=is_service,
+            auth_enforced=not auth.auth_disabled())
+    except model_store.NotOwner:
+        _fail(403, "Only the account that trained this model can use it.")
     except ValueError as e:
         _fail(403, f"Model artifact rejected: {e}")
     except Exception as e:
-        _fail(404, f"Could not load model artifact: {e}")
+        _fail_logged(404, 'Could not load model artifact.', e)
 
     # AutoGluon artifacts carry a packed predictor rather than an sklearn
     # Pipeline. Everything below this branch -- the label encoder, the
@@ -1346,6 +1432,8 @@ def predict_model(model_id: str, req: PredictRequest):
                 if req.explainImportance is not False:
                     shap_importance = _compute_beeswarm(
                         ag_estimator, artifact.get('task'), background)
+                    if is_service:
+                        shap_importance = _without_point_values(shap_importance)
 
         return {
             'predictions': predictions,
@@ -1445,6 +1533,10 @@ def predict_model(model_id: str, req: PredictRequest):
         # computed here rather than only at train time.
         if req.explainImportance is not False:
             shap_importance = _compute_beeswarm(pipeline, task, background)
+            # The service key is the public form's channel; whatever it asks,
+            # the background's raw rows do not leave through it.
+            if is_service:
+                shap_importance = _without_point_values(shap_importance)
 
     return {
         'predictions': [_to_native_type(p) for p in predictions],
@@ -1465,11 +1557,35 @@ def delete_model(model_id: str, request: Request, artifactUri: Optional[str] = Q
     _check_model_id(model_id)
     uid, kind = _caller(request)
     if artifactUri:
-        import auth
         try:
             model_store.delete_artifact(
                 artifactUri, model_id, caller_uid=uid, is_service=(kind == 'service'),
-                auth_enforced=bool(auth.firebase_project()))
+                auth_enforced=not auth.auth_disabled())
         except model_store.NotOwner:
             _fail(403, 'Only the account that trained this model can delete its artifact.')
     return {'ok': True}
+
+
+class OwnerPurgeRequest(BaseModel):
+    uid: str
+
+
+@router.post("/models/owner-purge")
+def purge_owner_models(req: OwnerPurgeRequest, request: Request):
+    """Delete every model artifact an account trained -- the account-deletion
+    step for this service's data (artifacts hold raw training rows; see
+    model_store.py). Service key only: the Next.js server's deletion job calls
+    it with the deleted account's uid. Idempotent; answers how many went.
+
+        POST /api/models/owner-purge   {"uid": "<firebase uid>"}
+        -> 200 {"deleted": n, "failed": n}
+    """
+    _uid, kind = _caller(request)
+    if kind != 'service':
+        _fail(403, 'Service key required.')
+    try:
+        return model_store.delete_owner_artifacts(req.uid)
+    except ValueError:
+        _fail(400, 'Invalid uid.')
+    except Exception as e:
+        _fail_logged(502, 'Could not list model artifacts.', e)

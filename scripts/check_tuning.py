@@ -34,6 +34,19 @@ import os
 import random
 import subprocess
 import sys
+
+# train_model / predict_model take the request since the 2026-11 auth work:
+# the caller comes from request.scope['state'] (auth.AuthMiddleware sets it).
+from types import SimpleNamespace as _NS  # noqa: E402
+_CHECK_REQUEST = _NS(scope={'state': {'auth_kind': 'user', 'uid': 'check-user'}}, headers={})
+
+
+def _train_model(model_id, req):
+    return sys.modules['models_api'].train_model(model_id, req, _CHECK_REQUEST)
+
+
+def _predict_model(model_id, req):
+    return sys.modules['models_api'].predict_model(model_id, req, _CHECK_REQUEST)
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -48,10 +61,12 @@ import types  # noqa: E402
 
 _store: dict = {}
 _fake_store = types.ModuleType('model_store')
-_fake_store.save_pipeline = lambda model_id, artifact: (
+_fake_store.save_pipeline = lambda model_id, artifact, *_a, **_k: (
     _store.__setitem__(f'gs://check/{model_id}', artifact) or f'gs://check/{model_id}')
-_fake_store.load_pipeline = lambda uri: _store[uri]
-_fake_store.delete_artifact = lambda uri: _store.pop(uri, None)
+_fake_store.load_pipeline = lambda uri, *_a, **_k: _store[uri]
+_fake_store.delete_artifact = lambda uri, *_a, **_k: _store.pop(uri, None)
+_fake_store.NotOwner = type("NotOwner", (Exception,), {})
+_fake_store.validate_model_id = lambda model_id: model_id
 sys.modules['model_store'] = _fake_store
 
 import models_api  # noqa: E402
@@ -268,7 +283,7 @@ def main():
     # ------------------------------------------- the tuned model gets served
     # A search that does not change what is deployed is a number on a screen.
     tuned = {'n_estimators': 120, 'max_depth': 3, 'min_samples_leaf': 7}
-    got = models_api.train_model('m-tuned', models_api.TrainRequest(
+    got = _train_model('m-tuned', models_api.TrainRequest(
         data=rows, algorithm='Random Forest', target=TARGET, features=FEATURES,
         task='classification', params=tuned))
     est = _store[got['artifactUri']]['pipeline'].named_steps['est']
@@ -279,7 +294,7 @@ def main():
     # The defaults are n_estimators=300 — a served model that ignored `params`
     # would still pass the check above if it happened to match, so this pins
     # that they are not simply the defaults.
-    default = models_api.train_model('m-default', models_api.TrainRequest(
+    default = _train_model('m-default', models_api.TrainRequest(
         data=rows, algorithm='Random Forest', target=TARGET, features=FEATURES,
         task='classification'))
     d_est = _store[default['artifactUri']]['pipeline'].named_steps['est']
@@ -296,7 +311,7 @@ def main():
           got.get('classWeighting'), est.get_params().get('class_weight'))
 
     try:
-        models_api.train_model('m-bad', models_api.TrainRequest(
+        _train_model('m-bad', models_api.TrainRequest(
             data=rows, algorithm='Random Forest', target=TARGET, features=FEATURES,
             task='classification', params={'learning_rate': 0.1}))
         check(False, 'a parameter the estimator does not take is refused')

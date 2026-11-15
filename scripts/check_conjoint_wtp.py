@@ -22,7 +22,6 @@ The CBC-HB endpoint is called as the coroutine it is, not through
 fastapi.testclient (httpx is not in the image; see check_startup.py).
 """
 
-import asyncio
 import os
 import sys
 
@@ -176,7 +175,8 @@ def main():
     hb_rows = [r for r in cbc_rows(False, n_resp=30, n_tasks=8, seed=11)]
     payload = conjoint_hb.ConjointHBPayload(data=hb_rows, attributeCols=ATTRS, priceCol='가격',
                                             draws=150, tune=150, chains=1)
-    res = asyncio.run(conjoint_hb.analyze_conjoint_hb(payload))['results']
+    # A plain `def` route since 2026-11 (it ran on the event loop before).
+    res = conjoint_hb.analyze_conjoint_hb(payload)['results']
     wtp = res.get('wtp')
     keys = {'attribute', 'level', 'wtp', 'wtp_ci_lower', 'wtp_ci_upper', 'is_reference', 'label'}
     check(isinstance(wtp, list) and wtp and all(keys <= set(w) for w in wtp),

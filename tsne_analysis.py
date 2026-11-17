@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score
+from embedding_sweep import neighbours_kept, settings_sweep
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -109,6 +110,9 @@ class TsneAnalysis:
                     self.results['silhouette_score'] = float(silhouette_score(self.embedding, self.labels))
                 except Exception:
                     self.results['silhouette_score'] = None
+
+        # 원래 이웃 유지율 — 원래 공간의 가까운 10개 중 그림에서도 가까운 10개에 든 비율(점이 많으면 5,000개 표본).
+        self.results['neighbours_kept'] = neighbours_kept(self.scaled_data, self.embedding)
 
         self.results['interpretation'] = self._generate_interpretation(n_samples)
 
@@ -246,6 +250,23 @@ def main():
             n_iter=n_iter,
             label_col=label_col
         )
+
+        # 탐색 시뮬레이션 「퍼플렉시티 바꿔 보기」 — 본 분석은 다시 돌리지 않고 4개 설정만 비교합니다.
+        if payload.get('sweep'):
+            X = analysis.scaled_data
+            n_s = min(len(X), 1000)
+
+            def embed(Xs, v):
+                return TSNE(n_components=2, perplexity=v, learning_rate='auto', max_iter=n_iter,
+                            random_state=TsneAnalysis.RANDOM_STATE, init='pca').fit_transform(Xs)
+
+            sweep = settings_sweep(
+                X, None if analysis.labels is None else analysis.labels.values, embed, perplexity,
+                ceiling=max(5.0, (n_s - 1) / 3), floor=5.0, seed=TsneAnalysis.RANDOM_STATE)
+            print(json.dumps({'settings_sweep': sweep, 'label_col': label_col if analysis.labels is not None else None},
+                             default=_to_native_type))
+            return
+
         analysis.run_analysis()
         plot_image = analysis.plot_results()
 

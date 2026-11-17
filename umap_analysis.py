@@ -8,6 +8,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.manifold import trustworthiness
 from sklearn.cluster import HDBSCAN
 import umap
+from embedding_sweep import neighbours_kept, settings_sweep
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme(style="darkgrid")
@@ -168,6 +169,12 @@ class UmapAnalysis:
         # setting whose silhouette holds up across the sweep indicates the detected
         # structure isn't an artifact of one particular n_neighbors choice.
         self.results['parameter_stability'] = self._parameter_stability(n_samples, cluster_sil)
+
+        # 원래 이웃 유지율 — t-SNE 와 같은 잣대(가까운 10개, 점이 많으면 5,000개 표본).
+        try:
+            self.results['neighbours_kept'] = neighbours_kept(self.scaled_data, self.embedding, metric=self.metric)
+        except Exception:
+            self.results['neighbours_kept'] = None
 
         self.results['interpretation'] = self._generate_interpretation(n_samples)
 
@@ -376,6 +383,23 @@ def main():
             metric=metric,
             label_col=label_col
         )
+
+        # 탐색 시뮬레이션 「이웃 수 바꿔 보기」 — 본 분석은 다시 돌리지 않고 4개 설정만 비교합니다.
+        if payload.get('sweep'):
+            X = analysis.scaled_data
+            n_s = min(len(X), 1000)
+
+            def embed(Xs, v):
+                return umap.UMAP(n_components=2, n_neighbors=int(v), min_dist=min_dist, metric=metric,
+                                 random_state=42).fit_transform(Xs)
+
+            sweep = settings_sweep(
+                X, None if analysis.labels is None else analysis.labels.values, embed, n_neighbors,
+                ceiling=float(max(2, n_s - 1)), floor=2.0, seed=42, metric=metric)
+            print(json.dumps({'settings_sweep': sweep, 'label_col': label_col if analysis.labels is not None else None},
+                             default=_to_native_type))
+            return
+
         analysis.run_analysis()
         plot_image = analysis.plot_results()
 

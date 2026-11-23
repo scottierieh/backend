@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from compressed_body import read_payload
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 import subprocess
@@ -287,7 +288,8 @@ def register_script_route(path: str, script_file: str):
     # every other concurrent request. run_in_threadpool offloads it to a worker thread so
     # other requests keep being served while this one's subprocess runs.
     async def _route(request: Request):
-        payload = await request.json()
+        # 큰 요청은 앱이 gzip 으로 보냅니다 — 풀어서 지금과 같은 payload 로(compressed_body.py).
+        payload = await read_payload(request)
         return await run_in_threadpool(run_script, script_file, payload)
     app.add_api_route(path, _route, methods=["POST"], name=script_file)
 
